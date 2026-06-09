@@ -1,5 +1,5 @@
 #Requires AutoHotkey v2.0
-#SingleInstance Force
+#SingleInstance force
 
 
 
@@ -13,11 +13,1559 @@ global ism := true
 global pitch := 660
 global dot := 60       
 global dash := 180      
-;----------------------------------------------- QUOTES 
+global settingsFile := "C:\Users\aretha\Documents\AutoHotkey\metar_settings.ini"
+global ICAO := IniRead(settingsFile, "Settings", "ICAO", "LTBJ")
+global lastMetar := ""
+global lastTAF := ""
+global metarDataFile := "C:\Users\aretha\Documents\AutoHotkey\METARDATA.txt"
+
+;----------------------------------------------- METAR
+global PhoneticMap := Map(
+    "A", "ALPHA", "B", "BRAVO", "C", "CHARLIE", "D", "DELTA", "E", "ECHO",
+    "F", "FOXTROT", "G", "GOLF", "H", "HOTEL", "I", "INDIA", "J", "JULIETT",
+    "K", "KILO", "L", "LIMA", "M", "MIKE", "N", "NOVEMBER", "O", "OSCAR",
+    "P", "PAPA", "Q", "QUEBEC", "R", "ROMEO", "S", "SIERRA", "T", "TANGO",
+    "U", "UNIFORM", "V", "VICTOR", "W", "WHISKEY", "X", "X-RAY", "Y", "YANKEE", "Z", "ZULU"
+)
+global WeatherMap := Map(
+    "-", "LIGHT ", "+", "HEAVY ",
+    "MI", "SHALLOW ", "PR", "PARTIAL ", "BC", "PATCHES ", "DR", "LOW DRIFTING ",
+    "BL", "BLOWING ", "SH", "SHOWERS ", "TS", "THUNDERstORM ", "FZ", "FREEZING ",
+    "VC", "IN THE VICINITY ", "RE", "RECENT ",
+    "DZ", "DRIZZLE", "RA", "RAIN", "SN", "SNOW", "SG", "SNOW GRAINS",
+    "IC", "ICE CRYSTALS", "PL", "ICE PELLETS", "GR", "HAIL", "GS", "SMALL HAIL OR SNOW PELLETS",
+    "UP", "UNKNOWN PRECIPITATION", "RASN", "RAIN AND SNOW", "SNRA", "SNOW AND RAIN",
+    "BR", "MIST", "FG", "FOG", "FU", "SMOKE", "VA", "VOLCANIC ASH",
+    "DU", "WIDESPREAD DUST", "SA", "SAND", "HZ", "HAZE", "PY", "SPRAY",
+    "PO", "DUST OR SAND WHIRLS", "SQ", "SQUALLS", "FC", "FUNNEL CLOUD",
+    "SS", "SANDSTORM", "DS", "DUSTORM"
+)
+global AirportMap := Map(
+    "LTBJ", "IZMIR ADNAN MENDERES AIRPORT",
+    "LTFA", "ADANA SAKIRPASA AIRPORT",
+    "LTBA", "ISTANBUL ATATURK AIRPORT",
+    "LTFM", "ISTANBUL AIRPORT",
+    "LTFJ", "SABIHA GOKCEN AIRPORT",
+    "LTAI", "ANTALYA AIRPORT",
+    "LTAF", "ADANA AIRPORT",
+    "LTCG", "TRABZON AIRPORT",
+    "LTAC", "ANKARA ESENBOGA AIRPORT"
+)
+
+:?*:\setmetar::
+{
+    OpenSettingsGui()
+}
+
+OpenSettingsGui() {
+    global ICAO, settingsFile, AirportMap, lastMetar, lastTAF
+    
+    LoadAirportsFromINI()
+    
+    sg := Gui("+Resize -MaximizeBox", "METAR Settings")
+    sg.SetFont("s9", "Segoe UI")
+    
+    tabs := sg.Add("Tab3", "x5 y5 w1190 h660", ["Airport Selection", "Airport Management", "Voice && Speech", "Timing && Display", "Data Files"])
+    
+    tabs.UseTab(1)
+    
+    sg.Add("Text", "x20 y40", "Active ICAO:")
+    activeEdit := sg.Add("Edit", "x120 y37 w80 Uppercase Limit4 vActiveICAO", ICAO)
+    applyBtn := sg.Add("Button", "x210 y36 w80", "Apply")
+    
+    sg.Add("Text", "x320 y40", "Search:")
+    searchEdit := sg.Add("Edit", "x370 y37 w200 vSearchField")
+    searchBtn := sg.Add("Button", "x580 y36 w60", "Filter")
+    clearSearchBtn := sg.Add("Button", "x645 y36 w60", "Clear")
+    
+    sg.Add("GroupBox", "x20 y70 w1150 h580", "Registered Airports")
+    
+    airportLV := sg.Add("ListView", "x30 y90 w1130 h545 vAirportList Grid", ["ICAO", "Name", "Pronunciation"])
+    airportLV.ModifyCol(1, 80)
+    airportLV.ModifyCol(2, 400)
+    airportLV.ModifyCol(3, 630)
+    
+    PopulateAirportList(airportLV, "")
+    
+    applyBtn.OnEvent("Click", (*) => ApplyActiveAirport(sg, activeEdit))
+    searchBtn.OnEvent("Click", (*) => PopulateAirportList(airportLV, searchEdit.Value))
+    clearSearchBtn.OnEvent("Click", (*) => (searchEdit.Value := "", PopulateAirportList(airportLV, "")))
+    airportLV.OnEvent("DoubleClick", (*) => SelectAirportFromList(sg, airportLV, activeEdit))
+    
+    tabs.UseTab(2)
+    
+    sg.Add("GroupBox", "x20 y40 w560 h300", "Add New Airport")
+    
+    sg.Add("Text", "x40 y70", "ICAO Code:")
+    newICAOEdit := sg.Add("Edit", "x160 y67 w100 Uppercase Limit4 vNewICAO")
+    
+    sg.Add("Text", "x40 y100", "Airport Name:")
+    newNameEdit := sg.Add("Edit", "x160 y97 w400 vNewName")
+    
+    sg.Add("Text", "x40 y130", "Pronunciation:")
+    newPronEdit := sg.Add("Edit", "x160 y127 w400 vNewPronunciation")
+    
+    sg.Add("Text", "x40 y165 w520", "Pronunciation is how the TTS will read the name. Leave blank to use the airport name as-is.")
+    
+    addBtn := sg.Add("Button", "x160 y200 w120 h30", "Add Airport")
+    
+    sg.Add("GroupBox", "x20 y350 w560 h310", "Edit Selected Airport")
+    
+    sg.Add("Text", "x40 y380", "ICAO Code:")
+    editICAODisplay := sg.Add("Edit", "x160 y377 w100 ReadOnly vEditICAO")
+    
+    sg.Add("Text", "x40 y410", "Airport Name:")
+    editNameEdit := sg.Add("Edit", "x160 y407 w400 vEditName")
+    
+    sg.Add("Text", "x40 y440", "Pronunciation:")
+    editPronEdit := sg.Add("Edit", "x160 y437 w400 vEditPronunciation")
+    
+    loadSelBtn := sg.Add("Button", "x40 y480 w140 h30", "Load Selected")
+    saveEditBtn := sg.Add("Button", "x190 y480 w140 h30", "Save Changes")
+    deleteBtn := sg.Add("Button", "x340 y480 w140 h30", "Delete Airport")
+    
+    sg.Add("GroupBox", "x600 y40 w570 h620", "Airport List")
+    manageLV := sg.Add("ListView", "x610 y60 w550 h585 vManageList Grid", ["ICAO", "Name", "Pronunciation"])
+    manageLV.ModifyCol(1, 70)
+    manageLV.ModifyCol(2, 230)
+    manageLV.ModifyCol(3, 230)
+    
+    PopulateAirportList(manageLV, "")
+    
+    addBtn.OnEvent("Click", (*) => AddNewAirport(sg, newICAOEdit, newNameEdit, newPronEdit, airportLV, manageLV))
+    loadSelBtn.OnEvent("Click", (*) => LoadSelectedAirport(manageLV, editICAODisplay, editNameEdit, editPronEdit))
+    saveEditBtn.OnEvent("Click", (*) => SaveAirportEdit(sg, editICAODisplay, editNameEdit, editPronEdit, airportLV, manageLV))
+    deleteBtn.OnEvent("Click", (*) => DeleteAirport(sg, manageLV, editICAODisplay, airportLV))
+    
+    tabs.UseTab(3)
+    
+    sg.Add("GroupBox", "x20 y40 w560 h200", "TTS Voice")
+    
+    sg.Add("Text", "x40 y70", "Voice:")
+    voiceDD := sg.Add("DropDownList", "x160 y67 w380 vVoiceSelect")
+    
+    try {
+        tempTTS := ComObject("SAPI.SpVoice")
+        voiceNames := []
+        selectedIndex := 0
+        savedVoice := IniRead(settingsFile, "Voice", "VoiceName", "")
+        idx := 0
+        for voice in tempTTS.GetVoices() {
+            idx++
+            desc := voice.GetDescription()
+            voiceNames.Push(desc)
+            if (desc = savedVoice || (savedVoice = "" && InStr(desc, "David")))
+                selectedIndex := idx
+        }
+        voiceDD.Add(voiceNames)
+        if (selectedIndex > 0)
+            voiceDD.Choose(selectedIndex)
+        else if (voiceNames.Length > 0)
+            voiceDD.Choose(1)
+        tempTTS := ""
+    } catch {
+    }
+    
+    sg.Add("Text", "x40 y110", "Volume:")
+    volSlider := sg.Add("Slider", "x160 y107 w300 Range0-100 TickInterval10 vVoiceVolume", Integer(IniRead(settingsFile, "Voice", "Volume", "60")))
+    volLabel := sg.Add("Text", "x470 y110 w50", IniRead(settingsFile, "Voice", "Volume", "60"))
+    volSlider.OnEvent("Change", (*) => volLabel.Value := volSlider.Value)
+    
+    sg.Add("Text", "x40 y150", "Rate:")
+    rateSlider := sg.Add("Slider", "x160 y147 w300 Range-10-10 TickInterval1 vVoiceRate", Integer(IniRead(settingsFile, "Voice", "Rate", "0")))
+    rateLabel := sg.Add("Text", "x470 y150 w50", IniRead(settingsFile, "Voice", "Rate", "0"))
+    rateSlider.OnEvent("Change", (*) => rateLabel.Value := rateSlider.Value)
+    
+    sg.Add("Text", "x40 y190", "Pause Between Sections (ms):")
+    pauseEdit := sg.Add("Edit", "x250 y187 w80 Number vPauseDuration", IniRead(settingsFile, "Voice", "PauseDuration", "500"))
+    
+    testVoiceBtn := sg.Add("Button", "x160 y215 w150 h30", "Test Voice")
+    saveVoiceBtn := sg.Add("Button", "x320 y215 w150 h30", "Save Voice Settings")
+    
+    sg.Add("GroupBox", "x20 y260 w560 h200", "Morse Tone")
+    
+    sg.Add("Text", "x40 y290", "Pitch (Hz):")
+    pitchEdit := sg.Add("Edit", "x160 y287 w100 Number vMorsePitch", IniRead(settingsFile, "Morse", "Pitch", "660"))
+    
+    sg.Add("Text", "x40 y320", "Dot Duration (ms):")
+    dotEdit := sg.Add("Edit", "x160 y317 w100 Number vMorseDot", IniRead(settingsFile, "Morse", "Dot", "60"))
+    
+    sg.Add("Text", "x40 y350", "Dash Duration (ms):")
+    dashEdit := sg.Add("Edit", "x160 y347 w100 Number vMorseDash", IniRead(settingsFile, "Morse", "Dash", "180"))
+    
+    saveMorseBtn := sg.Add("Button", "x160 y390 w150 h30", "Save Morse Settings")
+    
+    testVoiceBtn.OnEvent("Click", (*) => TestVoiceSettings(voiceDD, volSlider, rateSlider))
+    saveVoiceBtn.OnEvent("Click", (*) => SaveVoiceSettings(sg, voiceDD, volSlider, rateSlider, pauseEdit))
+    saveMorseBtn.OnEvent("Click", (*) => SaveMorseSettings(sg, pitchEdit, dotEdit, dashEdit))
+    
+    tabs.UseTab(4)
+    
+    sg.Add("GroupBox", "x20 y40 w560 h150", "METAR Check Interval")
+    
+    sg.Add("Text", "x40 y70", "Check Every (minutes):")
+    intervalEdit := sg.Add("Edit", "x220 y67 w80 Number vCheckInterval", IniRead(settingsFile, "Timing", "IntervalMinutes", "60"))
+    
+    sg.Add("Text", "x40 y100", "Minimum: 1 minute. Standard: 60 minutes.")
+    
+    saveTimingBtn := sg.Add("Button", "x220 y130 w150 h30", "Save && Apply Interval")
+    
+    sg.Add("GroupBox", "x20 y200 w560 h180", "Scrolling Ticker")
+    
+    sg.Add("Text", "x40 y230", "Scroll Speed (pixels/tick):")
+    scrollSpeedEdit := sg.Add("Edit", "x220 y227 w80 Number vScrollSpeed", IniRead(settingsFile, "Display", "ScrollSpeed", "1"))
+    
+    sg.Add("Text", "x40 y260", "Loop Count:")
+    loopCountEdit := sg.Add("Edit", "x220 y257 w80 Number vLoopCount", IniRead(settingsFile, "Display", "LoopCount", "2"))
+    
+    sg.Add("Text", "x40 y290", "Font Size:")
+    fontSizeEdit := sg.Add("Edit", "x220 y287 w80 Number vTickerFontSize", IniRead(settingsFile, "Display", "FontSize", "10"))
+    
+    saveDisplayBtn := sg.Add("Button", "x220 y330 w150 h30", "Save Display Settings")
+    
+    sg.Add("GroupBox", "x20 y400 w560 h100", "Manual Actions")
+    
+    fetchNowBtn := sg.Add("Button", "x40 y430 w150 h30", "Fetch METAR Now")
+    replayBtn := sg.Add("Button", "x200 y430 w150 h30", "Replay Last METAR")
+    
+    saveTimingBtn.OnEvent("Click", (*) => SaveTimingSettings(sg, intervalEdit))
+    saveDisplayBtn.OnEvent("Click", (*) => SaveDisplaySettings(sg, scrollSpeedEdit, loopCountEdit, fontSizeEdit))
+    fetchNowBtn.OnEvent("Click", (*) => (sg.Hide(), CheckMetar(), sg.Show()))
+    replayBtn.OnEvent("Click", (*) => ReplayLastMetar(sg))
+    
+    tabs.UseTab(5)
+    
+    sg.Add("GroupBox", "x20 y40 w560 h120", "File Paths")
+    
+    sg.Add("Text", "x40 y70", "Settings File:")
+    sg.Add("Edit", "x160 y67 w400 ReadOnly", settingsFile)
+    
+    sg.Add("Text", "x40 y100", "METAR Data File:")
+    sg.Add("Edit", "x160 y97 w400 ReadOnly", metarDataFile)
+    
+    sg.Add("GroupBox", "x20 y170 w560 h150", "Information Letter History")
+    
+    clearHistoryBtn := sg.Add("Button", "x40 y200 w180 h30", "Clear Letter History")
+    
+    sg.Add("Text", "x40 y245", "Current METAR:")
+    currentMetarDisplay := sg.Add("Edit", "x40 y265 w530 h40 ReadOnly Multi", lastMetar != "" ? lastMetar : "(none)")
+    
+    clearHistoryBtn.OnEvent("Click", (*) => ClearLetterHistory())
+    
+    sg.Add("GroupBox", "x20 y330 w560 h120", "Export / Import")
+    
+    exportBtn := sg.Add("Button", "x40 y360 w150 h30", "Export Airports")
+    importBtn := sg.Add("Button", "x200 y360 w150 h30", "Import Airports")
+    
+    exportBtn.OnEvent("Click", (*) => ExportAirports())
+    importBtn.OnEvent("Click", (*) => ImportAirports(airportLV, manageLV))
+    
+    tabs.UseTab()
+    
+    sg.Show("w1200 h700")
+}
+
+LoadAirportsFromINI() {
+    global AirportMap, settingsFile
+    
+    try {
+        airportSection := IniRead(settingsFile, "Airports")
+        if (airportSection != "") {
+            for line in StrSplit(airportSection, "`n", "`r") {
+                if RegExMatch(line, "^([A-Z]{4})=(.+)$", &m) {
+                    AirportMap[m[1]] := StrSplit(m[2], "|")[1]
+                }
+            }
+        }
+    } catch {
+    }
+}
+
+GetAirportPronunciation(icao) {
+    global settingsFile
+    try {
+        val := IniRead(settingsFile, "Airports", icao, "")
+        if (val != "") {
+            parts := StrSplit(val, "|")
+            if (parts.Length >= 2 && parts[2] != "")
+                return parts[2]
+            return parts[1]
+        }
+    } catch {
+    }
+    global AirportMap
+    if (AirportMap.Has(icao))
+        return AirportMap[icao]
+    return ""
+}
+
+SaveAirportToINI(icao, name, pronunciation) {
+    global settingsFile, AirportMap
+    
+    icao := StrUpper(icao)
+    val := name . "|" . pronunciation
+    
+    try {
+        IniWrite(val, settingsFile, "Airports", icao)
+    } catch as e {
+        MsgBox("Could not save: " . e.Message, "Error", "Icon!")
+        return false
+    }
+    
+    AirportMap[icao] := name
+    return true
+}
+
+DeleteAirportFromINI(icao) {
+    global settingsFile, AirportMap
+    
+    try {
+        IniDelete(settingsFile, "Airports", icao)
+    } catch {
+    }
+    
+    if (AirportMap.Has(icao))
+        AirportMap.Delete(icao)
+}
+PopulateAirportList(lv, filter) {
+    global AirportMap, settingsFile
+    
+    lv.Delete()
+    
+    allAirports := Map()
+    
+    for code, name in AirportMap {
+        allAirports[code] := Map("name", name, "pron", "")
+    }
+    
+    try {
+        airportSection := IniRead(settingsFile, "Airports")
+        if (airportSection != "") {
+            for line in StrSplit(airportSection, "`n", "`r") {
+                if RegExMatch(line, "^([A-Z]{4})=(.+)$", &m) {
+                    parts := StrSplit(m[2], "|")
+                    nm := parts[1]
+                    pr := parts.Length >= 2 ? parts[2] : ""
+                    allAirports[m[1]] := Map("name", nm, "pron", pr)
+                }
+            }
+        }
+    } catch {
+    }
+    
+    filter := StrUpper(Trim(filter))
+    
+    for code, data in allAirports {
+        if (filter != "") {
+            if (!InStr(code, filter) && !InStr(StrUpper(data["name"]), filter))
+                continue
+        }
+        lv.Add(, code, data["name"], data["pron"])
+    }
+}
+
+ApplyActiveAirport(sg, activeEdit) {
+    global ICAO, settingsFile, lastMetar, lastTAF
+    
+    newCode := activeEdit.Value
+    if (StrLen(newCode) != 4) {
+        MsgBox("Enter a 4-letter ICAO code.", "Error", "Icon!")
+        return
+    }
+    
+    ICAO := StrUpper(newCode)
+    
+    try {
+        IniWrite(ICAO, settingsFile, "Settings", "ICAO")
+    } catch as e {
+        MsgBox("Could not save: " . e.Message, "Error", "Icon!")
+    }
+    
+    lastMetar := ""
+    lastTAF := ""
+    
+    MsgBox("Active airport set to " . ICAO, "Airport Changed")
+    CheckMetar()
+}
+
+SelectAirportFromList(sg, lv, activeEdit) {
+    row := lv.GetNext(0, "F")
+    if (!row)
+        return
+    
+    code := lv.GetText(row, 1)
+    activeEdit.Value := code
+    ApplyActiveAirport(sg, activeEdit)
+}
+
+AddNewAirport(sg, icaoEdit, nameEdit, pronEdit, airportLV, manageLV) {
+    newICAO := StrUpper(Trim(icaoEdit.Value))
+    newName := Trim(nameEdit.Value)
+    newPron := Trim(pronEdit.Value)
+    
+    if (StrLen(newICAO) != 4) {
+        MsgBox("ICAO code must be exactly 4 characters.", "Error", "Icon!")
+        return
+    }
+    if (newName = "") {
+        MsgBox("Airport name is required.", "Error", "Icon!")
+        return
+    }
+    if (newPron = "")
+        newPron := newName
+    
+    if (SaveAirportToINI(newICAO, newName, newPron)) {
+        icaoEdit.Value := ""
+        nameEdit.Value := ""
+        pronEdit.Value := ""
+        PopulateAirportList(airportLV, "")
+        PopulateAirportList(manageLV, "")
+        MsgBox(newICAO . " added.", "Airport Added")
+    }
+}
+
+LoadSelectedAirport(lv, icaoDisp, nameEdit, pronEdit) {
+    row := lv.GetNext(0, "F")
+    if (!row) {
+        MsgBox("Select an airport from the list.", "No Selection", "Icon!")
+        return
+    }
+    
+    code := lv.GetText(row, 1)
+    name := lv.GetText(row, 2)
+    pron := lv.GetText(row, 3)
+    
+    icaoDisp.Value := code
+    nameEdit.Value := name
+    pronEdit.Value := pron
+}
+
+SaveAirportEdit(sg, icaoDisp, nameEdit, pronEdit, airportLV, manageLV) {
+    code := Trim(icaoDisp.Value)
+    if (code = "") {
+        MsgBox("No airport loaded for editing.", "Error", "Icon!")
+        return
+    }
+    
+    newName := Trim(nameEdit.Value)
+    newPron := Trim(pronEdit.Value)
+    
+    if (newName = "") {
+        MsgBox("Airport name is required.", "Error", "Icon!")
+        return
+    }
+    if (newPron = "")
+        newPron := newName
+    
+    if (SaveAirportToINI(code, newName, newPron)) {
+        PopulateAirportList(airportLV, "")
+        PopulateAirportList(manageLV, "")
+        MsgBox(code . " updated.", "Airport Updated")
+    }
+}
+
+DeleteAirport(sg, lv, icaoDisp, airportLV) {
+    row := lv.GetNext(0, "F")
+    if (!row) {
+        MsgBox("Select an airport to delete.", "No Selection", "Icon!")
+        return
+    }
+    
+    code := lv.GetText(row, 1)
+    
+    result := MsgBox("Delete " . code . "?", "Confirm Delete", "YesNo Icon!")
+    if (result != "Yes")
+        return
+    
+    DeleteAirportFromINI(code)
+    icaoDisp.Value := ""
+    PopulateAirportList(airportLV, "")
+    PopulateAirportList(lv, "")
+    MsgBox(code . " deleted.", "Airport Deleted")
+}
+
+TestVoiceSettings(voiceDD, volSlider, rateSlider) {
+    try {
+        tts := ComObject("SAPI.SpVoice")
+        tts.Volume := volSlider.Value
+        tts.Rate := rateSlider.Value
+        
+        selectedVoice := voiceDD.Text
+        if (selectedVoice != "") {
+            for voice in tts.GetVoices() {
+                if (voice.GetDescription() = selectedVoice) {
+                    tts.Voice := voice
+                    break
+                }
+            }
+        }
+        
+        tts.Speak("IZMIR ADNAN MENDERES AIRPORT INFORMATION BRAVO. WIND THREE FIVE ZERO DEGREES AT ONE TWO KNOTS. VISIBILITY ONE ZERO KILOMETERS OR MORE. TEMPERATURE TWO FIVE. Q N H ONE ZERO ONE THREE.", 1)
+    } catch as e {
+        MsgBox("TTS Error: " . e.Message, "Error", "Icon!")
+    }
+}
+
+SaveVoiceSettings(sg, voiceDD, volSlider, rateSlider, pauseEdit) {
+    global settingsFile
+    
+    try {
+        IniWrite(voiceDD.Text, settingsFile, "Voice", "VoiceName")
+        IniWrite(volSlider.Value, settingsFile, "Voice", "Volume")
+        IniWrite(rateSlider.Value, settingsFile, "Voice", "Rate")
+        IniWrite(pauseEdit.Value, settingsFile, "Voice", "PauseDuration")
+        MsgBox("Voice settings saved.", "Saved")
+    } catch as e {
+        MsgBox("Could not save: " . e.Message, "Error", "Icon!")
+    }
+}
+
+SaveMorseSettings(sg, pitchEdit, dotEdit, dashEdit) {
+    global settingsFile, pitch, dot, dash
+    
+    try {
+        pitch := Integer(pitchEdit.Value)
+        dot := Integer(dotEdit.Value)
+        dash := Integer(dashEdit.Value)
+        
+        IniWrite(pitch, settingsFile, "Morse", "Pitch")
+        IniWrite(dot, settingsFile, "Morse", "Dot")
+        IniWrite(dash, settingsFile, "Morse", "Dash")
+        MsgBox("Morse settings saved.", "Saved")
+    } catch as e {
+        MsgBox("Could not save: " . e.Message, "Error", "Icon!")
+    }
+}
+
+SaveTimingSettings(sg, intervalEdit) {
+    global settingsFile
+    
+    mins := Integer(intervalEdit.Value)
+    if (mins < 1)
+        mins := 1
+    
+    try {
+        IniWrite(mins, settingsFile, "Timing", "IntervalMinutes")
+        SetTimer(CheckMetar, mins * 60000)
+        MsgBox("Check interval set to " . mins . " minutes.", "Saved")
+    } catch as e {
+        MsgBox("Could not save: " . e.Message, "Error", "Icon!")
+    }
+}
+
+SaveDisplaySettings(sg, scrollSpeedEdit, loopCountEdit, fontSizeEdit) {
+    global settingsFile
+    
+    try {
+        IniWrite(scrollSpeedEdit.Value, settingsFile, "Display", "ScrollSpeed")
+        IniWrite(loopCountEdit.Value, settingsFile, "Display", "LoopCount")
+        IniWrite(fontSizeEdit.Value, settingsFile, "Display", "FontSize")
+        MsgBox("Display settings saved.", "Saved")
+    } catch as e {
+        MsgBox("Could not save: " . e.Message, "Error", "Icon!")
+    }
+}
+
+ReplayLastMetar(sg) {
+    global lastMetar, lastTAF
+    if (lastMetar = "") {
+        MsgBox("No METAR data available. Fetch first.", "No Data", "Icon!")
+        return
+    }
+    
+    infoLetter := GetInformationLetter(lastMetar)
+    tafWarning := ParseTAFForWarning(lastTAF, "display")
+    ShowScrollingTicker(lastMetar, tafWarning, infoLetter)
+    speechText := ParseMetarToSpeech(lastMetar, lastTAF)
+    SpeakText(speechText)
+}
+
+ClearLetterHistory() {
+    global metarDataFile
+    
+    result := MsgBox("Clear all information letter history?", "Confirm", "YesNo Icon!")
+    if (result != "Yes")
+        return
+    
+    try {
+        if FileExist(metarDataFile)
+            FileDelete(metarDataFile)
+        FileAppend("", metarDataFile)
+        MsgBox("History cleared.", "Done")
+    } catch as e {
+        MsgBox("Error: " . e.Message, "Error", "Icon!")
+    }
+}
+
+ExportAirports() {
+    global AirportMap, settingsFile
+    
+    exportPath := FileSelect("S", , "Export Airports", "Text Files (*.txt)")
+    if (exportPath = "")
+        return
+    
+    content := ""
+    
+    allAirports := Map()
+    for code, name in AirportMap {
+        allAirports[code] := name . "|"
+    }
+    
+    try {
+        airportSection := IniRead(settingsFile, "Airports")
+        if (airportSection != "") {
+            for line in StrSplit(airportSection, "`n", "`r") {
+                if RegExMatch(line, "^([A-Z]{4})=(.+)$", &m) {
+                    allAirports[m[1]] := m[2]
+                }
+            }
+        }
+    } catch {
+    }
+    
+    for code, val in allAirports {
+        content .= code . "=" . val . "`n"
+    }
+    
+    try {
+        if FileExist(exportPath)
+            FileDelete(exportPath)
+        FileAppend(content, exportPath)
+        MsgBox("Exported " . allAirports.Count . " airports.", "Export Complete")
+    } catch as e {
+        MsgBox("Export error: " . e.Message, "Error", "Icon!")
+    }
+}
+
+ImportAirports(airportLV, manageLV) {
+    global settingsFile, AirportMap
+    
+    importPath := FileSelect(1, , "Import Airports", "Text Files (*.txt)")
+    if (importPath = "")
+        return
+    
+    try {
+        content := FileRead(importPath)
+        count := 0
+        
+        for line in StrSplit(content, "`n", "`r") {
+            if RegExMatch(Trim(line), "^([A-Z]{4})=(.+)$", &m) {
+                parts := StrSplit(m[2], "|")
+                nm := parts[1]
+                pr := parts.Length >= 2 ? parts[2] : ""
+                SaveAirportToINI(m[1], nm, pr)
+                count++
+            }
+        }
+        
+        PopulateAirportList(airportLV, "")
+        PopulateAirportList(manageLV, "")
+        MsgBox("Imported " . count . " airports.", "Import Complete")
+    } catch as e {
+        MsgBox("Import error: " . e.Message, "Error", "Icon!")
+    }
+}
+ParseMetarToSpeech(metarstring, tafstring := ""){
+    
+    global PhoneticMap
+    speech := ""
+    tokens := strSplit(metarstring, " ")
+    local pauseXML := " <silence msec='500'/> "
+    local informationLetter := GetInformationLetter(metarstring)
+
+    for index, token in tokens {
+        if (token = "METAR" || token = "SPECI") {
+            continue
+        }
+
+        if RegExMatch(token, "^(\d{4})([NSEW]{1,2})$", &m) {
+            local dirMap := Map("N", "NORTH", "S", "SOUTH", "E", "EAST", "W", "WEST", "NE", "NORTH EAST", "NW", "NORTH WEST", "SE", "SOUTH EAST", "SW", "SOUTH WEST")
+            speech .= "VISIBILITY " . SpellNumbers(m[1]) . " METERS TO THE " . dirMap[m[2]] . " "
+            speech .= pauseXML
+            continue
+        }
+
+        if (token = "BECMG") {
+            speech .= "BECOMING "
+            speech .= pauseXML
+            continue
+        }
+        if (token = "TEMPO") {
+            speech .= "TEMPORARILY "
+            speech .= pauseXML
+            continue
+        }
+        if (token = "SPECI") {
+            speech .= "SPECIAL "
+            speech .= pauseXML
+            continue
+        }
+
+        if (token = "NSW") {
+            speech .= "NO SIGNIFICANT WEATHER "
+            speech .= pauseXML
+            continue
+        }
+
+        if RegExMatch(token, "^(TL|FM|AT)(\d{4})$", &m) {
+            switch m[1] {
+                case "TL": speech .= "UNTIL "
+                case "FM": speech .= "FROM "
+                case "AT": speech .= "AT "
+            }
+            speech .= SpellNumbers(m[2]) . " ZULU "
+            speech .= pauseXML
+            continue
+        }
+
+        if (token = "WS") {
+            speech .= "WIND SHEAR "
+            continue
+        }
+        if (token = "ALL") {
+            speech .= "ALL "
+            continue
+        }
+        
+        if (token = "COR") {
+            speech .= "CORRECTION "
+            speech .= pauseXML
+            continue
+        }
+        if (RegExMatch(token, "^[A-Z]{4}$") && index = (tokens[1]="METAR" ? 2 : 1)) {
+            
+            local customPron := GetAirportPronunciation(token)
+            if (customPron != "") {
+                speech .= customPron . " "
+            } else if (AirportMap.Has(token)) {
+                speech .= AirportMap[token] . " "
+            } else {
+                speech .= SpellPhonetic(token) . " "
+            }
+
+            speech .= "LOCAL INFORMATION REPORT " . SpellPhonetic(informationLetter) . " "
+            speech .= pauseXML
+            speech .= pauseXML
+            continue
+        }
+        if RegExMatch(token, "^(\d{6})Z$") {
+            speech .= "TIME " . SpellNumbers(Substr(token, 3, 4)) . " ZULU "
+            speech .= pauseXML
+            continue
+        }
+
+        if Instr(token, "KT") || Instr(token, "MPS") {
+            local unit := Instr(token, "KT") ? "KNOTS" : "METERS PER SECOND"
+            speech .= "WIND "
+            
+            if (RegExMatch(token, "^00000(KT|MPS)$")) {
+                speech .= "CALM "
+            } else {
+                local windDir := Substr(token, 1, 3)
+                
+                if (windDir = "VRB") {
+                    speech .= "VARIABLE AT "
+                } else {
+                    speech .= SpellNumbers(windDir) . " DEGREES AT "
+                }
+                
+                if RegExMatch(token, "(\d{2,3})G(\d{2,3})(KT|MPS)", &m) {
+                    speech .= SpellNumbers(m[1]) . " GUstING " . SpellNumbers(m[2]) . " " . unit . " "
+                } else if RegExMatch(token, "^(?:VRB|\d{3})(\d{2,3})(KT|MPS)", &m) {
+                    speech .= SpellNumbers(m[1]) . " " . unit . " "
+                }
+            }
+            speech .= pauseXML
+            continue
+        }
+        if RegExMatch(token, "^(\d{3})V(\d{3})$", &m) {
+            speech .= "WIND VARIABLE BETWEEN " . SpellNumbers(m[1]) . " AND " . SpellNumbers(m[2]) . " DEGREES "
+            speech .= pauseXML
+            continue
+        }
+
+        if (token = "9999") {
+            speech .= "VISIBILITY TEN KILOMETERS OR MORE "
+            speech .= pauseXML
+            continue
+        }
+        if (token = "CAVOK") {
+            speech .= "CEILING AND VISIBILITY OK "
+            speech .= pauseXML
+            continue
+        }
+        if (RegExMatch(token, "^\d{4}$") && index > 2) { 
+            speech .= "VISIBILITY " . SpellNumbers(token) . " METERS "
+            speech .= pauseXML
+            continue
+        }
+
+        if RegExMatch(token, "^R(\d{2}[RLC]?)\/(P|M)?(\d{4})(N|U|D)?$", &m) {
+            speech .= "RUNWAY VISUAL RANGE RUNWAY " . SpellRunway(m[1]) . " "
+            if (m[2] = "P")
+                speech .= "GREATER THAN "
+            else if (m[2] = "M")
+                speech .= "LESS THAN "
+            
+            speech .= SpellNumbers(m[3]) . " METERS "
+            
+            if (m[4] = "N")
+                speech .= "NO CHANGE "
+            else if (m[4] = "U")
+                speech .= "TREND UPWARD "
+            else if (m[4] = "D")
+                speech .= "TREND DOWNWARD "
+            speech .= pauseXML
+            continue
+        }
+
+        local weatherSpeech := ParseWeather(token)
+        if (weatherSpeech != "") {
+            speech .= weatherSpeech . " "
+            speech .= pauseXML
+            continue
+        }
+
+        if RegExMatch(token, "^(FEW|SCT|BKN|OVC)(\d{3})", &match) {
+            local cloudType := ""
+            Switch match[1] {
+                Case "FEW": cloudType := "FEW CLOUDS AT "
+                Case "SCT": cloudType := "SCATTERED CLOUDS AT "
+                Case "BKN": cloudType := "BROKEN CLOUDS AT "
+                Case "OVC": cloudType := "OVERCAST AT "
+            }
+            speech .= cloudType . SpellNumbers(match[2]) . " HUNDRED FEET "
+
+            if Instr(token, "CB")
+                speech .= "CUMULONIMBUS "
+            else if Instr(token, "TCU")
+                speech .= "TOWERING CUMULUS "
+            
+            speech .= pauseXML
+            continue
+        }
+        if RegExMatch(token, "^VV(\d{3})$", &m) {
+            speech .= "VERTICAL VISIBILITY " . SpellNumbers(m[1]) . " HUNDRED FEET "
+            speech .= pauseXML
+            continue
+        }
+        if (token = "NSC") {
+            speech .= "NO SIGNIFICANT CLOUD "
+            speech .= pauseXML
+            continue
+        }
+        if (token = "SKC" || token = "CLR" || token = "NCD") {
+            speech .= "SKY CLEAR "
+            speech .= pauseXML
+            continue
+        }
+
+        if RegExMatch(token, "^(M?)(\d{2})\/(M?)(\d{2})$", &m) {
+            speech .= "TEMPERATURE "
+            speech .= (m[1] = "M" ? "MINUS " : "") . SpellNumbers(m[2]) . " "
+            speech .= pauseXML
+            speech .= "DEW POINT "
+            speech .= (m[3] = "M" ? "MINUS " : "") . SpellNumbers(m[4]) . " "
+            speech .= pauseXML
+            continue
+        }
+
+        if RegExMatch(token, "^Q(\d{4})$", &m) {
+            speech .= "Q N H " . SpellNumbers(m[1]) . " "
+            speech .= pauseXML
+            continue
+        }
+
+        if (token = "NOSIG") {
+            speech .= "NO SIGNIFICANT CHANGE "
+            speech .= pauseXML
+            continue
+        }
+        if (token = "RMK") {
+            speech .= "REMARK "
+            speech .= pauseXML
+            continue
+        }
+        
+        if RegExMatch(token, "^RWY(\d{2}[RLC]?)$", &m) {
+            speech .= "RUNWAY " . SpellRunway(m[1]) . " "
+            continue
+        }
+
+        if (RegExMatch(token, "^[A-Z0-9/]+$")) {
+            speech .= SpellAlphanumeric(token) . " "
+        }
+    }
+    
+    local tafWarningSpeech := ""
+    if (tafstring != "") {
+        tafWarningSpeech := ParseTAFForWarning(tafstring, "speech")
+        speech .= tafWarningSpeech
+    }
+
+    local finalSpeech := RTrim(speech)
+    
+    finalSpeech .= " INFORMATION " . SpellPhonetic(informationLetter) . " IS CURRENT."
+
+    
+    return finalSpeech
+}
+
+ParseTAFForWarning(tafstring, returnFormat := "speech") {
+    static callCount := 0
+    callCount++
+    
+    
+    local warningSpeech := ""
+    local warningDisplay := ""
+    local pauseXML := " <silence msec='500'/> "
+    local significantWeather := "RA|SN|TS|BR|FG|GR|GS|PL|IC|DZ|SS|DS|FC|SQ" 
+
+    local cleanedTAF := RegExReplace(tafstring, ".*?TAF [A-Z]{4} \d{6}Z \d{4}\/\d{4} ") 
+    cleanedTAF := RegExReplace(cleanedTAF, "\\n", " ")
+    cleanedTAF := RegExReplace(cleanedTAF, " {2,}", " ")
+    cleanedTAF := Trim(cleanedTAF)
+        
+    local groupsArray := []
+    local markers := ["BECMG", "PROB", "TEMPO"]
+    local currentPos := 1
+    
+    while (currentPos <= strLen(cleanedTAF)) {
+        local bestPos := strLen(cleanedTAF) + 1
+        local bestMatch := ""
+        
+        for _, marker in markers {
+            local matchstr := ""
+            if (marker = "PROB") {
+                if RegExMatch(cleanedTAF, "PROB\d{2}", &tempMatch, currentPos) {
+                    matchstr := tempMatch[0]
+                }
+            } else {
+                if RegExMatch(cleanedTAF, marker, &tempMatch, currentPos) {
+                    matchstr := tempMatch[0]
+                }
+            }
+            if (matchstr != "") {
+                local tempPos := Instr(cleanedTAF, matchstr, , currentPos)
+                if (tempPos > 0 && tempPos < bestPos) {
+                    bestPos := tempPos
+                    bestMatch := matchstr
+                }
+            }
+        }
+        
+        if (bestMatch != "") {
+            if (bestPos > currentPos) {
+                local groupContent := Substr(cleanedTAF, currentPos, bestPos - currentPos)
+                if (RTrim(LTrim(groupContent)) != "") {
+                    groupsArray.Push(RTrim(LTrim(groupContent)))
+                }
+            }
+            currentPos := bestPos + strLen(bestMatch)
+            groupsArray.Push(bestMatch)
+        } else {
+            if (currentPos <= strLen(cleanedTAF)) {
+                local remaining := Substr(cleanedTAF, currentPos)
+                if (RTrim(LTrim(remaining)) != "") {
+                    groupsArray.Push(RTrim(LTrim(remaining)))
+                }
+            }
+            break
+        }
+    }
+    
+    local finalGroups := []
+    local tempGroup := ""
+    for index, token in groupsArray {
+        if (RegExMatch(token, "^(BECMG|PROB\d{2}|TEMPO)$")) {
+            if (tempGroup != "") {
+                finalGroups.Push(tempGroup)
+            }
+            tempGroup := token . " "
+        } else {
+            tempGroup .= token . " "
+        }
+    }
+    if (tempGroup != "") {
+        finalGroups.Push(tempGroup)
+    }
+
+    for index, group in finalGroups {
+
+        local tokens := strSplit(RTrim(LTrim(group)), " ")
+        
+        local groupType := ""
+        local fromDay := ""
+        local fromTime := ""
+        local toDay := ""
+        local toTime := ""
+        local significantWeatherFound := ""
+        local windGroup := ""
+        local cloudGroup := ""
+
+        for tokenIndex, token in tokens {
+            if RegExMatch(token, "^(PROB\d{2}|TEMPO|BECMG)$", &m) {
+                groupType := m[1]
+                continue
+            }
+            
+            if RegExMatch(token, "^(\d{4})\/(\d{4})$", &m) {
+                fromDay := SpellNumbers(Substr(m[1], 1, 2))
+                fromTime := SpellNumbers(Substr(m[1], 3, 2))
+                toDay := SpellNumbers(Substr(m[2], 1, 2))
+                toTime := SpellNumbers(Substr(m[2], 3, 2))
+                continue
+            }
+            
+            if RegExMatch(token, "^(\d{3}|VRB)\d{2}G?\d{2}?(KT|MPS)$") {
+                windGroup := token
+                continue
+            }
+
+            if (RegExMatch(token, significantWeather) || Instr(token, "BR") || Instr(token, "FG")) {
+                significantWeatherFound := token 
+                continue
+            }
+            
+            if (Instr(token, "CB") || Instr(token, "TCU")) {
+                cloudGroup := token 
+                continue
+            }
+        }
+        
+        if (groupType != "" && (significantWeatherFound != "" || cloudGroup != "")) {
+            local groupDisplay := RTrim(LTrim(group))
+            
+            warningDisplay .= (warningDisplay != "" ? " | " : "") . groupDisplay
+
+            
+            local groupSpeech := ""
+            
+            groupSpeech .= pauseXML
+            
+            if (groupType = "BECMG") {
+                groupSpeech .= "BECOMING "
+            } else if (groupType = "TEMPO") {
+                groupSpeech .= "TEMPORARILY "
+            } else if Instr(groupType, "PROB") {
+                local prob := Substr(groupType, 5, 2)
+                groupSpeech .= SpellNumbers(prob) . " PERCENT PROBABILITY "
+            }
+            
+            groupSpeech .= pauseXML
+            
+            if (fromDay != "") {
+                groupSpeech .= "DAY " . fromDay . " TIME " . fromTime . " "
+                groupSpeech .= pauseXML
+                groupSpeech .= "UNTIL DAY " . toDay . " TIME " . toTime . " "
+                groupSpeech .= pauseXML
+            }
+            
+            groupSpeech .= "EXPECT "
+            
+            if (windGroup != "") {
+                local unit := Instr(windGroup, "KT") ? "KNOTS" : "METERS PER SECOND"
+                local windDir := Substr(windGroup, 1, 3)
+                
+                if (windDir = "VRB") {
+                    groupSpeech .= "WIND VARIABLE AT "
+                } else {
+                    groupSpeech .= SpellNumbers(windDir) . " DEGREES AT "
+                }
+                
+                if RegExMatch(windGroup, "(\d{2,3})G(\d{2,3})(KT|MPS)", &m) {
+                    groupSpeech .= SpellNumbers(m[1]) . " GUstING " . SpellNumbers(m[2]) . " " . unit . " "
+                } else if RegExMatch(windGroup, "[A-Z]{3}(\d{2,3})(KT|MPS)", &m) {
+                    groupSpeech .= SpellNumbers(m[1]) . " " . unit . " "
+                }
+            }
+
+            if (significantWeatherFound != "") {
+                groupSpeech .= ParseWeather(significantWeatherFound) . " "
+            }
+
+            if (cloudGroup != "") {
+                if Instr(cloudGroup, "CB")
+                    groupSpeech .= "CUMULONIMBUS "
+                else if Instr(cloudGroup, "TCU")
+                    groupSpeech .= "TOWERING CUMULUS "
+            }
+
+            warningSpeech .= groupSpeech . pauseXML
+        }
+    }
+    
+    if (returnFormat = "speech") {
+        if (warningSpeech != "") {
+            return "FORECAst WARNING " . pauseXML . pauseXML . warningSpeech
+        }
+        return ""
+    } else {
+        return warningDisplay
+    }
+}
+ProcesstAFGroup(groupType, content, pauseXML) {
+    local speech := ""
+    local tokens := strSplit(content, " ")
+    local timeSpan := ""
+    local windGroup := ""
+    local weatherGroup := ""
+    local cloudGroup := ""
+    local hasSignificantWeather := false
+    
+    for index, token in tokens {
+        token := Trim(token)
+        if (token = "") {
+            continue
+        }
+        
+        if RegExMatch(token, "^(PROB\d{2}|TEMPO|BECMG)$") {
+            continue
+        }
+        
+        if RegExMatch(token, "^(\d{4})\/(\d{4})$", &m) {
+            timeSpan := "DAY " . SpellNumbers(Substr(m[1], 1, 2)) . " TIME " . SpellNumbers(Substr(m[1], 3, 2))
+            timeSpan .= " UNTIL DAY " . SpellNumbers(Substr(m[2], 1, 2)) . " TIME " . SpellNumbers(Substr(m[2], 3, 2))
+            continue
+        }
+        
+        if RegExMatch(token, "^(\d{3}|VRB)\d{2}G?\d{0,2}(KT|MPS)$") {
+            windGroup := token
+            continue
+        }
+        
+        if RegExMatch(token, "^-?(TS|SH|FZ|DZ|RA|SN|GR|GS|PL|IC|BR|FG|FU|VA|DU|SA|HZ|SQ|FC|SS|DS)") {
+            weatherGroup := token
+            hasSignificantWeather := true
+            continue
+        }
+        
+        if RegExMatch(token, "(CB|TCU)") {
+            cloudGroup := token
+            hasSignificantWeather := true
+            continue
+        }
+    }
+    
+    if (!hasSignificantWeather) {
+        return ""
+    }
+    
+    if (groupType = "BECMG") {
+        speech .= "BECOMING "
+    } else if (groupType = "TEMPO") {
+        speech .= "TEMPORARILY "
+    } else if Instr(groupType, "PROB") {
+        local prob := Substr(groupType, 5, 2)
+        speech .= " " . SpellNumbers(prob) . " PERCENT PROBABILITY "
+    }
+    
+    if (timeSpan != "") {
+        speech .= timeSpan . " "
+    }
+    
+    if (windGroup != "") {
+        local unit := Instr(windGroup, "KT") ? "KNOTS" : "METERS PER SECOND"
+        local windDir := Substr(windGroup, 1, 3)
+        
+        if (windDir = "VRB") {
+            speech .= "WIND VARIABLE AT "
+        } else {
+            speech .= "WIND " . SpellNumbers(windDir) . " DEGREES AT "
+        }
+        
+        if RegExMatch(windGroup, "(\d{2,3})G(\d{2,3})(KT|MPS)", &m) {
+            speech .= SpellNumbers(m[1]) . " GUstING " . SpellNumbers(m[2]) . " " . unit . " "
+        } else if RegExMatch(windGroup, "(\d{2,3})(KT|MPS)", &m) {
+            speech .= SpellNumbers(m[1]) . " " . unit . " "
+        }
+    }
+    
+    if (weatherGroup != "") {
+        speech .= ParseWeather(weatherGroup) . " "
+    }
+    
+    if (cloudGroup != "") {
+        if Instr(cloudGroup, "CB") {
+            speech .= "CUMULONIMBUS "
+        }
+        if Instr(cloudGroup, "TCU") {
+            speech .= "TOWERING CUMULUS "
+        }
+    }
+    
+    return speech . pauseXML
+}
+ParseWeather(token) {
+    global WeatherMap
+    local speech := ""
+    local workToken := token
+    
+    local intensity := Substr(workToken, 1, 1)
+    if (intensity = "+" || intensity = "-") {
+        speech .= WeatherMap[intensity]
+        workToken := Substr(workToken, 2)
+    }
+    
+    while (strLen(workToken) >= 2) {
+        if (strLen(workToken) >= 4) {
+            local fourChar := Substr(workToken, 1, 4)
+            if (WeatherMap.Has(fourChar)) {
+                 speech .= WeatherMap[fourChar] . " "
+                 workToken := Substr(workToken, 5)
+                 continue
+            }
+        }
+        
+        local descriptor := Substr(workToken, 1, 2)
+        if (WeatherMap.Has(descriptor)) {
+            speech .= WeatherMap[descriptor] . " "
+            workToken := Substr(workToken, 3)
+        } else {
+            break 
+        }
+    }
+    
+    return RTrim(speech)
+}
+
+SpellNumbers(text) {
+    result := ""
+    for char in strSplit(text) {
+        Switch char {
+            Case "0": result .= "ZERO " 
+            Case "1": result .= "ONE "
+            Case "2": result .= "TWO "
+            Case "3": result .= "THREE "
+            Case "4": result .= "FOUR "
+            Case "5": result .= "FIVE "
+            Case "6": result .= "SIX "
+            Case "7": result .= "SEVEN "
+            Case "8": result .= "EIGHT "
+            Case "9": result .= "NINER "
+            Default:  result .= char . " "
+        }
+    }
+    return RTrim(result)
+}
+
+SpellPhonetic(text) {
+    global PhoneticMap
+    result := ""
+    for char in strSplit(strUpper(text)) {
+        if PhoneticMap.Has(char)
+            result .= PhoneticMap[char] . " "
+    }
+    return RTrim(result)
+}
+
+SpellRunway(text) {
+    local numPart := RegExReplace(text, "[RLC]$")
+    local designator := Substr(text, strLen(numPart) + 1)
+    local result := SpellNumbers(numPart) . " "
+    
+    Switch designator {
+        Case "L": result .= "LEFT "
+        Case "R": result .= "RIGHT "
+        Case "C": result .= "CENTER "
+    }
+    return RTrim(result)
+}
+
+SpellAlphanumeric(text) {
+    global PhoneticMap
+    result := ""
+    for char in strSplit(strUpper(text)) {
+        if PhoneticMap.Has(char) {
+            result .= PhoneticMap[char] . " "
+        } else {
+            Switch char {
+                Case "0": result .= "ZEERO "
+                Case "1": result .= "ONE "
+                Case "2": result .= "TWO "
+                Case "3": result .= "THREE "
+                Case "4": result .= "FOVER "
+                Case "5": result .= "FIFE "
+                Case "6": result .= "SIX "
+                Case "7": result .= "SEVEN "
+                Case "8": result .= "EIGHT "
+                Case "9": result .= "NINER "
+                Case "/": result .= "SLANT "
+                Case ".": result .= "DECIMAL "
+                Default: result .= char . " "
+            }
+        }
+    }
+    return RTrim(result)
+}
+
+SpeakText(textToSpeak) {
+    static tts := ""
+    global settingsFile
+    
+    try {
+        if (!IsObject(tts)) {
+            tts := ComObject("SAPI.SpVoice")
+        }
+        
+        tts.Volume := Integer(IniRead(settingsFile, "Voice", "Volume", "60"))
+        
+        try {
+            tts.Rate := Integer(IniRead(settingsFile, "Voice", "Rate", "0"))
+        } catch {
+        }
+        
+        try {
+            savedVoice := IniRead(settingsFile, "Voice", "VoiceName", "")
+            if (savedVoice != "") {
+                for voice in tts.GetVoices() {
+                    if (voice.GetDescription() = savedVoice) {
+                        tts.Voice := voice
+                        break
+                    }
+                }
+            } else {
+                for voice in tts.GetVoices() {
+                    if InStr(voice.GetDescription(), "David") {
+                        tts.Voice := voice
+                        break
+                    }
+                }
+            }
+        } catch {
+        }
+        
+        local speechstring := "<speak>" . textToSpeak . "</speak>"
+        tts.Speak(speechstring, 1 + 8)
+    } catch as e {
+        ToolTip("Error initializing TTS: " . e.Message)
+        SetTimer(() => ToolTip(), -3000)
+    }
+}
+
+
+GetInformationLetter(currentMetar := "") {
+    global metarDataFile
+    
+    if (currentMetar = "") {
+        return "A"
+    }
+    
+    try {
+        if !FileExist(metarDataFile) {
+            FileAppend("", metarDataFile)
+        }
+        
+        fileContent := FileRead(metarDataFile)
+        lines := strSplit(fileContent, "`n", "`r")
+        
+        
+        lastLetter := ""
+        
+        for index, line in lines {
+            if (Trim(line) = "") {
+                continue
+            }
+            
+            
+            try {
+                entry := Jxon_Load(&line)
+                
+                if (entry.Has("metar") && entry.Has("letter")) {
+                    if (entry["metar"] = currentMetar) {
+                        return entry["letter"]
+                    }
+                    lastLetter := entry["letter"]
+                }
+            } catch as err {
+            }
+        }
+        
+        if (lastLetter = "") {
+            nextLetter := "A"
+        } else {
+            nextCode := Ord(lastLetter) + 1
+            if (nextCode > 90) {
+                nextCode := 65
+            }
+            nextLetter := Chr(nextCode)
+        }
+        
+        
+        newEntry := Map("metar", currentMetar, "letter", nextLetter, "timestamp", A_Now)
+        jsonLine := Jxon_Dump(newEntry)
+        FileAppend(jsonLine . "`n", metarDataFile)
+        
+        return nextLetter
+        
+    } catch as e {
+        MsgBox("Fatal error: " . e.Message)
+        return "A"
+    }
+}
+Jxon_Load(&src) {
+    static q := Chr(34)
+    
+    result := Map()
+    pos := 1
+    
+    while (pos := Instr(src, q, , pos)) {
+        keystart := pos + 1
+        keyEnd := Instr(src, q, , keystart)
+        key := Substr(src, keystart, keyEnd - keystart)
+        
+        pos := Instr(src, q, , keyEnd + 1)
+        if (!pos)
+            break
+            
+        valuestart := pos + 1
+        valueEnd := Instr(src, q, , valuestart)
+        value := Substr(src, valuestart, valueEnd - valuestart)
+        
+        result[key] := value
+        pos := valueEnd + 1
+    }
+    
+    return result
+}
+
+Jxon_Dump(obj) {
+    static q := Chr(34)
+    
+    if (Type(obj) = "Map") {
+        str := "{"
+        for k, v in obj {
+            str .= q . k . q . ":" . q . v . q . ","
+        }
+        str := RTrim(str, ",") . "}"
+        return str
+    }
+    
+    return ""
+}
+CheckMetar() {
+    global ICAO, lastMetar, lastTAF
+    
+    try {
+        whr := ComObject("WinHttp.WinHttpRequest.5.1")
+        whr.Open("GET", "http://metartaf.ru/" . ICAO . ".json", true)
+        whr.Send()
+        whr.WaitForResponse()
+        
+        responseText := whr.ResponseText
+        
+        local currentMetar := ""
+        local currentTAF := ""
+        
+        if RegExMatch(responseText, '"metar":".*?\\n(.*?)"', &metarMatch) {
+            currentMetar := metarMatch[1]
+        }
+        
+        if RegExMatch(responseText, '"taf":".*?\\n(.*?)"', &tafMatch) {
+            currentTAF := tafMatch[1]
+        }
+        
+        if (currentMetar != "" && currentMetar != lastMetar) {
+            lastMetar := currentMetar
+            lastTAF := currentTAF
+            
+            local infoLetter := GetInformationLetter(currentMetar)
+            local tafWarning := ParseTAFForWarning(currentTAF, "display")
+
+            ShowScrollingTicker(currentMetar, tafWarning, infoLetter)
+            
+            speechText := ParseMetarToSpeech(currentMetar, currentTAF)
+            SpeakText(speechText)
+        } else if (currentMetar != "" && currentMetar = lastMetar) {
+            local existingLetter := GetInformationLetter(currentMetar)
+        }
+        
+    } catch as e {
+        ToolTip("Error fetching METAR: " . e.Message)
+        SetTimer(() => ToolTip(), -3000)
+    }
+}
+ShowScrollingTicker(metar, taf, infoLetter) {
+    static tickerGui := ""
+    static textCtrl := ""
+    
+    
+    local icaoCode := ""
+    local timeZ := ""
+    
+    if RegExMatch(metar, "METAR ([A-Z]{4}) (\d{6}Z)", &m) {
+        icaoCode := m[1]
+        timeZ := m[2]
+    }
+    
+    local metarWithoutHeader := RegExReplace(metar, "METAR [A-Z]{4} \d{6}Z ", "")
+    
+    tickerText := icaoCode . " INFO " . infoLetter . " " . timeZ . " " . metarWithoutHeader . (taf != "" ? " | " . taf : "") . "          "
+
+    if (tickerGui != "") {
+        try tickerGui.Destroy()
+    }
+    
+    tickerGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
+    tickerGui.BackColor := "Black"
+    tickerGui.SetFont("s10 cYellow", "Consolas")
+    
+    textCtrl := tickerGui.Add("Text", "x0 y5 w2000 h16 BackgroundTrans cYellow", tickerText)
+    
+    tickerGui.Show("x0 y0 w654 h26 NoActivate")
+    
+    startPos := 654
+    scrollSpeed := 1
+    textWidth := strLen(tickerText) * 7
+    loopCount := 0
+    
+    ScrollText() {
+        static currentPos := startPos
+        
+        currentPos -= scrollSpeed
+        
+        if (currentPos < -textWidth) {
+            loopCount++
+            if (loopCount >= 2) {
+                SetTimer(ScrollText, 0)
+                try tickerGui.Destroy()
+                loopCount := 0
+                currentPos := startPos
+                return
+            }
+            currentPos := startPos
+        }
+        
+        textCtrl.Move(currentPos)
+    }
+    
+    SetTimer(ScrollText, 13)
+}
+:*?:\soundmetar::
+{
+    global lastMetar, lastTAF
+    if (lastMetar != "") {
+        local infoLetter := GetInformationLetter(lastMetar)
+        local tafWarning := ParseTAFForWarning(lastTAF, "display")
+        
+        ShowScrollingTicker(lastMetar, tafWarning, infoLetter)
+        
+        speechText := ParseMetarToSpeech(lastMetar, lastTAF)
+        SpeakText(speechText)
+    } else {
+        CheckMetar()
+    }
+    return
+}
+
+global savedInterval := Integer(IniRead(settingsFile, "Timing", "IntervalMinutes", "60"))
+SetTimer(CheckMetar, savedInterval * 60000)
+CheckMetar()
+;----------------------------------------------- QUOTES
 mb(msg) {
     global pitch, dot, dash
     local last := ""
-    for char in StrSplit(msg) {
+    for char in strSplit(msg) {
         if (char = ".") {
             SoundBeep(pitch, dot)
             Sleep(dot)
@@ -115,7 +1663,43 @@ QuoteRight := [
 }
 
 
+:C*?:rrtq:: {
+    SendInput("{U+2E04}{U+00A0}{U+00A0}{U+2E05} ")
+    SendInput("{Left 3}")
+    NudgeCursor()
+    return
+}
+:C*?:rrtw:: {
+    global rtwActive
+    SendInput("{U+2E04}{U+00A0}{U+00A0}: {U+00A0}{U+2E05} ")
+    SendInput("{Left 6}")
+    rtwActive := true
+    NudgeCursor()
+    return
+}
+:C*?:rtt:: {
+    SendInput("{U+2E02}{U+00A0}{U+00A0}{U+2E03}")
+    SendInput("{Left 2}")
+    NudgeCursor()
+    return
+}
+:C*?:rtw:: {
+    global rtwActive
+    SendInput("{U+2E02}{U+00A0}{U+00A0}⸫ {U+00A0}{U+2E03}")
+    SendInput("{Left 5}")
+    rtwActive := true
+    NudgeCursor()
+    return
+}
+
 ;----------------------------------------------- TYPO‑GRAPHICAL 1
+
+:*?: `:-::  
+{
+    SendInput("{U+00A0}{U+003A}{U+200D}{U+2014}")
+    NudgeCursor()
+    return
+}
 :?:'s::’s
 :?:'m::’m
 :?:'ll::’ll
@@ -175,7 +1759,7 @@ QuoteRight := [
 }
 :*?: / ::  
 {
-    SendInput("{U+00A0}/{U+00A0}")
+    SendInput("{U+00A0}／{U+00A0}")
     NudgeCursor()
     return
 }
@@ -294,21 +1878,21 @@ ShowNumeroHelp()
 {
     helpText := "
     ( 
-        ʆg. / Pl.
+        Sg. / Pl.
         1. Is the № the Main subject — the one executing the action — in the sentence ?
-            Quͤﬆion : « Who or what is increasing ? » → « The №ᵘˢ / №ⁱ is / are increasing. »
+            Quͤstion : « Who or what is increasing ? » → « The №ᵘˢ / №ⁱ is / are increasing. »
 
         2. Is the № an indicator of poſseßion — as in , belonging to Some-thing — in the sentence ?
-            Quͤﬆion : « The size of what ? » → « The size of the №ⁱ / №ʳᵘᵐ. ».
+            Quͤstion : « The size of what ? » → « The size of the №ⁱ / №ʳᵘᵐ. ».
 
-        3. Is the № the Indirect recipient of an action — meaning : ʆome-thing is given to It — in the sentence ?
-            Quͤﬆion : « To what did I aßign the code ? » → « To the № / №ⁱˢ 3 / 3‒13. ».
+        3. Is the № the Indirect recipient of an action — meaning : Some-thing is given to It — in the sentence ?
+            Quͤstion : « To what did I aßign the code ? » → « To the № / №ⁱˢ 3 / 3‒13. ».
 
-        4. Is the № the Direct object in the sentence , which is to sꜽ ; the thing that is receiving the action ?
-            Quͤﬆion : « What did I mark ? » → « I marked the №ᵘᵐ / №ˢ 7 / 7‒10. ».
+        4. Is the № the Direct object in the sentence , which is to say ; the thing that is receiving the action ?
+            Quͤstion : « What did I mark ? » → « I marked the №ᵘᵐ / №ˢ 7 / 7‒10. ».
 
-        5. Is the № the inﬆrument or means by which ʆome‑thing is accomplished in the sentence ?
-            Quͤﬆion : « By what was the letter sent ? » → « By the № / №ⁱˢ 9 / 9‒13. »
+        5. Is the № the instrument or means by which Some‑thing is accomplished in the sentence ?
+            Quͤstion : « By what was the letter sent ? » → « By the № / №ⁱˢ 9 / 9‒13. »
 
     )"
     
@@ -334,17 +1918,17 @@ ShowNumeroHelp()
     static MyPreambleTransitions := [
         "That being noted , I find It pertinent to mention that :—",
         "Verily , Your point is Well‑taken , How‑ever ; ",
-        "Againﬆ the Current trajectory of Our discourse ,",
-        "Let Us ﬆray from the path ℀ allow Me to sꜽ that :—",
+        "Against the Current trajectory of Our discourse ,",
+        "Let Us stray from the path ℀ allow Me to say that :—",
         "Un-like the light of what ‘as been discuſsed ,",
         "And so We arrive at the juncture where :— ",
         "With that being said :—",
         "Let Me Right now pivot Our focus Else‑where :—",
         "I ought to mention that :—",
-        "By the wꜽ :—",
+        "By the way :—",
         "To turn Our attention to Another affair entirely :—",
-        "If I mꜽ be ʆo bold as to change the subject in It’s entirity :—",
-        "By the wꜽ :—",
+        "If I may be So bold as to change the subject in It’s entirity :—",
+        "By the way :—",
     ]
     
     Send(MyPreambleTransitions[Random(1, MyPreambleTransitions.Length)] . "{U+00A0}")
@@ -356,12 +1940,12 @@ ShowNumeroHelp()
 ::itg::
 {
     static MyDepartures := [
-        "I am afraid I muﬆ now take My leave.",
-        "Alas ;  I find I muﬆ take My leave.",
+        "I am afraid I must now take My leave.",
+        "Alas ;  I find I must take My leave.",
         "The Preßing matters of the ‘our demand Mine attention Else-where.",
         "I prithee , do , please , eꭗcuse Mine Imminent departure.",
         "I bid Thee⧸Ye a Fare well — I ought to be gone.",
-        "With All Duͤ‑respect :— I muﬆ ‘ence‑forth absent My‑self."
+        "With All Duͤ‑respect :— I must ‘ence‑forth absent My‑self."
     ]
     
     Send(MyDepartures[Random(1, MyDepartures.Length)])
@@ -371,11 +1955,11 @@ ShowNumeroHelp()
 ::ibb::
 {
     static MyReturns := [
-        "I shall Re‑turn sꝏn , do — please — remain ‘ere a moment.",
+        "I shall Re‑turn soon , do — please — remain ‘ere a moment.",
         "Mine absence shall be but a Fleeting moment , I shall Re‑turn before long.",
-        "Await My Re‑turn — ‘tshall not be a Lengthy delꜽ.",
+        "Await My Re‑turn — ‘tshall not be a Lengthy delay.",
         "Pray ; wait a moment , for Mine awaiting Re‑turn is imminent.",
-        "I shall be back , ‘twill be of Utmoﬆ respect by You to wait Me , leﬆ We lose the Impromptu‑agreement of genteelneß betwiꭗt Us."
+        "I shall be back , ‘twill be of Utmost respect by You to wait Me , lest We lose the Impromptu‑agreement of genteelneß betwiꭗt Us."
     ]
     
     Send(MyReturns[Random(1, MyReturns.Length)])
@@ -386,28 +1970,56 @@ ShowNumeroHelp()
 {
     static MyUncertainties := [
         "Mine heart confeßes that I , surely , am at a loſs.",
-        "ʆuch knowledge Presently is Over‑ﬆꝏd by Me.",
-        "On This matter ,  My mind is a Clouded tableꜷ — I can’t say for certain.",
+        "Such knowledge Presently is Over‑stood by Me.",
+        "On This matter ,  My mind is a Clouded tableau — I can’t say for certain.",
         "Alas ; I am be‑set by a Profound perplexity on This subject.",
-        "I shall note that :— I know nꜷght."
+        "I shall note that :— I know naught."
     ]
     
     Send(MyUncertainties[Random(1, MyUncertainties.Length)])
     NudgeCursor()
     return
 }
-::gmfriend::Gꝏd morning , My Dear friend — Hꜹe a Peaceful dꜽ. Hugs.
-::gmenemy::Gꝏd morning , Mine Eﬆeemed enemy : I wish unto You a Pleasant dꜽ.
-::gmenemybad::Gꝏd morning , My Despicable enemy : I wish unto You a Disaﬆrous dꜽ.
-::summonme::I prithee , You shan't hesitate to summon Me at Thine Earlieﬆ convenience.
+::gmfriend::Good morning , My Dear friend — Have a Peaceful day. Hugs.
+::gnfriend::
+{
+    static MyFriendGoodnights := [
+        "Good night , My Dear friend — may : Your rest be deep & Your dreams be peaceful , I bid Thee well until the Next morrow.",
+        "As the day In‑evitably yields to the cloak of the night , I wish Thee Good night My Cherished companion — may the quietude of the ‘our enfold Thee while keeping All Worldly‑worries at bay.",
+        "The day’s labours are done , My Trusted friend — may the Gentle stillneß of the night engulf Your spirit ℀ grant Thee Un‑troubled sleep , bis spaͤter ; until We speak again.",
+        "Wishes of Peaceful dreams to You , My friend Important , may morpheus treat Thee kindly and‑consequently deliver You safely to the New day.",
+        "Good night , My love on earth — shall the ravens of night ward Ill omens away when You are deep in somniums of Thine , indubitabilis ; take care of Your-self , for mori is Always up-on Us Oney‑where Oney‑time — I bid Thee well , I prithee , please , You shan't hesitate to summon Me at Thine Earliest convenience.",
+        "Another day’s Long journey reaches It’s conclusion , Mon ami — a Fare night to Thee is wished up-on by Me :— may Your paßage in‑to the land of dreams be steady ℀ free from Oney‑kind of Turbulent thought , verily ; I shall await Your Re‑turn at the First light , please :— I prithee , You shan't hesitate to summon Me at Thine Earliest convenience.",
+        "The world switches to a Gentle murmur , Mine Esteemed friend — I wish You dreams of Utmost verisimilitude , expectedly ; may the : stillneß & calmneſs of To‑‘our be the candle to Your spirit ℀ diſsipate All troubles of the day like mist — sleep soundly , kißes‑&‑‘ugs.",
+        "As the : luna aßumes ‘er Nightly throne & stars begin Their Silent watch , I send Thee wishes for a Good night , My friend — may Your slumber be profound so that :— You may awaken with Renewed vigour up‑on the morrow.",
+        "Good night , My Dearest friend — as You prepare for rest know that :— You are held in Mine ‘ighest regard — may sleep find Thee Forth‑with ℀ grant Thee the Full measure of It’s profound peace , until We Tele-communicate again in a Further date.",
+        "The curtain of night falls , marking the closure of Another chapter in Our lives , My Auspicous friend , ℀ ; I wish Thee Kind dreams :— may the darkneß offer a sanctuary for the mind , a Brief ceßation from the world’s Un‑ceasing march — rest well , for Our energies are finite.",
+        "The Celestial tapestry Un‑folds above , My friend , and‑consequently so I wish Thee dreams of relaxation — may Your rest be as deep as the cosmos while Your dreams are as bright as the Distant stars."
+        "Let the day’s Final breath be a Gentle sigh , My Worthy friend — may Your journey in‑to Deep sleep be a voyage on a Tranquil Soft sea free from All Tempestuous thoughts , rest now :— for This-morrow awaits Our Re‑union.",
+        "Good night , My friend — shall the moon’s Gentle light be a guide at Your window :— guarding You from Oney‑thing that might disturb Your peace.",
+        "The time ‘as come to cast oﬀ the ‘eavy mantle of the day , Mine Esteemed friend — Good night to Thee :— may the darkneß serve not as a void but as a Velvet cloak that Over‑whelms All troubles ℀ brings‑forth a Peaceful oblivion until the sol’s In‑evitable Re‑turn."
+    ]
+    
+    Send(MyFriendGoodnights[Random(1, MyFriendGoodnights.Length)])
+    NudgeCursor()
+    return
+}
+::gmenemy::Good morning , Mine Esteemed enemy : I wish unto You a Pleasant day.
+::gmenemybad::Good morning , My Despicable enemy : I wish unto You a Disastrous day.
+::summonme::I prithee , You shan't hesitate to summon Me at Thine Earliest convenience.
 ::frq::
 {
     static MyQueries := [
         "Is It truly so ?",
-        "Prꜽ , tell Me this is not some Fanciful jeﬆ ?",
-        "Can such a thing be in All truthfulneſs ?",
-        "Verily ? You speak of things that ﬆrain credulity.",
-        "Speak plainly :— does the truth of the matter align with Your words ?"
+        "Pray , tell Me this is not some Fanciful jest ?",
+        "Can So‑like a thing be in All truthfulneſs ?",
+        "Verily ? You speak of things that strain credulity.",
+        "Speak plainly :— does the truth of the matter align with Your words ?",
+        "Forgive Mine incredulity , alas ; Your words do strain the Very bounds of reason.",
+        "Do You but jest with Me or does verity attend Your claim ?",
+        "Surely ; You speak in riddles , I prithee :— clarify Your meaning without delay , lest I get lost in the Implicit meaning.",
+        "Thine utterance do Verily astound the senses , My fellow , How‑ever ; can You aﬃrm ‘tis without exaggeration of Oney-kind ?",
+        "By what certainty do You make So‑like a declaration , meaning ; is It grounded in an Un‑deniable fact ?"
     ]
     
     Send(MyQueries[Random(1, MyQueries.Length)])
@@ -419,8 +2031,8 @@ ShowNumeroHelp()
     static MyTruths := [
         "If I am to be truthful :—",
         "I — also — ought to mention that :—",
-        "Let Me lꜽ aside All pretense and‑consequently ﬆate the matter as thus :—",
-        "In All frankneß the situation appears to Me as such :—",
+        "Let Me lay aside All pretense and‑consequently state the matter as thus :—",
+        "In All frankneß the situation appears to Me as So‑like :—",
         "If You would permit Me a moment of Plain speaking :—"
     ]
     
@@ -432,42 +2044,42 @@ ShowNumeroHelp()
 {
     static MyOKs := [
         "You shall consider It settled.",
-        "I ‘ꜹe Under‑ﬆꝏd.",
-        "Verily ; one mꜽ consider that ‘tis agreed up‑on.",
-        "Your⧸Yer words ‘ꜹe been heard and duly noted.",
+        "I ‘ave Under‑stood.",
+        "Verily ; one may consider that ‘tis agreed up‑on.",
+        "Your⧸Yer words ‘ave been heard and duly noted.",
         "Let the matter be considered Re‑solved.",
         "So shall It be.",
         "All correct.",
-        "The matter — which ‘as been presented before Me — shall be considered by All : males , females , other , & All‑other members of the Man‑kind eﬀective ‘ence‑forth — shall No‑one utter a word as presented ‘ere‑in‑after as : eꭗactly or in ʆimilar nature to : « They⧸ʆhe⧸‘e ‘ꜹe⧸‘as not ‘eard It at all ! » , Immediate ‘ence‑fore.",
+        "The matter — which ‘as been presented before Me — shall be considered by All : males , females , other , & All‑other members of the Man‑kind eﬀective ‘ence‑forth — shall No‑one utter a word as presented ‘ere‑in‑after as : eꭗactly or in Similar nature to : « They⧸She⧸‘e ‘ave⧸‘as not ‘eard It at all ! » , Immediate ‘ence‑fore.",
         "Oll korrect.",
         "All korrect.",
         "All right.",
-        "All ﬁne.",
-        "All Under‑ﬆꝏd.",
+        "All fine.",
+        "All Under‑stood.",
         "Duly noted.",
-        "Under‑ﬆꝏd.",
-        "I grant Mine aſsent , It mꜽ : proceed or be considered Under‑ﬆꝏd.",
-        "‘tis Under‑ﬆꝏd.",
+        "Under‑stood.",
+        "I grant Mine aſsent , It may : proceed or be considered Under‑stood.",
+        "‘tis Under‑stood.",
         "Thus I acknowledge the matter.",
-        "It ﬆands eﬆablished.",
-        "I record Mine agreement without Any‑kind of reserve.",
+        "It stands established.",
+        "I record Mine agreement without Oney‑kind of reserve.",
         "So It shall be.",
         "The point is Firmly received.",
         "It is taken as granted.",
-        "The fact ‘ꜹe been recorded in My remembrance.",
+        "The fact ‘ave been recorded in My remembrance.",
         "I incline Mine head in affirmation.",
         "So marked , so noted.",
-        "To My Beﬆ‑knowledge , the thing is Under‑ﬆꝏd.",
-        "Nꜷght further need be said , ‘tis clear.",
-        "As sure as dꜽ breaks , It ﬆands conﬁrmed.",
-        "It shall be as ﬆated.",
+        "To My Best‑knowledge , the thing is Under‑stood.",
+        "No‑thing further need be said , ‘tis clear.",
+        "As sure as day breaks , It stands confirmed.",
+        "It shall be as stated.",
         "By All means , I am in accord.",
-        "Nꜷght ‘inders Me , I grant aßent.",
+        "No‑thing ‘inders Me , I grant aßent.",
         "Thus :— the covenant is sealed.",
         "All is agreed.",
         "The matter is : respected & taken in.",
         "Thine⧸Your utterance is engraven on My thought.",
-        "Indeed , the matter ‘as found Mine Under‑ﬆanding.",
+        "Indeed , the matter ‘as found Mine Under‑standing.",
         "It’s Re‑solved beyond doubt."
     ]
     
@@ -483,14 +2095,14 @@ ShowNumeroHelp()
         "Forth‑with",
         "at once",
         "immediately",
-        "without delꜽ",
-        "Poﬆ‑‘aﬆe",
-        "incontinently",
-        "This Very‑inﬆant",
+        "without delay",
+        "Post‑‘aste",
+        "In‑continently",
+        "This Very‑instant",
         "without a moment’s ‘esitation",
-        "In a ʆhort amount of time",
-        "At the Earlieﬆ convenience",
-        "ﬅraight‑away",
+        "In a Short amount of time",
+        "At the Earliest convenience",
+        "straight‑away",
         "directly",
         "Right now"
     ]
@@ -506,7 +2118,7 @@ ShowNumeroHelp()
 :O:eib::‘ere‑in‑before
 :O:eiaf::‘ere‑in‑after
 :O:eiu::‘ere‑in‑under
-:O:hsit::‘e⧸ʆhe⧸It⧸They
+:O:hsit::‘e⧸She⧸It⧸They
 :O:teyr::Thee⧸Yer
 :O:tiyr::Thine⧸Your
 
@@ -518,114 +2130,76 @@ ShowNumeroHelp()
 
 
 
-:?:s-h::ʆome‑how  
+:?:s-h::Some‑how  
 :?:h-e::How‑ever ;
 :O*?:s-t ::
 {
-	Send "ʆome‑thing "
+	Send "Some‑thing "
 }
-:?:s-ti::ʆome‑times
-:?:s-e::ʆome‑one
-:?:s-w::ʆome‑where
+:?:s-ti::Some‑times
+:?:s-e::Some‑one
+:?:s-w::Some‑where
 :?:n-o::No‑one
 :O*?:a-t ::
 {
-	Send "Any‑thing "
+	Send "Oney‑thing "
 }
-:?:a-ti::Any‑time
-:?:a-e::Any‑one
-:?:a-m::Any‑more
-:?:a-n::Any‑thing
-:?:a-w::Any‑where
-:?:e-t::Every‑thing
-:?:e-o::Every‑one
-:?:e-w::Every‑where
+:?:a-ti::Oney‑time
+:?:a-e::Oney‑one
+:?:a-m::Oney‑more
+:?:a-n::Oney‑thing
+:?:a-w::Oney‑where
+:?:e-t::Aye‑each‑thing
+:?:e-o::Aye‑each‑one
+:?:e-w::Aye‑each‑where
 :?:w-e::What‑ever 
+:?:aewt::Aye‑each‑whicher-of-two
 
-:?:s-p::ʆome‑place
-:?:a-p::Any‑place
-:?:e-p::Every‑place
+:?:s-p::Some‑place
+:?:a-p::Oney‑place
+:?:e-p::Aye‑each‑place
 :?:n-p::No‑place
-:O?:u-s::Under‑ﬆand
-:O?:u-sb::Under‑ﬆandable
-:O?:u-so::Under‑ﬆꝏd
-:O?:o-s::Over‑ﬆand
-:O?:o-sb::Over‑ﬆandable
-:O?:o-so::Over‑ﬆꝏd
-:O?:e-d::Every‑dꜽ
-:O?:e-w::Every‑week
-:O?:e-m::Every‑month
-:O?:e-y::Every‑year
-:O?:e-de::Every‑decade
-:O?:e-c::Every‑century
-:O?:e-mi::Every‑millennium
+:O?:u-s::Under‑stand
+:O?:u-sb::Under‑standable
+:O?:u-so::Under‑stood
+:O?:o-s::Over‑stand
+:O?:o-sb::Over‑standable
+:O?:o-so::Over‑stood
+:O?:e-d::Aye‑each‑day
+:O?:e-w::Aye‑each‑week
+:O?:e-m::Aye‑each‑month
+:O?:e-y::Aye‑each‑year
+:O?:e-de::Aye‑each‑decade
+:O?:e-c::Aye‑each‑century
+:O?:e-mi::Aye‑each‑millennium
 
-
-:O?:t-d::
-{
-    SendRandomTimePrefix("dꜽ")
-}
-:O?:t-w::
-{
-    SendRandomTimePrefix("week")
-}
-:O?:t-m::
-{
-    SendRandomTimePrefix("month")
-}
-:O?:t-y::
-{
-    SendRandomTimePrefix("year")
-}
-:O?:t-de::
-{
-    SendRandomTimePrefix("decade")
-}
-:O?:t-c::
-{
-    SendRandomTimePrefix("century")
-}
-:O?:t-mi::
-{
-    SendRandomTimePrefix("millennium")
-}
-:O?:t-k::
-{
-    SendRandomTimePrefix("kind")
-}
-:O?:s-k::ʆome‑kind
+:O?:s-k::Some‑kind
 :O?:n-k::None‑kind
-:O?:e-k::Every‑kind
+:O?:e-k::Aye‑each‑kind
 :O?:a-c::
 {
     local ac := (Random(0, 1) = 0) ? "and‑consequently" : "℀"
     Send(ac)
 }
-:O?:th-c::thus‑consequently
-:O?:b-ca::be-came
-:O?:b-co::be‑come
-:O?:h-fr::‘ence‑fore
-:O?:h-ft::‘ence‑forth
-:O?:t-fr::Thence‑fore
-:O?:t-ft::Thence‑forth
-:O?:we-ft::Whence‑forth
-:O?:w-fr::Where‑fore
-:O?:wc-fr::Whence‑fore
-:O?:af-m::Afore‑mentioned
-:O?:ic‑n::Inter‑connected network
-:O:html::H.‑t.M.‑u.l.
-:O:ip::Inter‑connected‑network protocol
+:O?:a-me::Afore‑mentioned 
 
-exceptions := ["a/c", "a/s", "a-e", "a-m", "a-n", "a-t", "a-ti", "a-w", 
+:O?:t-c::thus‑consequently
+:O?:a-s::and‑so
+:O?:a-o::and‑obviously
+:O*?:a-th::and‑then
+:O*?:i-cn::Inter‑connected network
+:O:html::H.‑t.M.‑u.l.
+
+
+exceptions := ["a/c", "a/s", "a-e", "a-m", "a-n", "a-t", "a-ti","a-me", "a-w", 
                "e-c", "e-d", "e-de", "e-m", "e-mi", "e-o", "e-t", "e-w", "e-y", 
-               "h-e","th-c",
-               "n-o", "a-c", "e-k", "s-k", "t-k", "n-k", "t-c",
-               "h-fr", "h-ft","t-fr","t-ft","wc-fr","wc-ft","w-fr","af-m",
-               "o-s", "o-sb", "o-so", "ic-n",
-               "s-e", "s-h", "s-t", "s-ti", "s-w", 
-               "t-c", "t-d", "t-de", "t-m", "t-mi", "t-w", "t-y", 
+               "h-e","a-o","a-t","a-o","a-s",
+               "n-o", "a-c", "e-k", "s-k", "t-k", "n-k", "f-m",
+               "o-s", "o-sb", "o-so", "t-c", 
+               "s-e", "s-h", "s-t", "s-ti","i-c", "s-w", 
                "u-s", "u-sb", "u-so", "s-p", "a-p", "e-p", "n-p",
                "w-e"]
+
 
 Loop 52 {
     outerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
@@ -642,26 +2216,7 @@ Loop 52 {
         }
         
         if (!isException) {
-            Hotstring(":C?:" . combination, outerLetter . "‑" . innerLetter)
-        }
-    }
-}
-Loop 52 {
-    outerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
-    Loop 52 {
-        innerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
-        combination := outerLetter . "/" . innerLetter
-        
-        isException := false
-        for exception in exceptions {
-            if (combination = exception) {
-                isException := true
-                break
-            }
-        }
-        
-        if (!isException) {
-            Hotstring(":C*?:" . combination, outerLetter . "⧸" . innerLetter)
+            Hotstring(":C*?:" . combination, outerLetter . "‑" . innerLetter)
         }
     }
 }
@@ -696,30 +2251,23 @@ contractions := Map(
     "wasnt", ["wasn’t", "was not"],
     "werent", ["weren’t", "were not"],
     "dont", ["don’t", "do not"],
-    "ive", ["I’ve", "I ‘ꜹe"],
-    "youve", ["You’ve", "You ‘ꜹe"],
-    "weve", ["We’ve", "We ‘ꜹe"],
-    "theyve", ["They’ve", "They ‘ꜹe"],
-    "id", ["I’d", "I would"],
+    "youve", ["You’ve", "You ‘ave"],
+    "weve", ["We’ve", "We ‘ave"],
+    "theyve", ["They’ve", "They ‘ave"],
     "youd", ["You’d", "You would"],
     "wed", ["We’d", "We would"],
     "theyd", ["They’d", "They would"],
-    "ill", ["I’ll", "I will"],
     "youll", ["You’ll", "You will"],
-    "hell", ["He’ll", "He will"],
-    "shell", ["ʆhe’ll", "ʆhe will"],
+    "shell", ["She’ll", "She will"],
     "theyll", ["They’ll", "They will"],
-    "im", ["I’m", "I am"],
     "youre", ["You’re", "You are"],
     "hes", ["He’s", "He is"],
-    "shes", ["ʆhe’s", "ʆhe is"],
+    "shes", ["She’s", "She is"],
     "theyre", ["They’re", "They are"],
     "whats", ["what’s", "what is"],
     "thats", ["that’s", "that is"],
-    "whos", ["who’s", "who is"],
     "wheres", ["Where’s", "Where is"],
     "theres", ["There’s", "There is"],
-    "lets", ["let’s", "let Us"],
     "mustnt", ["mustn’t", "must not"],
     "shant", ["shan’t", "shall not"],
     "oughtnt", ["oughtn’t", "ought not"],
@@ -728,9 +2276,135 @@ contractions := Map(
 )
 
 for trigger, forms in contractions {
-    Hotstring(":C: " . trigger, ((f) => (*) => SendRandomContraction(f[1], f[2]))(forms))
+    Hotstring(":C:" . trigger, ((f) => (*) => SendRandomContraction(f[1], f[2]))(forms))
+}
+;----------------------------------------------- LIST FORMATTER , LOWER‑CASIZATION , & CAPITALIZATION
+
+
+global capitalizationMap := Map(
+    "ﬁ", "Fi",
+    "ﬂ", "Fl",
+    "ﬀ", "Ff",
+    "st", "st",
+    "ß", "Ss",
+    "ĳ", "Ij",
+    "ꜷ", "Au",
+    "av", "Av",
+    "ꜵ", "Ao",
+    "oo", "Oo",
+    "st", "st",
+    "s", "S"
+)
+
+:*?:cczx::
+{
+    CapitalizePreviousChar()
+    return
 }
 
+CapitalizePreviousChar() {
+    global capitalizationMap
+    
+    local savedClipboard := ClipboardAll()
+    A_Clipboard := ""
+
+    SendInput("^{Left}")
+
+    SendInput("+{Right}")
+    SendInput("^c")
+    
+    if !ClipWait(0.1) {
+        A_Clipboard := savedClipboard
+        SendInput("{Right}")
+        return
+    }
+    
+    local charToCapitalize := A_Clipboard
+    A_Clipboard := savedClipboard
+    
+    SendInput("{Left}") 
+
+    if (charToCapitalize = "") {
+        SendInput("^{Right}")
+        return
+    }
+
+    SendInput("{Del}")
+
+    local capitalizedChar := ""
+    if capitalizationMap.Has(charToCapitalize) {
+        capitalizedChar := capitalizationMap[charToCapitalize]
+    } else {
+        capitalizedChar := strUpper(charToCapitalize)
+    }
+
+    SendInput(capitalizedChar)
+
+    SendInput("^{Right}")
+    
+    return
+}
+global decapitalizationMap := Map(
+    "Fi", "ﬁ",
+    "Fl", "ﬂ",
+    "Ff", "ﬀ",
+    "St", "st",
+    "Ij", "ĳ",
+    "Au", "ꜷ",
+    "Av", "av",
+    "Ao", "ꜵ",
+    "Oo", "oo",
+    "S", "s"
+)
+
+:*?:ccxz::
+{
+    DecapitalizePreviousChar()
+    return
+}
+
+DecapitalizePreviousChar() {
+    global decapitalizationMap
+    
+    local savedClipboard := ClipboardAll()
+    A_Clipboard := ""
+
+    SendInput("^{Left}")
+
+    SendInput("+{Right}")
+    SendInput("^c")
+    
+    if !ClipWait(0.1) {
+        A_Clipboard := savedClipboard
+        SendInput("{Right}")
+        return
+    }
+    
+    local charToDecapitalize := A_Clipboard
+    A_Clipboard := savedClipboard
+    
+    SendInput("{Left}") 
+
+    if (charToDecapitalize = "") {
+        SendInput("^{Right}")
+        return
+    }
+
+    SendInput("{Del}")
+
+    local decapitalizedChar := ""
+    if decapitalizationMap.Has(charToDecapitalize) {
+        decapitalizedChar := decapitalizationMap[charToDecapitalize]
+    } else {
+        decapitalizedChar := strLower(charToDecapitalize)
+    }
+
+    SendInput(decapitalizedChar)
+
+    SendInput("^{Right}")
+    
+    return
+}
 ;----------------------------------------------- MISC.
 
 
@@ -1014,38 +2688,412 @@ for key, symbol in turnedOptions {
     }
 }
 
+logicCommon := [
+    ["01", "∧", "AND"],
+    ["02", "∨", "OR"],
+    ["03", "¬", "NOT"],
+    ["04", "→", "IMPLIES"],
+    ["05", "↔", "IFF"],
+    ["06", "∀", "FORALL"],
+    ["07", "∃", "EXISTS"],
+    ["08", "∈", "IN"],
+    ["09", "∴", "THEREFORE"],
+    ["0A", "∵", "BECAUSE"]
+]
 
+logicCategories := [
+    ["Propositional Logic !", "propositional"],
+    ["Quantifiers !", "quantifiers"],
+    ["Sets ( Menu ) !", "sets"],
+    ["Relations ( Menu ) !", "relations"],
+    ["Inference/Proof !", "inference"],
+    ["Modal Logic/Miscellaneous !", "modal"],
+    ["Calculus/Analysis !", "calculus"],
+    ["Algebra/Operators !", "algebra"],
+    ["Geometry !", "geometry"],
+    ["Delimiters/Brackets !", "delims"],
+    ["Mathematical Alphabets !", "mathalpha"]
+]
 
-logicOptions := Map(
-    "and", "∧",
-    "or", "∨",
-    "multiply", "×",
-    "approx", "≈",
-    "notequal", "≠",
-    "all", "∀",
-    "ex", "∃",
-    "notex", "∄",
-    "in", "∈",
-    "isnt", "̸",
-    "notin", "∉",
-    "notleß", "≮",
-    "leß", "{U+003C}",
-    "more", ">",
-    "notmore", "≯",
-    "contains", "∋",
-    "containsnot", "∌",
-    "null", "∅",
-    "notapprox", "≉",
-    "congruent", "≅",
-    "equivalent", "≡",
-    "nand", "⊼",
-    "nor", "⊽",
-    "therefore", "∴",
-    "because", "∵",
-    "not", "¬"
-)
+logicSetSubCategories := [
+    ["Set Membership !", "setmember"],
+    ["Set Operations !", "setops"],
+    ["Set Comparison !", "setcomp"],
+    ["Special Sets !", "setmisc"]
+]
+
+logicAlphaSubCategories := [
+    ["Double-struck ( Blackboard Bold ) !", "alphabb"],
+    ["Script ( Calligraphic ) !", "alphascr"],
+    ["Fraktur !", "alphafrak"],
+    ["Greek ( Bold ) !", "alphagreek"]
+]
+
+logicRelSubCategories := [
+    ["Equality Relations !", "relequal"],
+    ["Inequality Relations !", "relinequal"],
+    ["Order/Precedence Relations !", "relorder"]
+]
+logicPropositional := [
+    ["11", "∧", "AND ( Conjunction )"],
+    ["12", "∨", "OR ( Disjunction )"],
+    ["13", "¬", "NOT ( Negation )"],
+    ["14", "⊕", "XOR ( Exclusive Or )"],
+    ["15", "⊼", "NAND ( Not And )"],
+    ["16", "⊽", "NOR ( Not Or )"],
+    ["17", "→", "IMPLIES ( Implication )"],
+    ["18", "←", "IMPLIED BY"],
+    ["19", "↔", "IFF ( If and Only If )"],
+    ["110", "↛", "NOT IMPLIES"],
+    ["111", "↮", "NOT IFF"]
+]
+
+logicQuantifiers := [
+    ["21", "∀", "FORALL ( Universal Quantifier )"],
+    ["22", "∃", "EXISTS ( Existential Quantifier )"],
+    ["23", "∄", "NOT EXISTS"],
+    ["24", "∃!", "UNIQUE EXISTS"],
+    ["25", "⊤", "TOP ( Tautology )"],
+    ["26", "⊥", "BOTTOM ( Contradiction )"]
+]
+
+logicSetsMember := [
+    ["311", "∈", "IN ( Element Of )"],
+    ["312", "∉", "NOT IN ( Not Element Of )"],
+    ["313", "∋", "OWNS ( Contains )"],
+    ["314", "∌", "NOT OWNS ( Does Not Contain )"],
+    ["315", "∊", "SMALL IN"],
+    ["316", "∍", "SMALL OWNS"]
+]
+
+logicSetsOps := [
+    ["321", "∪", "UNION"],
+    ["322", "∩", "INTERSECTION"],
+    ["323", "⋃", "BIG UNION"],
+    ["324", "⋂", "BIG INTERSECTION"],
+    ["325", "∖", "SET MINUS ( Difference )"],
+    ["326", "∆", "SYMMETRIC DIFFERENCE"],
+    ["327", "×", "CARTESIAN PRODUCT"],
+    ["328", "∐", "COPRODUCT"],
+    ["329", "∔", "DOT PLUS"]
+]
+
+logicSetsComp := [
+    ["331", "⊂", "SUBSET ( Proper )"],
+    ["332", "⊆", "SUBSET OR EQUAL"],
+    ["333", "⊄", "NOT SUBSET"],
+    ["334", "⊈", "NOT SUBSET OR EQUAL"],
+    ["335", "⊃", "SUPERSET ( Proper )"],
+    ["336", "⊇", "SUPERSET OR EQUAL"],
+    ["337", "⊅", "NOT SUPERSET"],
+    ["338", "⊉", "NOT SUPERSET OR EQUAL"],
+    ["339", "⊊", "SUBSET NOT EQUAL"],
+    ["3310", "⊋", "SUPERSET NOT EQUAL"]
+]
+
+logicSetsMisc := [
+    ["341", "∅", "EMPTY SET"],
+    ["342", "ø", "EMPTY SET ( Alternative )"],
+    ["343", "ℵ", "ALEPH ( Cardinal Number )"],
+    ["344", "ℶ", "BETH ( Cardinal Number )"],
+    ["345", "℘", "POWER SET"],
+    ["346", "ℕ", "NATURAL NUMBERS"],
+    ["347", "ℤ", "INTEGERS"],
+    ["348", "ℚ", "RATIONAL NUMBERS"],
+    ["349", "ℝ", "REAL NUMBERS"],
+    ["3410", "ℂ", "COMPLEX NUMBERS"]
+]
+
+logicRelEqual := [
+    ["411", "=", "EQUAL"],
+    ["412", "≠", "NOT EQUAL"],
+    ["413", "≡", "EQUIVALENT"],
+    ["414", "≢", "NOT EQUIVALENT"],
+    ["415", "≈", "APPROXIMATELY EQUAL"],
+    ["416", "≉", "NOT APPROXIMATELY EQUAL"],
+    ["417", "≅", "CONGRUENT"],
+    ["418", "≇", "NOT CONGRUENT"],
+    ["419", "∼", "SIMILAR"],
+    ["4110", "≁", "NOT SIMILAR"],
+    ["4111", "≃", "SIMILAR OR EQUAL"],
+    ["4112", "∝", "PROPORTIONAL TO"],
+    ["4113", "≍", "ASYMPTOTICALLY EQUAL"],
+    ["4114", "≏", "BUMP EQUALS"],
+    ["4115", "≑", "BUMP EQUALS ( Variant )"],
+    ["4116", "≐", "DOT EQUALS"],
+    ["4117", "≖", "EQUALS WITH CIRCLE"],
+    ["4118", "≜", "TRIANGLE EQUALS"]
+]
+
+logicRelInequal := [
+    ["421", "≤", "LESS THAN OR EQUAL"],
+    ["422", "≥", "GREATER THAN OR EQUAL"],
+    ["423", "≰", "NOT LESS THAN OR EQUAL"],
+    ["424", "≱", "NOT GREATER THAN OR EQUAL"],
+    ["425", "≪", "MUCH LESS THAN"],
+    ["426", "≫", "MUCH GREATER THAN"],
+    ["427", "≨", "LESS THAN NOT EQUAL"],
+    ["428", "≩", "GREATER THAN NOT EQUAL"],
+    ["429", "<", "LESS THAN"],
+    ["4210", ">", "GREATER THAN"],
+    ["4211", "≬", "BETWEEN"]
+]
+
+logicRelOrder := [
+    ["431", "≺", "PRECEDES"],
+    ["432", "≻", "SUCCEEDS"],
+    ["433", "≼", "PRECEDES OR EQUAL"],
+    ["434", "≽", "SUCCEEDS OR EQUAL"],
+    ["435", "⊀", "NOT PRECEDES"],
+    ["436", "⊁", "NOT SUCCEEDS"],
+    ["437", "≾", "PRECEDES OR SIMILAR"],
+    ["438", "≿", "SUCCEEDS OR SIMILAR"],
+    ["439", "⊰", "PRECEDES UNDER"],
+    ["4310", "⊱", "SUCCEEDS UNDER"],
+    ["4311", "⊲", "TRIANGLE LEFT ( Normal Subgroup )"],
+    ["4312", "⊳", "TRIANGLE RIGHT"],
+    ["4313", "⊴", "TRIANGLE LEFT OR EQUAL"],
+    ["4314", "⊵", "TRIANGLE RIGHT OR EQUAL"]
+]
+
+logicInference := [
+    ["51", "∴", "THEREFORE"],
+    ["52", "∵", "BECAUSE"],
+    ["53", "∎", "QED ( End of Proof )"],
+    ["54", "⊢", "PROVES ( Turnstile )"],
+    ["55", "⊬", "NOT PROVES"],
+    ["56", "⊨", "MODELS ( Semantic Consequence )"],
+    ["57", "⊭", "NOT MODELS"],
+    ["58", "⊩", "FORCES"],
+    ["59", "⊮", "NOT FORCES"],
+    ["510", "⊤", "TRUE ( Verum )"],
+    ["511", "⊥", "FALSE ( Falsum )"]
+]
+
+logicModal := [
+    ["61", "□", "BOX ( Necessarily )"],
+    ["62", "◇", "DIAMOND ( Possibly )"],
+    ["63", "◊", "LOZENGE"],
+    ["64", "⌖", "CIRCLE IN RECTANGLE"],
+    ["65", "■", "BLACK SQUARE"],
+    ["66", "⧫", "BLACK LOZENGE"],
+    ["67", "∠", "ANGLE"],
+    ["68", "∡", "MEASURED ANGLE"],
+    ["69", "∢", "SPHERICAL ANGLE"],
+    ["610", "⊥", "PERPENDICULAR"],
+    ["611", "∥", "PARALLEL"],
+    ["612", "∦", "NOT PARALLEL"],
+    ["613", "∫", "INTEGRAL"],
+    ["614", "∮", "CONTOUR INTEGRAL"],
+    ["615", "∂", "PARTIAL DERIVATIVE"],
+    ["616", "∇", "NABLA ( Gradient )"],
+    ["617", "∞", "INFINITY"]
+]
+
+logicCalculus := [
+    ["71", "∫", "INTEGRAL"],
+    ["72", "∬", "DOUBLE INTEGRAL"],
+    ["73", "∭", "TRIPLE INTEGRAL"],
+    ["74", "∮", "CONTOUR INTEGRAL"],
+    ["75", "∯", "SURFACE INTEGRAL"],
+    ["76", "∰", "VOLUME INTEGRAL"],
+    ["77", "∂", "PARTIAL DERIVATIVE"],
+    ["78", "∇", "NABLA ( Gradient )"],
+    ["79", "√", "SQUARE ROOT"],
+    ["710", "∛", "CUBE ROOT"],
+    ["711", "∜", "FOURTH ROOT"],
+    ["712", "∞", "INFINITY"],
+    ["713", "∆", "INCREMENT ( Delta )"],
+    ["714", "ϖ", "VARIANT PI"],
+    ["715", "∑", "SUMMATION"],
+    ["716", "∏", "PRODUCT"],
+    ["717", "∐", "COPRODUCT"]
+]
+
+logicAlgebra := [
+    ["81", "±", "PLUS MINUS"],
+    ["82", "∓", "MINUS PLUS"],
+    ["83", "∣", "DIVIDES"],
+    ["84", "∤", "NOT DIVIDES"],
+    ["85", "⋅", "DOT ( Multiplication )"],
+    ["86", "×", "CROSS ( Multiplication )"],
+    ["87", "∘", "CIRCLE ( Composition )"],
+    ["88", "∙", "BULLET OPERATOR"],
+    ["89", "∗", "AstERISK OPERATOR"],
+    ["810", "⋆", "stAR OPERATOR"],
+    ["811", "⋄", "DIAMOND OPERATOR"],
+    ["812", "⊕", "OPLUS ( Direct Sum )"],
+    ["813", "⊖", "OMINUS"],
+    ["814", "⊗", "OTIMES ( Tensor Product )"],
+    ["815", "⊘", "OSLASH"],
+    ["816", "⊙", "ODOT"],
+    ["817", "⊎", "UPLUS ( Multiset Union )"],
+    ["818", "⊓", "SQUARE CAP"],
+    ["819", "⊔", "SQUARE CUP"],
+    ["820", "≀", "WREATH PRODUCT"],
+    ["821", "⨿", "AMALGAMATION"]
+]
+
+logicGeometry := [
+    ["91", "⊥", "PERPENDICULAR"],
+    ["92", "∠", "ANGLE"],
+    ["93", "∡", "MEASURED ANGLE"],
+    ["94", "∢", "SPHERICAL ANGLE"],
+    ["95", "∟", "RIGHT ANGLE"],
+    ["96", "∥", "PARALLEL"],
+    ["97", "∦", "NOT PARALLEL"],
+    ["98", "△", "TRIANGLE"],
+    ["99", "□", "SQUARE"],
+    ["910", "◊", "LOZENGE"],
+    ["911", "○", "CIRCLE"],
+    ["912", "⌀", "DIAMETER"],
+    ["913", "⊤", "TOP"],
+    ["914", "⊥", "BOTTOM"]
+]
+
+logicDelims := [
+    ["101", "⌈", "LEFT CEILING"],
+    ["102", "⌉", "RIGHT CEILING"],
+    ["103", "⌊", "LEFT FLOOR"],
+    ["104", "⌋", "RIGHT FLOOR"],
+    ["105", "⟨", "LEFT ANGLE BRACKET"],
+    ["106", "⟩", "RIGHT ANGLE BRACKET"],
+    ["107", "⟦", "DOUBLE BRACKET LEFT"],
+    ["108", "⟧", "DOUBLE BRACKET RIGHT"],
+    ["109", "⌜", "UPPER LEFT CORNER"],
+    ["1010", "⌝", "UPPER RIGHT CORNER"],
+    ["1011", "⌞", "LOWER LEFT CORNER"],
+    ["1012", "⌟", "LOWER RIGHT CORNER"],
+    ["1013", "…", "DOTS ( Horizontal Ellipsis )"],
+    ["1014", "⋯", "MIDLINE DOTS ( For Products/Sums )"],
+    ["1015", "⋮", "VERTICAL DOTS"],
+    ["1016", "⋱", "DIAGONAL DOTS ( Down-Right )"],
+    ["1017", "⋰", "DIAGONAL DOTS ( Up-Right )"]
+]
+
+logicAlphaBB := [
+    ["111A", "𝔸", "BLACKBOARD BOLD A"], ["111a", "𝕒", "BLACKBOARD BOLD a"],
+    ["111B", "𝔹", "BLACKBOARD BOLD B"], ["111b", "𝕓", "BLACKBOARD BOLD b"],
+    ["111C", "ℂ", "BLACKBOARD BOLD C"], ["111c", "𝕔", "BLACKBOARD BOLD c"],
+    ["111D", "𝔻", "BLACKBOARD BOLD D"], ["111d", "𝕕", "BLACKBOARD BOLD d"],
+    ["111E", "𝔼", "BLACKBOARD BOLD E"], ["111e", "𝕖", "BLACKBOARD BOLD e"],
+    ["111F", "𝔽", "BLACKBOARD BOLD F"], ["111f", "𝕗", "BLACKBOARD BOLD f"],
+    ["111G", "𝔾", "BLACKBOARD BOLD G"], ["111g", "𝕘", "BLACKBOARD BOLD g"],
+    ["111H", "ℍ", "BLACKBOARD BOLD H"], ["111h", "𝕙", "BLACKBOARD BOLD h"],
+    ["111I", "𝕀", "BLACKBOARD BOLD I"], ["111i", "𝕚", "BLACKBOARD BOLD i"],
+    ["111J", "𝕁", "BLACKBOARD BOLD J"], ["111j", "𝕛", "BLACKBOARD BOLD j"],
+    ["111K", "𝕂", "BLACKBOARD BOLD K"], ["111k", "𝕜", "BLACKBOARD BOLD k"],
+    ["111L", "𝕃", "BLACKBOARD BOLD L"], ["111l", "𝕝", "BLACKBOARD BOLD l"],
+    ["111M", "𝕄", "BLACKBOARD BOLD M"], ["111m", "𝕞", "BLACKBOARD BOLD m"],
+    ["111N", "ℕ", "BLACKBOARD BOLD N"], ["111n", "𝕟", "BLACKBOARD BOLD n"],
+    ["111O", "𝕆", "BLACKBOARD BOLD O"], ["111o", "𝕠", "BLACKBOARD BOLD o"],
+    ["111P", "ℙ", "BLACKBOARD BOLD P"], ["111p", "𝕡", "BLACKBOARD BOLD p"],
+    ["111Q", "ℚ", "BLACKBOARD BOLD Q"], ["111q", "𝕢", "BLACKBOARD BOLD q"],
+    ["111R", "ℝ", "BLACKBOARD BOLD R"], ["111r", "𝕣", "BLACKBOARD BOLD r"],
+    ["111S", "𝕊", "BLACKBOARD BOLD S"], ["111s", "𝕤", "BLACKBOARD BOLD s"],
+    ["111T", "𝕋", "BLACKBOARD BOLD T"], ["111t", "𝕥", "BLACKBOARD BOLD t"],
+    ["111U", "𝕌", "BLACKBOARD BOLD U"], ["111u", "𝕦", "BLACKBOARD BOLD u"],
+    ["111V", "𝕍", "BLACKBOARD BOLD V"], ["111v", "𝕧", "BLACKBOARD BOLD v"],
+    ["111W", "𝕎", "BLACKBOARD BOLD W"], ["111w", "𝕨", "BLACKBOARD BOLD w"],
+    ["111X", "𝕏", "BLACKBOARD BOLD X"], ["111x", "𝕩", "BLACKBOARD BOLD x"],
+    ["111Y", "𝕐", "BLACKBOARD BOLD Y"], ["111y", "𝕪", "BLACKBOARD BOLD y"],
+    ["111Z", "ℤ", "BLACKBOARD BOLD Z"], ["111z", "𝕫", "BLACKBOARD BOLD z"],
+    ["1110", "𝟘", "BLACKBOARD BOLD 0"], ["1111", "𝟙", "BLACKBOARD BOLD 1"],
+    ["1112", "𝟚", "BLACKBOARD BOLD 2"], ["1113", "𝟛", "BLACKBOARD BOLD 3"],
+    ["1114", "𝟜", "BLACKBOARD BOLD 4"], ["1115", "𝟝", "BLACKBOARD BOLD 5"],
+    ["1116", "𝟞", "BLACKBOARD BOLD 6"], ["1117", "𝟟", "BLACKBOARD BOLD 7"],
+    ["1118", "𝟠", "BLACKBOARD BOLD 8"], ["1119", "𝟡", "BLACKBOARD BOLD 9"],
+    ["111gamma", "ℾ", "BLACKBOARD BOLD GAMMA"],
+    ["111pi", "ℿ", "BLACKBOARD BOLD PI"],
+    ["111sigma", "⅀", "BLACKBOARD BOLD SIGMA"]
+]
+
+logicAlphaScr := [
+    ["112A", "𝒜", "SCRIPT A"], ["112a", "𝒶", "SCRIPT a"],
+    ["112B", "ℬ", "SCRIPT B"], ["112b", "𝒷", "SCRIPT b"],
+    ["112C", "𝒞", "SCRIPT C"], ["112c", "𝒸", "SCRIPT c"],
+    ["112D", "𝒟", "SCRIPT D"], ["112d", "𝒹", "SCRIPT d"],
+    ["112E", "ℰ", "SCRIPT E"], ["112e", "ℯ", "SCRIPT e"],
+    ["112F", "ℱ", "SCRIPT F"], ["112f", "𝒻", "SCRIPT f"],
+    ["112G", "𝒢", "SCRIPT G"], ["112g", "ℊ", "SCRIPT g"],
+    ["112H", "ℋ", "SCRIPT H"], ["112h", "𝒽", "SCRIPT h"],
+    ["112I", "ℐ", "SCRIPT I"], ["112i", "𝒾", "SCRIPT i"],
+    ["112J", "𝒥", "SCRIPT J"], ["112j", "𝒿", "SCRIPT j"],
+    ["112K", "𝒦", "SCRIPT K"], ["112k", "𝓀", "SCRIPT k"],
+    ["112L", "ℒ", "SCRIPT L"], ["112l", "𝓁", "SCRIPT l"],
+    ["112M", "ℳ", "SCRIPT M"], ["112m", "𝓂", "SCRIPT m"],
+    ["112N", "𝒩", "SCRIPT N"], ["112n", "𝓃", "SCRIPT n"],
+    ["112O", "𝒪", "SCRIPT O"], ["112o", "ℴ", "SCRIPT o"],
+    ["112P", "𝒫", "SCRIPT P"], ["112p", "𝓅", "SCRIPT p"],
+    ["112Q", "𝒬", "SCRIPT Q"], ["112q", "𝓆", "SCRIPT q"],
+    ["112R", "ℛ", "SCRIPT R"], ["112r", "𝓇", "SCRIPT r"],
+    ["112S", "𝒮", "SCRIPT S"], ["112s", "𝓈", "SCRIPT s"],
+    ["112T", "𝒯", "SCRIPT T"], ["112t", "𝓉", "SCRIPT t"],
+    ["112U", "𝒰", "SCRIPT U"], ["112u", "𝓊", "SCRIPT u"],
+    ["112V", "𝒱", "SCRIPT V"], ["112v", "𝓋", "SCRIPT v"],
+    ["112W", "𝒲", "SCRIPT W"], ["112w", "𝓌", "SCRIPT w"],
+    ["112X", "𝒳", "SCRIPT X"], ["112x", "𝓍", "SCRIPT x"],
+    ["112Y", "𝒴", "SCRIPT Y"], ["112y", "𝓎", "SCRIPT y"],
+    ["112Z", "𝒵", "SCRIPT Z"], ["112z", "𝓏", "SCRIPT z"]
+]
+
+logicAlphaFrak := [
+    ["113A", "𝔄", "FRAKTUR A"], ["113a", "𝔞", "FRAKTUR a"],
+    ["113B", "𝔅", "FRAKTUR B"], ["113b", "𝔟", "FRAKTUR b"],
+    ["113C", "ℭ", "FRAKTUR C"], ["113c", "𝔠", "FRAKTUR c"],
+    ["113D", "𝔇", "FRAKTUR D"], ["113d", "𝔡", "FRAKTUR d"],
+    ["113E", "𝔈", "FRAKTUR E"], ["113e", "𝔢", "FRAKTUR e"],
+    ["113F", "𝔉", "FRAKTUR F"], ["113f", "𝔣", "FRAKTUR f"],
+    ["113G", "𝔊", "FRAKTUR G"], ["113g", "𝔤", "FRAKTUR g"],
+    ["113H", "ℌ", "FRAKTUR H"], ["113h", "𝔥", "FRAKTUR h"],
+    ["113I", "ℑ", "FRAKTUR I"], ["113i", "𝔦", "FRAKTUR i"],
+    ["113J", "𝔍", "FRAKTUR J"], ["113j", "𝔧", "FRAKTUR j"],
+    ["113K", "𝔎", "FRAKTUR K"], ["113k", "𝔨", "FRAKTUR k"],
+    ["113L", "𝔏", "FRAKTUR L"], ["113l", "𝔩", "FRAKTUR l"],
+    ["113M", "𝔐", "FRAKTUR M"], ["113m", "𝔪", "FRAKTUR m"],
+    ["113N", "𝔑", "FRAKTUR N"], ["113n", "𝔫", "FRAKTUR n"],
+    ["113O", "𝔒", "FRAKTUR O"], ["113o", "𝔬", "FRAKTUR o"],
+    ["113P", "𝔓", "FRAKTUR P"], ["113p", "𝔭", "FRAKTUR p"],
+    ["113Q", "𝔔", "FRAKTUR Q"], ["113q", "𝔮", "FRAKTUR q"],
+    ["113R", "ℜ", "FRAKTUR R"], ["113r", "𝔯", "FRAKTUR r"],
+    ["113S", "𝔖", "FRAKTUR S"], ["113s", "𝔰", "FRAKTUR s"],
+    ["113T", "𝔗", "FRAKTUR T"], ["113t", "𝔱", "FRAKTUR t"],
+    ["113U", "𝔘", "FRAKTUR U"], ["113u", "𝔲", "FRAKTUR u"],
+    ["113V", "𝔙", "FRAKTUR V"], ["113v", "𝔳", "FRAKTUR v"],
+    ["113W", "𝔚", "FRAKTUR W"], ["113w", "𝔴", "FRAKTUR w"],
+    ["113X", "𝔛", "FRAKTUR X"], ["113x", "𝔵", "FRAKTUR x"],
+    ["113Y", "𝔜", "FRAKTUR Y"], ["113y", "𝔶", "FRAKTUR y"],
+    ["113Z", "ℨ", "FRAKTUR Z"], ["113z", "𝔷", "FRAKTUR z"]
+]
+logicAlphaGreek := [
+    ["114a", "𝛂", "BOLD GREEK ALPHA"],
+    ["114b", "𝛃", "BOLD GREEK BETA"],
+    ["114g", "𝛄", "BOLD GREEK GAMMA"],
+    ["114d", "𝛅", "BOLD GREEK DELTA"],
+    ["114e", "𝛆", "BOLD GREEK EPSILON"],
+    ["114z", "𝛇", "BOLD GREEK ZETA"],
+    ["114eta", "𝛈", "BOLD GREEK ETA"],
+    ["114th", "𝛉", "BOLD GREEK THETA"],
+    ["114i", "𝛊", "BOLD GREEK IOTA"],
+    ["114k", "𝛋", "BOLD GREEK KAPPA"],
+    ["114l", "𝛌", "BOLD GREEK LAMBDA"],
+    ["114m", "𝛍", "BOLD GREEK MU"],
+    ["114n", "𝛎", "BOLD GREEK NU"],
+    ["114chi", "𝛏", "BOLD GREEK CHI"],
+    ["114o", "𝛐", "BOLD GREEK OMICRON"],
+    ["114p", "𝛑", "BOLD GREEK PI"],
+    ["114r", "𝛒", "BOLD GREEK RHO"],
+    ["114s", "𝛔", "BOLD GREEK SIGMA"],
+    ["114t", "𝛕", "BOLD GREEK TAU"],
+    ["114u", "𝛖", "BOLD GREEK UPSILON"],
+    ["114ph", "𝛗", "BOLD GREEK PHI"],
+    ["114ch", "𝛘", "BOLD GREEK CHI"],
+    ["114ps", "𝛙", "BOLD GREEK PSI"],
+    ["114omega", "𝛚", "BOLD GREEK OMEGA"]
+]
 
 logicAutocompleteActive := false
+logicCurrentMenu := "main"
 logicCurrentOptions := []
 logicSelectedIndex := 0
 
@@ -1053,23 +3101,164 @@ logicSelectedIndex := 0
 {
     global
     logicAutocompleteActive := true
+    logicCurrentMenu := "main"
     logicSelectedIndex := 0
-    ShowLogicMenu()
+    ShowLogicMainMenu()
 }
 
-ShowLogicMenu() {
+ShowLogicMainMenu() {
     global
     
     logicCurrentOptions := []
-    suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select.`n"
+    suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`nCommon :`n"
     
-    for key, symbol in logicOptions {
-        logicCurrentOptions.Push({key: key, symbol: symbol, type: "logic"})
+    for item in logicCommon {
+        logicCurrentOptions.Push({code: item[1], symbol: item[2], name: item[3], type: "symbol"})
         prefix := (logicCurrentOptions.Length == logicSelectedIndex + 1) ? "☞ " : "  "
-        suggestions .= prefix . key . " , " . symbol . "`n"
+        suggestions .= prefix . item[3] . " , " . item[2] . "`n"
+    }
+    
+    suggestions .= "Categories :`n"
+    
+    for item in logicCategories {
+        logicCurrentOptions.Push({key: item[1], symbol: "", type: "category", menuKey: item[2]})
+        prefix := (logicCurrentOptions.Length == logicSelectedIndex + 1) ? "☞ " : "  "
+        suggestions .= prefix . item[1] . "`n"
     }
     
     ToolTip(suggestions, , , 1)
+}
+
+ShowLogicSubmenu(menuType) {
+    global
+    
+    logicCurrentOptions := []
+    local suggestions := ""
+    
+    switch menuType {
+        case "sets":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            for item in logicSetSubCategories {
+                logicCurrentOptions.Push({key: item[1], symbol: "", type: "subcategory", menuKey: item[2], parentMenu: "sets"})
+                prefix := (logicCurrentOptions.Length == logicSelectedIndex + 1) ? "☞ " : "  "
+                suggestions .= prefix . item[1] . "`n"
+            }
+            
+        case "relations":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            for item in logicRelSubCategories {
+                logicCurrentOptions.Push({key: item[1], symbol: "", type: "subcategory", menuKey: item[2], parentMenu: "relations"})
+                prefix := (logicCurrentOptions.Length == logicSelectedIndex + 1) ? "☞ " : "  "
+                suggestions .= prefix . item[1] . "`n"
+            }
+            
+        case "mathalpha":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            for item in logicAlphaSubCategories {
+                logicCurrentOptions.Push({key: item[1], symbol: "", type: "subcategory", menuKey: item[2], parentMenu: "mathalpha"})
+                prefix := (logicCurrentOptions.Length == logicSelectedIndex + 1) ? "☞ " : "  "
+                suggestions .= prefix . item[1] . "`n"
+            }
+            
+        case "propositional":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicPropositional, suggestions)
+            
+        case "quantifiers":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicQuantifiers, suggestions)
+            
+        case "inference":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicInference, suggestions)
+            
+        case "modal":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicModal, suggestions)
+            
+        case "calculus":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicCalculus, suggestions)
+            
+        case "algebra":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicAlgebra, suggestions)
+            
+        case "geometry":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicGeometry, suggestions)
+            
+        case "delims":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicDelims, suggestions)
+    }
+    
+    ToolTip(suggestions, , , 1)
+}
+
+ShowLogicSubSubmenu(menuType) {
+    global
+    
+    logicCurrentOptions := []
+    local suggestions := ""
+    
+    switch menuType {
+        case "setmember":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicSetsMember, suggestions)
+            
+        case "setops":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicSetsOps, suggestions)
+            
+        case "setcomp":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicSetsComp, suggestions)
+            
+        case "setmisc":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicSetsMisc, suggestions)
+            
+        case "relequal":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicRelEqual, suggestions)
+            
+        case "relinequal":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicRelInequal, suggestions)
+            
+        case "relorder":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicRelOrder, suggestions)
+            
+        case "alphabb":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicAlphaBB, suggestions)
+            
+        case "alphascr":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicAlphaScr, suggestions)
+            
+        case "alphafrak":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicAlphaFrak, suggestions)
+            
+        case "alphagreek":
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := ShowSymbolsFromArray(logicAlphaGreek, suggestions)
+    }
+    
+    ToolTip(suggestions, , , 1)
+}
+
+ShowSymbolsFromArray(symbolsArray, suggestions) {
+    global
+    for item in symbolsArray {
+        logicCurrentOptions.Push({code: item[1], symbol: item[2], name: item[3], type: "symbol"})
+        prefix := (logicCurrentOptions.Length == logicSelectedIndex + 1) ? "☞ " : "  "
+        suggestions .= prefix . item[3] . " , " . item[2] . " — № : " . item[1] . "`n"
+    }
+    return suggestions
 }
 
 #HotIf logicAutocompleteActive
@@ -1082,7 +3271,7 @@ Up::
         if (logicSelectedIndex < 0) {
             logicSelectedIndex := logicCurrentOptions.Length - 1
         }
-        ShowLogicMenu()
+        UpdateLogicDisplay()
     }
 }
 
@@ -1091,7 +3280,46 @@ Down::
     global
     if (logicCurrentOptions.Length > 0) {
         logicSelectedIndex := Mod(logicSelectedIndex + 1, logicCurrentOptions.Length)
-        ShowLogicMenu()
+        UpdateLogicDisplay()
+    }
+}
+
+Right::
+{
+    global
+    if (logicCurrentOptions.Length > 0 && logicSelectedIndex < logicCurrentOptions.Length) {
+        selectedOption := logicCurrentOptions[logicSelectedIndex + 1]
+        if (selectedOption.type == "category") {
+            logicCurrentMenu := selectedOption.menuKey
+            logicSelectedIndex := 0
+            ShowLogicSubmenu(logicCurrentMenu)
+        } else if (selectedOption.type == "subcategory") {
+            logicCurrentMenu := selectedOption.menuKey
+            logicSelectedIndex := 0
+            ShowLogicSubSubmenu(logicCurrentMenu)
+        }
+    }
+}
+
+Left::
+{
+    global
+    if (logicCurrentMenu == "setmember" || logicCurrentMenu == "setops" || logicCurrentMenu == "setcomp" || logicCurrentMenu == "setmisc") {
+        logicCurrentMenu := "sets"
+        logicSelectedIndex := 0
+        ShowLogicSubmenu(logicCurrentMenu)
+    } else if (logicCurrentMenu == "relequal" || logicCurrentMenu == "relinequal" || logicCurrentMenu == "relorder") {
+        logicCurrentMenu := "relations"
+        logicSelectedIndex := 0
+        ShowLogicSubmenu(logicCurrentMenu)
+    } else if (logicCurrentMenu == "alphabb" || logicCurrentMenu == "alphascr" || logicCurrentMenu == "alphafrak" || logicCurrentMenu == "alphagreek") {
+        logicCurrentMenu := "mathalpha"
+        logicSelectedIndex := 0
+        ShowLogicSubmenu(logicCurrentMenu)
+    } else if (logicCurrentMenu != "main") {
+        logicCurrentMenu := "main"
+        logicSelectedIndex := 0
+        ShowLogicMainMenu()
     }
 }
 
@@ -1101,13 +3329,18 @@ Enter::
     if (logicCurrentOptions.Length > 0 && logicSelectedIndex < logicCurrentOptions.Length) {
         selectedOption := logicCurrentOptions[logicSelectedIndex + 1]
         
-        if (selectedOption.type == "logic") {
-            backspaceCount := 0
-            Send("{Backspace " . backspaceCount . "}")
+        if (selectedOption.type == "symbol") {
             Send(selectedOption.symbol)
-            
             logicAutocompleteActive := false
-            ToolTip("", , , 1)
+            ToolTip()
+        } else if (selectedOption.type == "category") {
+            logicCurrentMenu := selectedOption.menuKey
+            logicSelectedIndex := 0
+            ShowLogicSubmenu(logicCurrentMenu)
+        } else if (selectedOption.type == "subcategory") {
+            logicCurrentMenu := selectedOption.menuKey
+            logicSelectedIndex := 0
+            ShowLogicSubSubmenu(logicCurrentMenu)
         }
     }
 }
@@ -1116,28 +3349,62 @@ Escape::
 {
     global
     logicAutocompleteActive := false
-    ToolTip("", , , 1)
+    ToolTip()
 }
 
 Backspace::
 {
     global
-    siAutocompleteActive := false
-    ToolTip("", , , 1)
+    logicAutocompleteActive := false
+    ToolTip()
+    Send("{Backspace}")
 }
+
 Space::
 {
     global
     logicAutocompleteActive := false
-    ToolTip("", , , 1)
+    ToolTip()
     Send(" ")
 }
 
 #HotIf
 
-for key, symbol in logicOptions {
-    Hotstring(":C*O?:loggic" . key, symbol)
+UpdateLogicDisplay() {
+    global
+    if (logicCurrentMenu == "main") {
+        ShowLogicMainMenu()
+    } 
+    else if (logicCurrentMenu == "setmember" || logicCurrentMenu == "setops" || logicCurrentMenu == "setcomp" || logicCurrentMenu == "setmisc" 
+          || logicCurrentMenu == "relequal" || logicCurrentMenu == "relinequal" || logicCurrentMenu == "relorder"
+          || logicCurrentMenu == "alphabb" || logicCurrentMenu == "alphascr" || logicCurrentMenu == "alphafrak" || logicCurrentMenu == "alphagreek") {
+        ShowLogicSubSubmenu(logicCurrentMenu)
+    } 
+    else {
+        ShowLogicSubmenu(logicCurrentMenu)
+    }
 }
+AllLogicArrays := [
+    logicCommon, logicPropositional, logicQuantifiers, 
+    logicSetsMember, logicSetsOps, logicSetsComp, logicSetsMisc,
+    logicRelEqual, logicRelInequal, logicRelOrder,
+    logicInference, logicModal, logicCalculus, 
+    logicAlgebra, logicGeometry, logicDelims,
+    logicAlphaBB, logicAlphaScr, logicAlphaFrak, logicAlphaGreek
+]
+
+for arrayObj in AllLogicArrays {
+    for item in arrayObj {
+        try {
+            code := item[1]
+            symbol := item[2]
+            Hotstring(":CO?:loggic" . code, symbol)
+        }
+    }
+}
+
+
+
 
 ;----------------------------------------------- TYPO‑GRAPHICAL 2
 
@@ -1149,64 +3416,82 @@ Loop 10 {
     }
 }
 
-
+$^+v::
+{
+    if (A_Clipboard != "" && RegExMatch(A_Clipboard, "\R")) {
+        marker := Chr(0xA0) . "\" . Chr(0xA0)
+        txt := RegExReplace(A_Clipboard, "\R", marker)
+        
+        if WinActive("ahk_exe soffice.bin") {
+            savedClip := A_Clipboard
+        } else {
+            savedClip := ClipboardAll()
+        }
+        
+        A_Clipboard := ""
+        A_Clipboard := txt
+        ClipWait(1)
+        SendEvent("{Blind}{vk07}")
+        SendEvent("^v")
+        Sleep(150)
+        A_Clipboard := savedClip
+        savedClip := ""
+    } else {
+        SendEvent("{Blind}{vk07}")
+        SendEvent("^v")
+    }
+}
 
 :*?:0 ::{
-    SendInput("0{U+00A0}")
+    SendInput("0{U+2007}")
     NudgeCursor()
 }
 
 :*?:1 ::{
-    SendInput("1{U+00A0}")
+    SendInput("1{U+2007}")
     NudgeCursor()
 }
 
 :*?:2 ::{
-    SendInput("2{U+00A0}")
+    SendInput("2{U+2007}")
     NudgeCursor()
 }
 
 :*?:3 ::{
-    SendInput("3{U+00A0}")
+    SendInput("3{U+2007}")
     NudgeCursor()
 }
 
 :*?:4 ::{
-    SendInput("4{U+00A0}")
+    SendInput("4{U+2007}")
     NudgeCursor()
 }
 
 :*?:5 ::{
-    SendInput("5{U+00A0}")
+    SendInput("5{U+2007}")
     NudgeCursor()
 }
 
 :*?:6 ::{
-    SendInput("6{U+00A0}")
+    SendInput("6{U+2007}")
     NudgeCursor()
 }
 
 :*?:7 ::{
-    SendInput("7{U+00A0}")
+    SendInput("7{U+2007}")
     NudgeCursor()
 }
 
 :*?:8 ::{
-    SendInput("8{U+00A0}")
+    SendInput("8{U+2007}")
     NudgeCursor()
 }
 
 :*?:9 ::{
-    SendInput("9{U+00A0}")
+    SendInput("9{U+2007}")
     NudgeCursor()
 }
 :*?:-*::‑
-:*?: `:-::  
-{
-    SendInput("{U+00A0}{U+003A}{U+2014}")
-    NudgeCursor()
-    return
-}
 :*?:.-::.‑
 :*?:-&-::
 {
@@ -1256,43 +3541,6 @@ Loop 10 {
 ;----------------------------------------------- LIGATURES
 :*O?:letterth::þ
 :*O?:letterdh::ð
-:C*?:ij::ĳ
-:C*?:IJ::Ĳ
-:C*?:ffi::ﬃ
-:C*?:ffl::ﬄ
-:C*?:fi::ﬁ
-:C*?:fl::ﬂ
-:C*?:fau::fꜷ
-:C*?:ffa::ﬀa
-:C*?:ffb::ﬀb
-:C*?:ffc::ﬀc
-:C*?:ffd::ﬀd
-:C*?:ffe::ﬀe
-:C*?:fff::ﬀf
-:C*?:ffg::ﬀg
-:C*?:ffh::ﬀh
-:C*?:ffj::ﬀj
-:C*?:ffk::ﬀk
-:C*?:ffm::ﬀm
-:C*?:ffn::ﬀn
-:C*?:ffo::ﬀo
-:C*?:ffp::ﬀp
-:C*?:ffq::ﬀq
-:C*?:ffr::ﬀr
-:C*?:ffs::ﬀs
-:C*?:fft::ﬀt
-:C*?:ffu::ﬀu
-:C*?:ffv::ﬀv
-:C*?:ffw::ﬀw
-:C*?:ffx::ﬀx
-:C*?:ffy::ﬀy
-:C*?:ffz::ﬀz
-:C*?:ff ::
-{
-    Send "{U+FB00}{U+0020}"
-    NudgeCursor()
-    return
-}
 :C*?: terticolon::
 {
     Send "{U+00A0}{U+F56C}"
@@ -1306,31 +3554,6 @@ Loop 10 {
     return
 }
 
-
-Loop 26 {
-    letter := Chr(96 + A_Index) 
-    
-    if (letter = "z") {
-        Hotstring(":C*?:S" . letter, "ſʒ")
-    NudgeCursor()
-    }if (letter = "t") {
-        Hotstring(":C*?:S" . letter, "ﬅ")
-    NudgeCursor()
-    } else {
-        Hotstring(":C*?:S" . letter, "ʆ" . letter)
-    NudgeCursor()
-    }
-}
-:C*?:st::
-{
-    if !ism
-    {
-        Send "{U+0073}{U+0074}"
-        return 
-    }
-	Send "{U+FB06}"
-    NudgeCursor()
-}
 :C*?:ss::
 {
     if !ism
@@ -1361,226 +3584,6 @@ Loop 26 {
     NudgeCursor()
 }
 
-:C*?:AO::
-{
-    if !ism
-    {
-        Send "{U+0041}{U+004F}"
-        return
-    }
-    Send "{U+A734}"
-    NudgeCursor()
-    return
-}
-:C*?:ao::
-{
-    if !ism
-    {
-        Send "{U+0061}{U+006F}"
-        return
-    }
-    Send "{U+A735}"
-    NudgeCursor()
-    return
-}
-
-:C*?:AU::
-{
-    if !ism
-    {
-        Send "{U+0041}{U+0055}"
-        return
-    }
-    Send "{U+A736}"
-    NudgeCursor()
-    return
-}
-:C*?:au::
-{
-    if !ism
-    {
-        Send "{U+0061}{U+0075}"
-        return
-    }
-    Send "{U+A737}"
-    NudgeCursor()
-    return
-}
-
-:C*?:AV::
-{
-    if !ism
-    {
-        Send "{U+0041}{U+0056}"
-        return
-    }
-    Send "{U+A738}"
-    NudgeCursor()
-    return
-}
-:C*?:lz::
-{
-    if !ism
-    {
-        Send "{U+006C}{U+007A}"
-        return
-    }
-    Send "{U+026E}"
-    NudgeCursor()
-    return
-}
-
-:C*?:lj::
-{
-    if !ism
-    {
-        Send "{U+006C}{U+006A}"
-        return
-    }
-    Send "{U+01C9}"
-    NudgeCursor()
-    return
-}
-
-:C*?:LJ::
-{
-    if !ism
-    {
-        Send "{U+004C}{U+004A}"
-        return
-    }
-    Send "{U+01C7}"
-    NudgeCursor()
-    return
-}
-
-:C*?:Lj::
-{
-    if !ism
-    {
-        Send "{U+004C}{U+006A}"
-        return
-    }
-    Send "{U+01C8}"
-    NudgeCursor()
-    return
-}
-
-:C*?:NJ::
-{
-    if !ism
-    {
-        Send "{U+004E}{U+004A}"
-        return
-    }
-    Send "{U+01CA}"
-    NudgeCursor()
-    return
-}
-
-:C*?:Nj::
-{
-    if !ism
-    {
-        Send "{U+004E}{U+006A}"
-        return
-    }
-    Send "{U+01CB}"
-    NudgeCursor()
-    return
-}
-
-:C*?:nj::
-{
-    if !ism
-    {
-        Send "{U+006E}{U+006A}"
-        return
-    }
-    Send "{U+01CC}"
-    NudgeCursor()
-    return
-}
-
-:C*?:av::
-{
-    if !ism
-    {
-        Send "{U+0061}{U+0076}"
-        return
-    }
-    Send "{U+A739}"
-    NudgeCursor()
-    return
-}
-:C*?:AY::
-{
-    if !ism
-    {
-        Send "{U+0041}{U+0059}"
-        return
-    }
-    Send "{U+A73C}"
-    NudgeCursor()
-    return
-}
-:C*?:ay::
-{
-   if !ism
-   {
-       Send "{U+0061}{U+0079}"
-       return
-   }
-   Send "{U+A73D}"
-    NudgeCursor()
-   return
-}
-
-:C*?:Hv::
-{
-    if !ism
-    {
-        Send "{U+0048}{U+0076}"
-        return
-    }
-    Send "{U+01F6}"
-    NudgeCursor()
-    return
-}
-:C*?:hv::
-{
-    if !ism
-    {
-        Send "{U+0068}{U+0076}"
-        return
-    }
-    Send "{U+0195}"
-    NudgeCursor()
-    return
-}
-
-:C*?:OO::
-{
-    if !ism
-    {
-        Send "{U+004F}{U+004F}"
-        return
-    }
-    Send "{U+A74E}"
-    NudgeCursor()
-    return
-}
-:C*?:oo::
-{
-    if !ism
-    {
-        Send "{U+006F}{U+006F}"
-        return
-    }
-    Send "{U+A74F}"
-    NudgeCursor()
-    return
-}
 
 :C*?:VY::
 {
@@ -1751,12 +3754,55 @@ Loop 26 {
 	Send "ʒʒ "
 }
 ;----------------------------------------------- SPECIAL CHARACTERS
-:?O:~~::〜
-:*C?O:a_e::aͤ
-:*C?O:a_ue::ꜷͤ
-:*C?O:o_e::oͤ
-:*C?O:u_e::uͤ
-:*C?O:y_e::yͤ
+:?O:~~::
+{
+    Send "〜"
+    NudgeCursor()
+    return
+}
+
+:*C?O:I ::I 
+:*C?O:-T ::Þͤ 
+:*C?O:-t ::þͤ 
+:*C?O:_î::̃
+:*C?O:_a::ͣ
+:*C?O:_e::ͤ
+:*C?O:_i::ͥ
+:*C?O:_o::ͦ
+:*C?O:_u::ͧ
+:*C?O:_c::ͨ
+:*C?O:_h::ͪ
+:*C?O:_m::ͫ
+:*C?O:_v::ͮ
+:*C?O:_x::ͯ
+:c*:Th::Þ
+:c*:TH::Þ
+:c*:th::þ
+
+thBal := 0
+
+BiasedTh(upper) {
+    global thBal
+    p := Max(5, Min(95, 50 - thBal * 5))
+    if (Random(1, 100) <= p) {
+        Send(upper ? "Þ" : "þ")
+        thBal++
+    } else {
+        Send(upper ? "Ð" : "ð")
+        thBal--
+    }
+}
+
+:c?*:Th::{
+BiasedTh(true)
+}
+:c?*:th::{
+BiasedTh(false)
+}
+:c?*:TH::{
+BiasedTh(true)
+}
+
 ::oz::℥
 ::ounce::℥
 ;----------------------------------------------- NUMERI
@@ -1992,6 +4038,13 @@ Loop 26 {
     return
 }
 :CO*?:breakhere::⸿
+:CO*?:katex::$\KaTeX$
+:CO*?:latex::$\LaTeX$
+:CO*?:\v31null::
+{
+    SendInput("$\underline{{}\raisebox{{}-0.74ex{}}{{}V{}}\kern{{}-0.15em{}}31\raisebox{{}-0.74ex{}}{{}\kern{{}-0.08em{}}$n${}}{}}$")
+}
+RAlt & 4::Send("$")
 :CO*?:1prime::′
 :CO*?:2do::〃
 :CO*?:2prime::″
@@ -2004,27 +4057,59 @@ Loop 26 {
 :*O?:jptext::馊銚ﾉﾔﾌﾀ
 :C:perthousand::‰
 :C:perman::‱
-;----------------------------------------------- ROMAN NUMERI.
+;----------------------------------------------- TIME
+:*O?:idatea::
+{
+    dt := FormatTime(A_Now, "yyyy/MM/dd")
+    Send(dt)
+    NudgeCursor()
+    return
+}
 
+:*O?:idateb::
+{
+    year := FormatTime(A_Now, "yyyy")
+    month := FormatTime(A_Now, "MM")
+    day := FormatTime(A_Now, "dd")
+    hour24 := Integer(FormatTime(A_Now, "HH"))
+    minute := FormatTime(A_Now, "mm")
+    second := FormatTime(A_Now, "ss")
+    
+    ampm := (hour24 < 12) ? "AM" : "PM"
+    
+    if (hour24 = 0) {
+        hour := "00"
+    } else if (hour24 < 12) {
+        hour := Format("{:d}", hour24)
+    } else if (hour24 = 12) {
+        hour := "00"
+    } else {
+        hour := Format("{:d}", hour24 - 12)
+    }
+    
+    result := year . "/" . month . "/" . day . " " . hour . ":" . minute . ":" . second . " " . ampm
+    Send(result)
+    NudgeCursor()
+    return
+}
+;----------------------------------------------- ROMAN NUMERI.
 global romanUpper := Map(
     100000, "ↈ", 90000, "ↂↈ", 50000, "ↇ", 40000, "ↂↇ", 10000, "ↂ",
     9000, "ↂↁ", 5000, "ↁ", 4000, "Ⅿↁ", 1000, "Ⅿ",
     900, "ⅭⅯ", 500, "Ⅾ", 400, "ⅭⅮ", 100, "Ⅽ",
-    90, "ⅩⅭ", 50, "Ⅼ", 40, "ⅩⅬ",
-    12, "Ⅻ", 11, "Ⅺ", 10, "Ⅹ", 9, "Ⅸ", 8, "Ⅷ",
-    7, "Ⅶ", 6, "Ⅵ", 5, "Ⅴ", 4, "Ⅳ", 3, "Ⅲ", 2, "Ⅱ", 1, "Ⅰ"
+    90, "ⅩⅭ", 50, "Ⅼ", 40, "ⅩⅬ", 10, "Ⅹ", 9, "Ⅸ", 
+    5, "Ⅴ", 4, "Ⅳ", 1, "Ⅰ"
 )
 
 global romanLower := Map(
     1000, "ⅿ", 900, "ⅽⅿ", 500, "ⅾ", 400, "ⅽⅾ", 100, "ⅽ",
-    90, "ⅹⅽ", 50, "ⅼ", 40, "ⅹⅼ",
-    12, "ⅻ", 11, "ⅺ", 10, "ⅹ", 9, "ⅸ", 8, "ⅷ",
-    7, "ⅶ", 6, "ⅵ", 5, "ⅴ", 4, "ⅳ", 3, "ⅲ", 2, "ⅱ", 1, "ⅰ"
+    90, "ⅹⅽ", 50, "ⅼ", 40, "ⅹⅼ", 10, "ⅹ", 9, "ⅸ", 
+    5, "ⅴ", 4, "ⅳ", 1, "ⅰ"
 )
 
 ConvertToRomanUnicode(num, useSmall := false) {
     if (num <= 0)
-        return String(num)
+        return string(num)
     
     symbols := useSmall ? romanLower : romanUpper
     result := ""
@@ -2061,17 +4146,17 @@ ConvertToRomanUnicode(num, useSmall := false) {
     return result
 }
 
-:B0*CX:roman::
+:B0*CX:romannumero::
 {
     static romanRegex := "^\d+$"
     
     ih := InputHook("V", "{Space}{Tab}{Enter}{Esc}{,}{.}{!}{?}{:}{;}")
-    ih.Start()
+    ih.start()
     ih.Wait()
     
     if (RegExMatch(ih.Input, romanRegex)) {
         num := Integer(ih.Input)
-        Send("{BS " . (6 + StrLen(ih.Input)) . "}")
+        Send("{BS " . (12 + strLen(ih.Input)) . "}")
         Send(ConvertToRomanUnicode(num))
         if (ih.EndReason = "EndKey" && ih.EndKey != "Escape") {
             Send("{" . ih.EndKey . "}")
@@ -2635,6758 +4720,510 @@ class a {
     }
 }
 a.c()
-;----------------------------------------------- DREAM
+;----------------------------------------------- KOPIER
 
-class UnifiedDreamEncoder {
-    static mainGui := ""
-    static controls := Map()
-    static fragmentList := []
-    static realityTests := []
-    static currentTab := 1
-    static scmCompleted := false
-    static sclCompleted := false
+class KopierApp {
     
     static Init() {
-        Hotstring(":O?*:\scm", (*) => this.OpenGUI())
-        Hotstring(":O?*:\scl", (*) => this.OpenGUI())
+        Hotstring(":O?*:\kopier", (*) => KopierApp.Show())
     }
-    
-    static OpenGUI() {
-        if (this.mainGui && IsObject(this.mainGui)) {
-            try {
-                this.mainGui.Destroy()
-            } catch {
-            }
-        }
-        
-        this.mainGui := Gui("+Resize +MinSize600x650", "Dream Encoder")
-        this.mainGui.SetFont("s10", "Consolas")
-        
-        this.controls := Map()
-        this.fragmentList := []
-        this.realityTests := []
-        this.scmCompleted := false
-        this.sclCompleted := false
-        
-        this.CreateGUI()
-        this.mainGui.OnEvent("Close", (*) => this.mainGui.Destroy())
-        this.mainGui.Show("w600 h680")
-    }
-    
-    static CreateGUI() {
-        gui := this.mainGui
-        
-        this.controls["TabControl"] := gui.Add("Tab3", "x10 y10 w580 h660", ["SCM", "SCL", "Deploy"])
-        this.controls["TabControl"].OnEvent("Change", (*) => this.CheckTabAccess())
-        
-        this.controls["TabControl"].UseTab(1)
-        this.CreateSCMTab()
-        
-        this.controls["TabControl"].UseTab(2)
-        this.CreateSCLTab()
-        
-        this.controls["TabControl"].UseTab(3)
-        this.CreateDeployTab()
-        
-        this.controls["TabControl"].UseTab()
-        
-        this.SetupEvents()
-        this.GenerateSCMEncoding()
-        this.GenerateSCLEncoding()
-        this.CheckTabAccess()
-    }
-    
-    static CreateSCMTab() {
-        gui := this.mainGui
-        
-        gui.Add("Text", "x20 y40 w550 Center", "DREAM EN-CODING SYSTEM").SetFont("s12 Bold")
-        
-        gui.Add("Text", "x20 y70", "Dream № :")
-        this.controls["Dn"] := gui.Add("Edit", "x+10 yp w80 Number")
-        this.controls["Dn"].Text := ""
-        
-        gui.Add("Text", "x20 y100", "Date :")
-        this.controls["DateTime"] := gui.Add("Edit", "x+10 yp w100 ReadOnly -E0x200")
-        this.controls["DateTime"].Opt("+Background0xF0F0F0")
-        this.UpdateDateTime()
-        
-        gui.Add("Text", "x20 y130 w550", "Re‑called locks").SetFont("s11 Bold")
-        gui.Add("Text", "x20 y155", "Count :")
-        this.controls["RecalledCount"] := gui.Add("Edit", "x+10 yp w50")
-        
-        gui.Add("Text", "x+20 yp", "Cer. % :")
-        this.controls["RecalledCertainty"] := gui.Add("Edit", "x+10 yp w50")
-        
-        gui.Add("Text", "x20 y190 w550", "Fragment count").SetFont("s11 Bold")
-        gui.Add("Text", "x20 y215", "Type :")
-        this.controls["FragmentRole"] := gui.Add("DropDownList", "x+10 yp w100", ["MER", "PRO", "SEQ", "SEP","FLB", "UNK"])
-        this.controls["FragmentRole"].Choose(1)
-        
-        gui.Add("Text", "x+20 yp", "Count :")
-        this.controls["FragmentCount"] := gui.Add("Edit", "x+10 yp w30 Limit1")
-        this.controls["FragmentCount"].Enabled := false
-        
-        this.controls["FragmentX"] := gui.Add("Checkbox", "x+10 yp", "X")
-        this.controls["FragmentX"].Enabled := false
-        
-        gui.Add("Text", "x20 y250", "Fragments :")
-        this.controls["FragmentList"] := gui.Add("ListBox", "x20 y270 w400 h80")
-        gui.Add("Button", "x440 yp w100 h34", "Add fragment").OnEvent("Click", (*) => this.AddFragment())
-        gui.Add("Button", "x440 y305 w100 h34", "Re‑move fragment").OnEvent("Click", (*) => this.RemoveFragment())
-        
-        gui.Add("Text", "x20 y365", "V :")
-        this.controls["VQ5"] := gui.Add("Checkbox", "x20 y385", "V5")
-        this.controls["VQ4"] := gui.Add("Checkbox", "x+20 yp", "V4")
-        this.controls["VQ3"] := gui.Add("Checkbox", "x+20 yp", "V3")
-        this.controls["VQ2"] := gui.Add("Checkbox", "x+20 yp", "V2")
-        this.controls["VQ1"] := gui.Add("Checkbox", "x+20 yp", "V1")
-        
-        gui.Add("Text", "x20 y410", "R :")
-        this.controls["RQ0"] := gui.Add("Checkbox", "x20 y430", "R0")
-        this.controls["RQ1"] := gui.Add("Checkbox", "x+20 yp", "R1")
-        this.controls["RQ2"] := gui.Add("Checkbox", "x+20 yp", "R2")
-        this.controls["RQ3"] := gui.Add("Checkbox", "x+20 yp", "R3")
-        
-        gui.Add("Text", "x20 y470 w550", "OUTPUT").SetFont("s11 Bold")
-        
-        gui.Add("Button", "x20 y500 w100 h30", "Clear All").OnEvent("Click", (*) => this.ClearAllSCM())
-        gui.Add("Button", "x130 yp w100 h30", "En-grave").OnEvent("Click", (*) => this.EngraveFromSCM())
-        
-        gui.Add("Text", "x20 y540", "Re‑sult :")
-        this.controls["OutputLine"] := gui.Add("Edit", "x20 y560 w550 h25 ReadOnly -E0x200")
-        this.controls["OutputLine"].Opt("+Background0xF0F0F0")
-    }
-    
-    static CreateSCLTab() {
-        gui := this.mainGui
-        
-        gui.Add("Text", "x20 y40 w550 Center", "DREAM EN-CODING SYSTEM").SetFont("s12 Bold")
-        
-        gui.Add("Text", "x20 y70 w550", "MAIN FIELDS").SetFont("s11 Bold")
-        
-        gui.Add("Text", "x20 y95", "M :")
-        this.controls["M1"] := gui.Add("Checkbox", "x+10 yp", "M1")
-        this.controls["M2"] := gui.Add("Checkbox", "x+10 yp", "M2")
-        this.controls["MX"] := gui.Add("Checkbox", "x+10 yp", "MX")
-        
-        gui.Add("Text", "x20 y120", "C :")
-        this.controls["C"] := gui.Add("Checkbox", "x+10 yp", "C")
-        
-        gui.Add("Text", "x20 y145", "E⧸N :")
-        this.controls["E"] := gui.Add("Checkbox", "x+10 yp", "E")
-        this.controls["N"] := gui.Add("Checkbox", "x+10 yp", "N")
-        this.controls["CX"] := gui.Add("Checkbox", "x+10 yp", "CX")
-        
-        gui.Add("Text", "x20 y170", "ﬅ :")
-        this.controls["S1"] := gui.Add("Checkbox", "x+10 yp", "S1")
-        this.controls["S2"] := gui.Add("Checkbox", "x+10 yp", "S2")
-        this.controls["SX"] := gui.Add("Checkbox", "x+10 yp", "SX")
-        
-        gui.Add("Text", "x20 y205", "Note :")
-        this.controls["Note"] := gui.Add("Edit", "x20 y225 w550 h40 VScroll")
-        
-        gui.Add("Text", "x20 y280", "L :")
-        this.controls["F"] := gui.Add("Checkbox", "x+10 yp", "F")
-        this.controls["T"] := gui.Add("Checkbox", "x+10 yp", "T")
-        this.controls["U"] := gui.Add("Checkbox", "x+10 yp", "U")
-        this.controls["LX"] := gui.Add("Checkbox", "x+10 yp", "LX")
-        
-        gui.Add("Text", "x20 y305", "B/N :")
-        this.controls["B"] := gui.Add("Checkbox", "x+10 yp", "B")
-        this.controls["BN"] := gui.Add("Checkbox", "x+10 yp", "N")
-        this.controls["BX"] := gui.Add("Checkbox", "x+10 yp", "BX")
-        
-        gui.Add("Text", "x20 y340 w550", "REALITY TESTS").SetFont("s11 Bold")
-        gui.Add("Text", "x20 y365", "Teﬆ :")
-        this.controls["TestType"] := gui.Add("DropDownList", "x+10 yp w100", ["breath", "hand","nꜷght"])
-        this.controls["TestType"].Choose(1)
-        
-        gui.Add("Button", "x+10 yp w80 h23", "Add Test").OnEvent("Click", (*) => this.AddRealityTest())
-        
-        gui.Add("Text", "x20 y395", "Added :")
-        this.controls["TestList"] := gui.Add("ListBox", "x20 y415 w400 h80")
-        gui.Add("Button", "x440 yp w100 h34", "Remove Test").OnEvent("Click", (*) => this.RemoveRealityTest())
-        
-        gui.Add("Text", "x20 y510 w550", "OUTPUT").SetFont("s11 Bold")
-        
-        gui.Add("Button", "x20 y540 w100 h30", "Clear All").OnEvent("Click", (*) => this.ClearAllSCL())
-        gui.Add("Button", "x130 yp w100 h30", "En-grave").OnEvent("Click", (*) => this.EngraveFromSCL())
-        
-        gui.Add("Text", "x20 y580", "Data :")
-        this.controls["Output1"] := gui.Add("Edit", "x20 y600 w550 h23 ReadOnly -E0x200")
-        this.controls["Output1"].Opt("+Background0xF0F0F0")
-        this.controls["Output2"] := gui.Add("Edit", "x20 y623 w550 h23 ReadOnly -E0x200")
-        this.controls["Output2"].Opt("+Background0xF0F0F0")
-    }
-    
-    static CreateDeployTab() {
-        gui := this.mainGui
-        
-        gui.Add("Text", "x20 y40 w550 Center", "DEPLOY SYSTEM").SetFont("s12 Bold")
-        
-        gui.Add("Text", "x20 y80", "SCM Output :")
-        this.controls["DeployOutput1"] := gui.Add("Edit", "x20 y100 w550 h23 ReadOnly -E0x200")
-        this.controls["DeployOutput1"].Opt("+Background0xF0F0F0")
-        
-        gui.Add("Text", "x20 y140", "SCL Row 1 :")
-        this.controls["DeployOutput2"] := gui.Add("Edit", "x20 y160 w550 h23 ReadOnly -E0x200")
-        this.controls["DeployOutput2"].Opt("+Background0xF0F0F0")
-        
-        gui.Add("Text", "x20 y200", "SCL Row 2 :")
-        this.controls["DeployOutput3"] := gui.Add("Edit", "x20 y220 w550 h23 ReadOnly -E0x200")
-        this.controls["DeployOutput3"].Opt("+Background0xF0F0F0")
-        
-        gui.Add("Button", "x20 y270 w150 h40", "Deploy").OnEvent("Click", (*) => this.DeployFinal())
-    }
-    
-    static SetupEvents() {
-        this.controls["Dn"].OnEvent("Change", (*) => this.FilterDn())
-        this.controls["RecalledCount"].OnEvent("Change", (*) => this.FilterDigits("RecalledCount"))
-        this.controls["RecalledCertainty"].OnEvent("Change", (*) => this.FilterDigits("RecalledCertainty"))
-        this.controls["FragmentCount"].OnEvent("Change", (*) => this.FilterFragmentCount())
-        this.controls["FragmentX"].OnEvent("Click", (*) => this.HandleFragmentX())
-        this.controls["FragmentRole"].OnEvent("Change", (*) => this.HandleFragmentRole())
-        
-        this.controls["VQ1"].OnEvent("Click", (*) => this.HandleVQSelection(1))
-        this.controls["VQ2"].OnEvent("Click", (*) => this.HandleVQSelection(2))
-        this.controls["VQ3"].OnEvent("Click", (*) => this.HandleVQSelection(3))
-        this.controls["VQ4"].OnEvent("Click", (*) => this.HandleVQSelection(4))
-        this.controls["VQ5"].OnEvent("Click", (*) => this.HandleVQSelection(5))
-        
-        this.controls["RQ0"].OnEvent("Click", (*) => this.HandleRQSelection(0))
-        this.controls["RQ1"].OnEvent("Click", (*) => this.HandleRQSelection(1))
-        this.controls["RQ2"].OnEvent("Click", (*) => this.HandleRQSelection(2))
-        this.controls["RQ3"].OnEvent("Click", (*) => this.HandleRQSelection(3))
-        
-        this.controls["M1"].OnEvent("Click", (*) => this.HandleMetacognition("M1"))
-        this.controls["M2"].OnEvent("Click", (*) => this.HandleMetacognition("M2"))
-        this.controls["MX"].OnEvent("Click", (*) => this.HandleMetacognition("MX"))
-        
-        this.controls["C"].OnEvent("Click", (*) => this.HandleCognition())
-        
-        this.controls["E"].OnEvent("Click", (*) => this.HandleControl("E"))
-        this.controls["N"].OnEvent("Click", (*) => this.HandleControl("N"))
-        this.controls["CX"].OnEvent("Click", (*) => this.HandleControl("CX"))
-        
-        this.controls["S1"].OnEvent("Click", (*) => this.HandleStability("S1"))
-        this.controls["S2"].OnEvent("Click", (*) => this.HandleStability("S2"))
-        this.controls["SX"].OnEvent("Click", (*) => this.HandleStability("SX"))
-        
-        this.controls["F"].OnEvent("Click", (*) => this.HandleLucidityType("F"))
-        this.controls["T"].OnEvent("Click", (*) => this.HandleLucidityType("T"))
-        this.controls["U"].OnEvent("Click", (*) => this.HandleLucidityType("U"))
-        this.controls["LX"].OnEvent("Click", (*) => this.HandleLucidityType("LX"))
-        
-        this.controls["B"].OnEvent("Click", (*) => this.HandleLucidityBoundary("B"))
-        this.controls["BN"].OnEvent("Click", (*) => this.HandleLucidityBoundary("BN"))
-        this.controls["BX"].OnEvent("Click", (*) => this.HandleLucidityBoundary("BX"))
-        
-        this.controls["Note"].OnEvent("Change", (*) => this.GenerateSCLEncoding())
-    }
-    
-    static CheckTabAccess() {
-        currentTab := this.controls["TabControl"].Value
-        
-        if (currentTab == 2 && !this.scmCompleted) {
-            this.controls["TabControl"].Choose(1)
+
+    static Show() {
+        if (HasProp(this, "MyGui") && this.MyGui) {
+            this.MyGui.Show()
             return
         }
+
+        this.fileList := []
+        this.pathToFileObj := Map()
+        this.activeTempDirs := []
+        this.folderKeys := Map()
+        this.isUpdating := false
+
+        this.MyGui := Gui("+Resize", "File Formatter")
+        this.MyGui.SetFont("s10", "Consolas")
+
+        this.dropZone := this.MyGui.AddEdit("x10 y10 w445 h485 ReadOnly Center", "drop files place")
+        this.flatList := this.MyGui.AddListView("x465 y10 w645 h485 Checked", ["File", "Chars"])
+        this.fileTree := this.MyGui.AddTreeView("Checked x10 y505 w445 h485")
+        this.extList := this.MyGui.AddListView("x465 y505 w645 h485 Checked", ["Extension", "Chars"])
+
+        this.output := this.MyGui.AddEdit("x1120 y10 w703 h980 ReadOnly Multi VScroll HScroll")
+
+        this.flatList.ModifyCol(1, 520)
+        this.flatList.ModifyCol(2, "95 Integer")
+        this.extList.ModifyCol(1, 400)
+        this.extList.ModifyCol(2, "200 Integer")
+
+        this.MyGui.OnEvent("Close", ObjBindMethod(this, "GuiClose"))
+        this.fileTree.OnEvent("Click", ObjBindMethod(this, "TreeViewClicked"))
+        this.flatList.OnEvent("ItemCheck", ObjBindMethod(this, "OnFlatListCheck"))
+        this.extList.OnEvent("ItemCheck", ObjBindMethod(this, "OnExtListCheck"))
+
+        DllCall("shell32\DragAcceptFiles", "Ptr", this.dropZone.Hwnd, "Int", 1)
         
-        if (currentTab == 3 && (!this.scmCompleted || !this.sclCompleted)) {
-            if (!this.scmCompleted) {
-                this.controls["TabControl"].Choose(1)
+        this.DropFunc := ObjBindMethod(this, "WM_DROPFILES")
+        this.KeyFunc := ObjBindMethod(this, "WM_KEYDOWN")
+        
+        OnMessage(0x233, this.DropFunc)
+        OnMessage(0x0100, this.KeyFunc)
+
+        this.MyGui.Show("w1833 h1000")
+    }
+
+    static GuiClose(guiObj) {
+        for tempDir in this.activeTempDirs {
+            try DirDelete(tempDir, true)
+        }
+        this.activeTempDirs := []
+        
+        OnMessage(0x233, this.DropFunc, 0)
+        OnMessage(0x0100, this.KeyFunc, 0)
+        
+        this.MyGui.Destroy()
+        this.MyGui := ""
+    }
+
+    static WM_DROPFILES(wParam, lParam, msg, hwnd) {
+        if (!HasProp(this, "dropZone") || hwnd != this.dropZone.Hwnd)
+            return
+            
+        count := DllCall("shell32\DragQueryFileW", "Ptr", wParam, "UInt", 0xFFFFFFFF, "Ptr", 0, "UInt", 0)
+        if count < 1
+            return
+        
+        this.isUpdating := true
+        this.fileTree.Opt("-Redraw")
+        this.flatList.Opt("-Redraw")
+        this.extList.Opt("-Redraw")
+        
+        this.fileTree.Delete()
+        this.flatList.Delete()
+        this.extList.Delete()
+        
+        this.fileList := []
+        this.pathToFileObj.Clear()
+        this.folderKeys.Clear()
+        
+        for tempDir in this.activeTempDirs {
+            try DirDelete(tempDir, true)
+        }
+        this.activeTempDirs := []
+
+        loop count {
+            buf := Buffer(1024 * 2)
+            DllCall("shell32\DragQueryFileW", "Ptr", wParam, "UInt", A_Index - 1, "Ptr", buf, "UInt", 512)
+            droppedPath := StrGet(buf, "UTF-16")
+            this.ProcessItem(droppedPath)
+        }
+        
+        DllCall("shell32\DragFinish", "Ptr", wParam)
+        
+        extCount := Map()
+        for fileObj in this.fileList {
+            ext := fileObj.ext == "" ? "<none>" : fileObj.ext
+            if !extCount.Has(ext)
+                extCount[ext] := 0
+            extCount[ext] += fileObj.charCount
+        }
+        
+        for ext, chars in extCount {
+            this.extList.Add("Check", ext, chars)
+        }
+        
+        this.fileTree.Opt("+Redraw")
+        this.flatList.Opt("+Redraw")
+        this.extList.Opt("+Redraw")
+        this.isUpdating := false
+        
+        this.UpdateOutput()
+    }
+
+    static ProcessItem(path) {
+        static tempCounter := 0
+        archiveExtensions := ",zip,rar,7z,tar,gz,"
+
+        if DirExist(path) {
+            SplitPath(path, &dirName)
+            this.ProcessFolder(path, path, dirName)
+        } else {
+            SplitPath(path, &fileName, , &ext)
+            extL := StrLower(ext)
+            
+            if extL != "" && InStr(archiveExtensions, "," extL ",") {
+                tempCounter++
+                tempDir := A_Temp "\FileFormatter_" A_TickCount "_" tempCounter
+                if this.ExtractArchive(path, tempDir) {
+                    this.activeTempDirs.Push(tempDir)
+                    this.ProcessFolder(tempDir, tempDir, fileName)
+                } else {
+                    this.fileTree.Add("Error: Failed to extract " fileName, 0, "Icon0")
+                }
             } else {
-                this.controls["TabControl"].Choose(2)
-            }
-            return
-        }
-    }
-    
-    static FilterDn() {
-        text := this.controls["Dn"].Text
-        filtered := RegExReplace(text, "[^0-9]", "")
-        
-        if (text != filtered) {
-            this.controls["Dn"].Text := filtered
-        }
-        this.GenerateSCMEncoding()
-    }
-    
-    static FilterFragmentCount() {
-        text := this.controls["FragmentCount"].Text
-        filtered := RegExReplace(text, "[^1-9]", "")
-        filtered := SubStr(filtered, 1, 1)
-        
-        if (text != filtered) {
-            this.controls["FragmentCount"].Text := filtered
-        }
-    }
-    
-    static HandleVQSelection(selected) {
-        for i in [1, 2, 3, 4, 5] {
-            if (i != selected) {
-                this.controls["VQ" . i].Value := 0
+                this.AddFileToTree(path, "", "")
             }
         }
-        this.GenerateSCMEncoding()
     }
-    
-    static HandleRQSelection(selected) {
-        for i in [0, 1, 2, 3] {
-            if (i != selected) {
-                this.controls["RQ" . i].Value := 0
+
+    static ProcessFolder(folderPath, baseDir, prefix) {
+        Loop Files, folderPath "\*", "R" {
+            this.AddFileToTree(A_LoopFileFullPath, baseDir, prefix)
+        }
+    }
+
+    static AddFileToTree(fullPath, baseDir, prefix) {
+        parentID := 0
+        displayPath := ""
+        
+        if (baseDir == "") {
+            SplitPath(fullPath, &fileName)
+            treeID := this.fileTree.Add(fileName, 0, "Check")
+            displayPath := fileName
+        } else {
+            relPath := SubStr(fullPath, StrLen(baseDir) + 2)
+            parts := StrSplit(relPath, "\")
+            
+            currentPath := prefix
+            
+            if prefix != "" {
+                if !this.folderKeys.Has(prefix) {
+                    this.folderKeys[prefix] := this.fileTree.Add(prefix, 0, "Expand Check")
+                }
+                parentID := this.folderKeys[prefix]
+            }
+            
+            loop parts.Length - 1 {
+                part := parts[A_Index]
+                currentPath .= (currentPath != "" ? "\" : "") part
+                if !this.folderKeys.Has(currentPath) {
+                    this.folderKeys[currentPath] := this.fileTree.Add(part, parentID, "Expand Check")
+                }
+                parentID := this.folderKeys[currentPath]
+            }
+            
+            fileName := parts[parts.Length]
+            treeID := this.fileTree.Add(fileName, parentID, "Check")
+            displayPath := (prefix != "" ? prefix "\" : "") relPath
+        }
+        
+        SplitPath(fullPath, , , &ext)
+        extL := StrLower(ext)
+        
+        isBinary := false
+        charCount := 0
+        content := ""
+        
+        if (extL == "odt") {
+            content := this.GetOdtContent(fullPath)
+            charCount := StrLen(content)
+        } else if this.IsBinaryFile(fullPath) {
+            isBinary := true
+            charCount := 0
+        } else {
+            charCount := FileGetSize(fullPath)
+        }
+        
+        this.flatList.Add("Check", displayPath, charCount)
+        
+        fileObj := {path: fullPath, displayPath: displayPath, ext: extL, charCount: charCount, content: content, isBinary: isBinary, treeID: treeID, isChecked: true}
+        
+        this.fileList.Push(fileObj)
+        this.pathToFileObj[displayPath] := fileObj
+    }
+
+    static TreeViewClicked(guiCtrl, itemID) {
+        if itemID {
+            SetTimer(ObjBindMethod(this, "UpdateTreeState", itemID), -10)
+        }
+    }
+
+    static WM_KEYDOWN(wParam, lParam, msg, hwnd) {
+        if (!HasProp(this, "fileTree") || !this.fileTree)
+            return
+            
+        if hwnd == this.fileTree.Hwnd && wParam == 32 { 
+            selectedID := this.fileTree.GetSelection()
+            if selectedID {
+                SetTimer(ObjBindMethod(this, "UpdateTreeState", selectedID), -10)
             }
         }
-        this.GenerateSCMEncoding()
     }
-    
-    static FilterDigits(controlName) {
-        text := this.controls[controlName].Text
-        filtered := RegExReplace(text, "[^0-9]", "")
-        filtered := SubStr(filtered, 1, 2)
-        
-        if (text != filtered) {
-            this.controls[controlName].Text := filtered
-        }
-        this.GenerateSCMEncoding()
-    }
-    
-    static HandleFragmentRole() {
-        role := this.controls["FragmentRole"].Text
-        
-        if (role != "MER") {
-            this.controls["FragmentCount"].Enabled := true
-            this.controls["FragmentX"].Enabled := true
-        } else {
-            this.controls["FragmentCount"].Enabled := false
-            this.controls["FragmentX"].Enabled := false
-            this.controls["FragmentCount"].Text := ""
-            this.controls["FragmentX"].Value := 0
-        }
-    }
-    
-    static HandleFragmentX() {
-        if (this.controls["FragmentX"].Value) {
-            this.controls["FragmentCount"].Text := "X"
-            this.controls["FragmentCount"].Enabled := false
-        } else {
-            this.controls["FragmentCount"].Text := ""
-            this.controls["FragmentCount"].Enabled := true
-        }
-    }
-    
-    static UpdateDateTime() {
-        currentTime := A_Now
-        day := SubStr(currentTime, 7, 2)
-        hour := SubStr(currentTime, 9, 2)
-        minute := SubStr(currentTime, 11, 2)
-        
-        dateTime := day . hour . minute . "j"
-        
-        this.controls["DateTime"].Text := dateTime
-    }
-    
-    static AddFragment() {
-        role := this.controls["FragmentRole"].Text
-        count := this.controls["FragmentCount"].Text
-        
-        if (role == "MER") {
-            this.fragmentList.Push(role)
-            this.UpdateFragmentList()
-            this.GenerateSCMEncoding()
+
+    static UpdateTreeState(itemID) {
+        if this.isUpdating
             return
+            
+        isChecked := this.fileTree.Get(itemID, "Checked")
+        
+        this.isUpdating := true
+        this.fileTree.Opt("-Redraw")
+        this.flatList.Opt("-Redraw")
+        this.extList.Opt("-Redraw")
+        
+        this.SetChildChecks(itemID, isChecked)
+        this.UpdateParentChecks(itemID)
+        
+        this.SyncStateFromTree()
+        
+        this.fileTree.Opt("+Redraw")
+        this.flatList.Opt("+Redraw")
+        this.extList.Opt("+Redraw")
+        this.isUpdating := false
+        
+        this.UpdateOutput()
+    }
+
+    static SyncStateFromTree() {
+        for fileObj in this.fileList {
+            checked := this.fileTree.Get(fileObj.treeID, "Checked")
+            fileObj.isChecked := checked
         }
         
-        if (count == "" && !this.controls["FragmentX"].Value) {
-            MsgBox("err", "Error")
+        loop this.flatList.GetCount() {
+            displayPath := this.flatList.GetText(A_Index, 1)
+            fileObj := this.pathToFileObj[displayPath]
+            if (fileObj) {
+                this.flatList.Modify(A_Index, fileObj.isChecked ? "Check" : "-Check")
+            }
+        }
+        this.UpdateExtList()
+    }
+
+    static UpdateExtList() {
+        extCount := Map()
+        extChecked := Map()
+        for fileObj in this.fileList {
+            ext := fileObj.ext == "" ? "<none>" : fileObj.ext
+            if !extCount.Has(ext) {
+                extCount[ext] := 0
+                extChecked[ext] := false
+            }
+            if fileObj.isChecked {
+                extCount[ext] += fileObj.charCount
+                extChecked[ext] := true
+            }
+        }
+        
+        loop this.extList.GetCount() {
+            rowExt := this.extList.GetText(A_Index, 1)
+            count := extCount.Has(rowExt) ? extCount[rowExt] : 0
+            checked := extChecked.Has(rowExt) ? extChecked[rowExt] : false
+            
+            this.extList.Modify(A_Index, (checked ? "Check" : "-Check"), , count)
+        }
+    }
+
+    static OnFlatListCheck(guiCtrl, item, checked) {
+        if this.isUpdating
             return
+        this.isUpdating := true
+
+        this.fileTree.Opt("-Redraw")
+        this.extList.Opt("-Redraw")
+
+        displayPath := this.flatList.GetText(item, 1)
+        fileObj := this.pathToFileObj[displayPath]
+        
+        if (fileObj) {
+            fileObj.isChecked := checked
+            this.fileTree.Modify(fileObj.treeID, checked ? "Check" : "-Check")
+            this.UpdateParentChecks(fileObj.treeID)
         }
         
-        if (this.controls["FragmentX"].Value) {
-            count := "X"
-        }
+        this.UpdateExtList()
         
-        fragment := role . count
-        this.fragmentList.Push(fragment)
-        this.UpdateFragmentList()
-        this.GenerateSCMEncoding()
+        this.fileTree.Opt("+Redraw")
+        this.extList.Opt("+Redraw")
+        this.isUpdating := false
+        
+        this.UpdateOutput()
     }
-    
-    static RemoveFragment() {
-        selected := this.controls["FragmentList"].Value
-        if (selected > 0 && selected <= this.fragmentList.Length) {
-            this.fragmentList.RemoveAt(selected)
-            this.UpdateFragmentList()
-            this.GenerateSCMEncoding()
+
+    static OnExtListCheck(guiCtrl, item, checked) {
+        if this.isUpdating
+            return
+        this.isUpdating := true
+
+        this.fileTree.Opt("-Redraw")
+        this.flatList.Opt("-Redraw")
+
+        ext := this.extList.GetText(item, 1)
+        for fileObj in this.fileList {
+            fExt := fileObj.ext == "" ? "<none>" : fileObj.ext
+            if (fExt == ext) {
+                if (fileObj.isChecked != checked) {
+                    fileObj.isChecked := checked
+                    this.fileTree.Modify(fileObj.treeID, checked ? "Check" : "-Check")
+                    this.UpdateParentChecks(fileObj.treeID)
+                }
+            }
+        }
+        
+        loop this.flatList.GetCount() {
+            displayPath := this.flatList.GetText(A_Index, 1)
+            fileObj := this.pathToFileObj[displayPath]
+            if (fileObj) {
+                this.flatList.Modify(A_Index, fileObj.isChecked ? "Check" : "-Check")
+            }
+        }
+        
+        this.UpdateExtList()
+        
+        this.fileTree.Opt("+Redraw")
+        this.flatList.Opt("+Redraw")
+        this.isUpdating := false
+        
+        this.UpdateOutput()
+    }
+
+    static SetChildChecks(parentID, isChecked) {
+        childID := this.fileTree.GetChild(parentID)
+        while childID {
+            this.fileTree.Modify(childID, isChecked ? "Check" : "-Check")
+            this.SetChildChecks(childID, isChecked)
+            childID := this.fileTree.GetNext(childID)
         }
     }
-    
-    static UpdateFragmentList() {
-        this.controls["FragmentList"].Delete()
-        for i, fragment in this.fragmentList {
-            this.controls["FragmentList"].Add([fragment])
-        }
-    }
-    
-    static GenerateSCMEncoding() {
-        this.UpdateDateTime()
-        
-        dn := this.controls["Dn"].Text
-        
-        if (dn == "") {
-            dn := "0"
-        } else {
-            dn := String(Integer(dn))
-        }
-        dnFormatted := "D" . dn
-        
-        dateTime := this.controls["DateTime"].Text
-        
-        recalledCount := this.controls["RecalledCount"].Text
-        recalledCertainty := this.controls["RecalledCertainty"].Text
-        
-        if (recalledCount == "") {
-            recalledCount := "0"
-        } else {
-            recalledCount := String(Integer(recalledCount))
-        }
-        
-        if (recalledCertainty == "") {
-            recalledCertainty := "00"
-        } else {
-            num := Integer(recalledCertainty)
-            recalledCertainty := (num < 10) ? "0" . String(num) : String(num)
-        }
-        
-        recalled := recalledCount . recalledCertainty
-        
-        vq := "V>"
-        for i in [1, 2, 3, 4, 5] {
-            if (this.controls["VQ" . i].Value) {
-                vq := "V" . i
+
+    static UpdateParentChecks(childID) {
+        parentID := this.fileTree.GetParent(childID)
+        if !parentID
+            return
+            
+        anyChecked := false
+        siblingID := this.fileTree.GetChild(parentID)
+        while siblingID {
+            if this.fileTree.Get(siblingID, "Checked") {
+                anyChecked := true
                 break
             }
+            siblingID := this.fileTree.GetNext(siblingID)
         }
         
-        rq := "R>"
-        for i in [0, 1, 2, 3] {
-            if (this.controls["RQ" . i].Value) {
-                rq := "R" . i
-                break
-            }
-        }
-        
-        fragmentStr := ""
-        for i, fragment in this.fragmentList {
-            if (i > 1) {
-                fragmentStr .= " "
-            }
-            fragmentStr .= fragment
-        }
-        
-        fragmentSection := (fragmentStr == "") ? "F " : "F " . fragmentStr
-        
-        output := dnFormatted . " " . dateTime . " " . recalled . " " . vq . " " . rq . " " . fragmentSection
-        
-        this.controls["OutputLine"].Text := output
-    }
-    
-    static ClearAllSCM() {
-        this.controls["Dn"].Text := ""
-        this.controls["RecalledCount"].Text := ""
-        this.controls["RecalledCertainty"].Text := ""
-        this.controls["FragmentRole"].Choose(1)
-        this.controls["FragmentCount"].Text := ""
-        this.controls["FragmentCount"].Enabled := true
-        this.controls["FragmentX"].Value := 0
-        this.controls["FragmentX"].Enabled := true
-        
-        for i in [1, 2, 3, 4, 5] {
-            this.controls["VQ" . i].Value := 0
-        }
-        this.controls["VQ3"].Value := 1
-        
-        for i in [0, 1, 2, 3] {
-            this.controls["RQ" . i].Value := 0
-        }
-        this.controls["RQ1"].Value := 1
-        
-        this.controls["OutputLine"].Text := ""
-        
-        this.fragmentList := []
-        this.controls["FragmentList"].Delete()
-        
-        this.scmCompleted := false
-        
-        this.UpdateDateTime()
-        this.GenerateSCMEncoding()
-    }
-    static previousState := Map()
-    static previousDisabled := Map()
-    static lastPressed := ""
-    static nowPressed := ""
-    static HandleMetacognition(selected) {
-        this.nowPressed := selected
-        
-        if (this.lastPressed == this.nowPressed && this.controls[selected].Value == 0) {
-            this.RestorePreviousState()
-            this.lastPressed := ""
-            this.nowPressed := ""
-            this.GenerateSCLEncoding()
-            return
-        }
-        
-        if (this.lastPressed != this.nowPressed) {
-            this.SaveToArray()
-        }
-        
-        for key in ["M1", "M2", "MX"] {
-            if (key != selected) {
-                this.controls[key].Value := 0
-            }
-        }
-        
-        this.lastPressed := this.nowPressed
-        this.ApplySCLRules()
-        this.GenerateSCLEncoding()
+        this.fileTree.Modify(parentID, anyChecked ? "Check" : "-Check")
+        this.UpdateParentChecks(parentID)
     }
 
-    static HandleCognition() {
-        this.nowPressed := "C"
-        
-        if (this.lastPressed == this.nowPressed && this.controls["C"].Value == 0) {
-            this.RestorePreviousState()
-            this.lastPressed := ""
-            this.nowPressed := ""
-            this.GenerateSCLEncoding()
-            return
-        }
-        
-        if (this.lastPressed != this.nowPressed) {
-            this.SaveToArray()
-        }
-        
-        this.lastPressed := this.nowPressed
-        this.ApplySCLRules()
-        this.GenerateSCLEncoding()
-    }
-
-    static HandleControl(selected) {
-        this.nowPressed := selected
-        
-        if (this.lastPressed == this.nowPressed && this.controls[selected].Value == 0) {
-            this.RestorePreviousState()
-            this.lastPressed := ""
-            this.nowPressed := ""
-            this.GenerateSCLEncoding()
-            return
-        }
-        
-        if (this.lastPressed != this.nowPressed) {
-            this.SaveToArray()
-        }
-        
-        for key in ["E", "N", "CX"] {
-            if (key != selected) {
-                this.controls[key].Value := 0
-            }
-        }
-        
-        this.lastPressed := this.nowPressed
-        this.ApplySCLRules()
-        this.GenerateSCLEncoding()
-    }
-
-    static HandleStability(selected) {
-        this.nowPressed := selected
-        
-        if (this.lastPressed == this.nowPressed && this.controls[selected].Value == 0) {
-            this.RestorePreviousState()
-            this.lastPressed := ""
-            this.nowPressed := ""
-            this.GenerateSCLEncoding()
-            return
-        }
-        
-        if (this.lastPressed != this.nowPressed) {
-            this.SaveToArray()
-        }
-        
-        for key in ["S1", "S2", "SX"] {
-            if (key != selected) {
-                this.controls[key].Value := 0
-            }
-        }
-        
-        this.lastPressed := this.nowPressed
-        this.ApplySCLRules()
-        this.GenerateSCLEncoding()
-    }
-
-    static HandleLucidityType(selected) {
-        this.nowPressed := selected
-        
-        if (this.lastPressed == this.nowPressed && this.controls[selected].Value == 0) {
-            this.RestorePreviousState()
-            this.lastPressed := ""
-            this.nowPressed := ""
-            this.GenerateSCLEncoding()
-            return
-        }
-        
-        if (this.lastPressed != this.nowPressed) {
-            this.SaveToArray()
-        }
-        
-        for key in ["F", "T", "U", "LX"] {
-            if (key != selected) {
-                this.controls[key].Value := 0
-            }
-        }
-        
-        this.lastPressed := this.nowPressed
-        this.ApplySCLRules()
-        this.GenerateSCLEncoding()
-    }
-
-    static HandleLucidityBoundary(selected) {
-        this.nowPressed := selected
-        
-        if (this.lastPressed == this.nowPressed && this.controls[selected].Value == 0) {
-            this.RestorePreviousState()
-            this.lastPressed := ""
-            this.nowPressed := ""
-            this.GenerateSCLEncoding()
-            return
-        }
-        
-        if (this.lastPressed != this.nowPressed) {
-            this.SaveToArray()
-        }
-        
-        for key in ["B", "BN", "BX"] {
-            if (key != selected) {
-                this.controls[key].Value := 0
-            }
-        }
-        
-        this.lastPressed := this.nowPressed
-        this.ApplySCLRules()
-        this.GenerateSCLEncoding()
-    }
-
-
-    static SaveToArray() {
-        this.previousState := Map()
-        this.previousDisabled := Map()
-        for key in ["M1", "M2", "MX", "C", "E", "N", "CX", "S1", "S2", "SX", "F", "T", "U", "LX", "B", "BN", "BX"] {
-            this.previousState[key] := this.controls[key].Value
-            this.previousDisabled[key] := !this.controls[key].Enabled
-        }
-    }
-    static RestorePreviousState() {
-        this.EnableAllControls()
-        
-        for key in ["M1", "M2", "MX", "C", "E", "N", "CX", "S1", "S2", "SX", "F", "T", "U", "LX", "B", "BN", "BX"] {
-            if (this.previousState.Has(key)) {
-                this.controls[key].Value := this.previousState[key]
-            }
-        }
-        
-        for key in ["M1", "M2", "MX", "C", "E", "N", "CX", "S1", "S2", "SX", "F", "T", "U", "LX", "B", "BN", "BX"] {
-            if (this.previousDisabled.Has(key) && this.previousDisabled[key]) {
-                this.controls[key].Enabled := false
-            }
-        }
-        
-        this.controls[this.nowPressed].Value := 0
-        this.previousState := Map()
-        this.previousDisabled := Map()
-    }
-
-    static ApplySCLRules() {
-        this.EnableAllControls()
-        
-        if (this.controls["MX"].Value) {
-            this.controls["C"].Value := 1
-            this.controls["M1"].Value := 0
-            this.controls["M2"].Value := 0
-            this.DisableControls(["M1", "M2"])
-        }
-        
-        if (this.controls["B"].Value || this.controls["BN"].Value) {
-            this.controls["C"].Value := 1
-            this.controls["MX"].Value := 1
-            this.controls["M1"].Value := 0
-            this.controls["M2"].Value := 0
-            this.controls["CX"].Value := 1
-            this.controls["E"].Value := 0
-            this.controls["N"].Value := 0
-            this.controls["SX"].Value := 1
-            this.controls["BX"].Value := 0
-            this.controls["S1"].Value := 0
-            this.controls["S2"].Value := 0
-            this.controls["LX"].Value := 1
-            this.controls["F"].Value := 0
-            this.controls["T"].Value := 0
-            this.controls["U"].Value := 0
-            
-            this.DisableControls(["M1", "M2", "E", "N", "S1", "S2", "F", "T","BX", "U"])
-        }
-        if (this.controls["BN"].Value) {
-            this.controls["B"].Value := 0
-            this.DisableControls(["B"])
-        }
-        if (this.controls["BX"].Value) {
-            this.controls["B"].Value := 0
-            this.controls["BN"].Value := 0
-            this.controls["CX"].Value := 0
-            this.controls["SX"].Value := 0
-            this.controls["LX"].Value := 0
-            this.DisableControls(["BN","B","CX","SX","LX"])
-        }
-        if (this.controls["C"].Value) {
-            this.controls["M1"].Value := 0
-            this.controls["M2"].Value := 0 
-            this.controls["MX"].Value := 1
-            this.DisableControls(["M1", "M2"])
-        }
-        
-        if (this.controls["E"].Value || this.controls["N"].Value) {
-            this.controls["SX"].Value := 0
-            this.DisableControls(["SX"])
-        }
-        
-        if (this.controls["F"].Value || this.controls["T"].Value || this.controls["U"].Value) {
-            this.controls["B"].Value := 0
-            this.controls["BN"].Value := 0
-            this.controls["BX"].Value := 1
-            this.DisableControls(["B", "BN"])
-        }
-        
-        if (this.controls["S1"].Value || this.controls["S2"].Value || this.controls["F"].Value || this.controls["T"].Value || this.controls["U"].Value || this.controls["E"].Value || this.controls["N"].Value || this.controls["M1"].Value || this.controls["M2"].Value) {
-            this.controls["B"].Value := 0
-            this.controls["BN"].Value := 0
-            this.controls["BX"].Value := 1
-            this.DisableControls(["B", "BN"])
-        }
-        
-        if (this.controls["M1"].Value || this.controls["M2"].Value) {
-            this.controls["C"].Value := 0
-            this.DisableControls(["C"])
-        }
-
-        if (this.controls["S1"].Value || this.controls["S2"].Value) {
-            this.controls["CX"].Value := 0
-            this.DisableControls(["CX","SX"])
-        }
-
-        if (this.controls["M1"].Value || this.controls["M2"].Value) {
-            this.controls["MX"].Value := 0
-            this.DisableControls(["MX"])
-        }
-
-        if (this.controls["E"].Value || this.controls["N"].Value) {
-            this.controls["CX"].Value := 0
-            this.DisableControls(["CX"])
-        }
-
-        if (this.controls["LX"].Value) {
-            this.DisableControls(["F","T", "BX", "U"])
-        }
-        if (this.controls["F"].Value) {
-            this.DisableControls(["LX","T", "U"])
-        }
-        if (this.controls["T"].Value) {
-            this.DisableControls(["F","LX", "U"])
-        }
-        if (this.controls["U"].Value) {
-            this.DisableControls(["F","T", "LX"])
-        }
-        
-        if (this.controls["E"].Value || this.controls["N"].Value || this.controls["S1"].Value || this.controls["S2"].Value) {
-            this.controls["LX"].Value := 0
-            this.DisableControls(["LX"])
-        }
-        
-        if (this.controls["CX"].Value || this.controls["SX"].Value) {
-            this.controls["E"].Value := 0
-            this.controls["N"].Value := 0
-            this.controls["S1"].Value := 0
-            this.controls["S2"].Value := 0
-            this.controls["SX"].Value := 1
-            this.controls["F"].Value := 0
-            this.controls["T"].Value := 0
-            this.controls["U"].Value := 0
-            this.controls["LX"].Value := 1
-            this.DisableControls(["E", "N", "S1", "S2", "F", "T", "U"])
-        }
-    }
-    static EnableAllControls() {
-        for key in ["M1", "M2", "MX", "C", "E", "N", "CX", "S1", "S2", "SX", "F", "T", "U", "LX", "B", "BN", "BX"] {
-            this.controls[key].Enabled := true
-        }
-    }
-    
-    static DisableControls(controlList) {
-        for key in controlList {
-            this.controls[key].Enabled := false
-        }
-    }
-    
-    static AddRealityTest() {
-        testType := this.controls["TestType"].Text
-        testIndex := this.realityTests.Length + 1
-        
-        if (testIndex <= 14) {
-            this.realityTests.Push(testType)
-            this.UpdateTestList()
-            this.GenerateSCLEncoding()
-        } else {
-            MsgBox("Max. 14 entries", "Error")
-        }
-    }
-    
-    static RemoveRealityTest() {
-        selected := this.controls["TestList"].Value
-        if (selected > 0 && selected <= this.realityTests.Length) {
-            this.realityTests.RemoveAt(selected)
-            this.UpdateTestList()
-            this.GenerateSCLEncoding()
-        }
-    }
-    
-    static UpdateTestList() {
-        this.controls["TestList"].Delete()
-        for i, test in this.realityTests {
-            this.controls["TestList"].Add([i . "R" . SubStr(test, 1, 1)])
-        }
-    }
-    
-    static GenerateSCLEncoding() {
-        row1 := this.GenerateRow1()
-        row2 := this.GenerateRow2()
-        checksum := this.CalculateChecksum(row1)
-        
-        this.controls["Output1"].Text := row1 . checksum
-        this.controls["Output2"].Text := row2
-    }
-    
-    static GenerateRow1() {
+    static UpdateOutput() {
         result := ""
-        
-        result .= "M>"
-        if (this.controls["M1"].Value) {
-            result .= "1"
-        } else if (this.controls["M2"].Value) {
-            result .= "2"
-        } else {
-            result .= "X"
-        }
-        
-        result .= ">>>>"
-        
-        if (this.controls["C"].Value && this.controls["MX"].Value) {
-            result .= "C"
-        } else {
-            result .= "X"
-        }
-        
-        if (this.controls["E"].Value) {
-            result .= "E"
-        } else if (this.controls["N"].Value) {
-            result .= "N"
-        } else {
-            result .= "X"
-        }
-        
-        result .= "S>"
-        if (this.controls["S1"].Value) {
-            result .= "1"
-        } else if (this.controls["S2"].Value) {
-            result .= "2"
-        } else {
-            result .= "X"
-        }
-        
-        result .= ">"
-        
-        noteText := StrUpper(this.controls["Note"].Text)
-        noteText := RegExReplace(noteText, "[^A-Z0-9 ]", "")
-        noteText := RegExReplace(noteText, " ", ">")
-        noteText := RegExReplace(noteText, " ", ">")
-        noteText := SubStr(noteText, 1, 28)
-        
-        while (StrLen(noteText) < 28) {
-            noteText .= ">"
-        }
-        result .= noteText
-        
-        result .= ">"
-        
-        if (this.controls["F"].Value) {
-            result .= "F"
-        } else if (this.controls["T"].Value) {
-            result .= "T"
-        } else if (this.controls["U"].Value) {
-            result .= "U"
-        } else if (this.controls["B"].Value || this.controls["BN"].Value) {
-            result .= "X"
-        } else {
-            result .= ">"
-        }
-        
-        result .= ">>"
-        
-        if (this.controls["B"].Value) {
-            result .= "B"
-        } else if (this.controls["BN"].Value) {
-            result .= "N"
-        } else {
-            result .= ">"
-        }
-        
-        result .= ">>"
-        
-        return result
-    }
-    
-    static GenerateRow2() {
-        result := ""
-        
-        for i, test in this.realityTests {
-            result .= i . "R" . SubStr(test, 1, 1)
-        }
-        
-        while (StrLen(result) < 49) {
-            result .= ">"
-        }
-        
-        return SubStr(result, 1, 49)
-    }
-    
-    static CalculateChecksum(row1) {
-        sum := 0
-        
-        for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48] {
-            if (i <= StrLen(row1)) {
-                sum += Ord(SubStr(row1, i, 1))
-            }
-        }
-        
-        while (sum > 9) {
-            sum := Mod(sum, 6)
-        }
-        
-        return String(sum)
-    }
-    
-    static ClearAllSCL() {
-        this.EnableAllControls()
-        
-        this.controls["M1"].Value := 0
-        this.controls["M2"].Value := 0
-        this.controls["MX"].Value := 0
-        this.controls["C"].Value := 0
-        this.controls["E"].Value := 0
-        this.controls["N"].Value := 0
-        this.controls["CX"].Value := 0
-        this.controls["S1"].Value := 0
-        this.controls["S2"].Value := 0
-        this.controls["SX"].Value := 0
-        this.controls["F"].Value := 0
-        this.controls["T"].Value := 0
-        this.controls["U"].Value := 0
-        this.controls["LX"].Value := 0
-        this.controls["B"].Value := 0
-        this.controls["BN"].Value := 0
-        this.controls["BX"].Value := 0
-        
-        this.controls["Note"].Text := ""
-        this.controls["Output1"].Text := ""
-        this.controls["Output2"].Text := ""
-        
-        this.realityTests := []
-        this.controls["TestList"].Delete()
-        
-        this.sclCompleted := false
-        
-        this.GenerateSCLEncoding()
-    }
-    
-    static EngraveFromSCM() {
-        scmOutput := this.controls["OutputLine"].Text
-        
-        this.scmCompleted := true
-        
-        this.controls["DeployOutput1"].Text := scmOutput
-        
-        this.controls["DeployOutput2"].Text := ""
-        this.controls["DeployOutput3"].Text := ""
-        
-        this.controls["TabControl"].Choose(2)
-    }
-    
-    static EngraveFromSCL() {
-        sclRow1 := this.controls["Output1"].Text
-        sclRow2 := this.controls["Output2"].Text
-        
-        this.sclCompleted := true
-        
-        this.controls["DeployOutput2"].Text := sclRow1
-        this.controls["DeployOutput3"].Text := sclRow2
-        
-        this.controls["TabControl"].Choose(3)
-    }
-    
-    static DeployFinal() {
-        output := this.controls["DeployOutput1"].Text
-        row1 := this.controls["DeployOutput2"].Text
-        row2 := this.controls["DeployOutput3"].Text
-        
-        if (output != "" || row1 != "" || row2 != "") {
-            this.mainGui.Hide()
-            Sleep(100)
-            
-            if (output != "") {
-                Send(output)
-            }
-            if (row1 != "") {
-                Send("+{Enter}")
-                Send(row1)
-            }
-            if (row2 != "") {
-                Sleep(100)
-                Send("+{Enter}")
-                Send(row2)
-            }
-            
-            this.mainGui.Destroy()
-        }
-    }
-}
-
-UnifiedDreamEncoder.Init()
-
-
-ColorPicker := ""
-
-::\shex::
-{
-    global ColorPicker
-    if (!ColorPicker) {
-        ColorPicker := ColorPickerClass()
-    }
-    ColorPicker.Show()
-}
-
-
-class ColorPickerClass {
-    
-    GUI := ""
-    MainRect := ""
-    HueStrip := ""
-    DisplayField := ""
-    MainPointer := ""
-    HuePointer := ""
-    MainBitmap := ""
-    HueBitmap := ""
-    CurrentHue := 0          
-    CurrentSat := 100        
-    CurrentBright := 100     
-    IsDragging := false
-    DragTarget := ""
-    
-    __New() {
-        this.CurrentHue := 0
-        this.CurrentSat := 100
-        this.CurrentBright := 100
-        this.IsDragging := false
-        this.DragTarget := ""
-    }
-    
-    Show() {
-        this.GUI := Gui("+Resize +MinSize450x350", "Color Picker")
-        this.GUI.MarginX := 10
-        this.GUI.MarginY := 10
-        this.GUI.OnEvent("Close", (*) => this.Hide())
-        this.GUI.OnEvent("Escape", (*) => this.Hide())
-        
-        this.DisplayField := this.GUI.Add("Edit", "x10 y10 w410 h35 ReadOnly Center Background0xFFFFFF")
-        this.DisplayField.SetFont("s16 Bold")
-        
-        this.MainRect := this.GUI.Add("Picture", "x10 y55 w360 h200 Border")
-        this.MainRect.OnEvent("Click", (ctrl, info) => this.MainRect_Click(ctrl, info))
-        
-        this.MainPointer := this.GUI.Add("Text", "x10 y55 w8 h8 Center BackgroundWhite Border", "")
-        
-        this.HueStrip := this.GUI.Add("Picture", "x380 y55 w30 h200 Border")
-        this.HueStrip.OnEvent("Click", (ctrl, info) => this.HueStrip_Click(ctrl, info))
-        
-        this.HuePointer := this.GUI.Add("Text", "x380 y55 w30 h2 Center BackgroundBlack", "")
-        
-        SendNBtn := this.GUI.Add("Button", "x125 y270 w100 h35", "SEND N")
-        SendNBtn.OnEvent("Click", (*) => this.SendNormal())
-        
-        SendFBtn := this.GUI.Add("Button", "x235 y270 w100 h35", "SEND F")
-        SendFBtn.OnEvent("Click", (*) => this.SendFormatted())
-        
-        this.CreateHueBitmap()
-        this.CreateMainBitmap()
-        this.UpdateDisplayHex()
-        this.UpdatePointers()
-        
-        this.GUI.Show("w450 h350")
-        this.CenterWindow()
-        
-        SetTimer(() => this.CheckMouseDrag(), 5)
-    }
-    
-    Hide() {
-        if (this.GUI) {
-            SetTimer(() => this.CheckMouseDrag(), 0)
-            this.CleanupBitmaps()
-            this.GUI.Destroy()
-            this.GUI := ""
-        }
-    }
-    
-    CenterWindow() {
-        this.GUI.GetPos(,, &Width, &Height)
-        NewX := (A_ScreenWidth - Width) / 2
-        NewY := (A_ScreenHeight - Height) / 2
-        this.GUI.Move(NewX, NewY)
-    }
-    
-    RGBtoBGR(RGB) {
-        R := (RGB >> 16) & 0xFF
-        G := (RGB >> 8) & 0xFF
-        B := RGB & 0xFF
-        
-        return (B << 16) | (G << 8) | R
-    }
-    HSVtoRGB(H, S, V) {
-        
-        H := Mod(H, 360) / 360  
-        S := S / 100            
-        V := V / 100            
-        
-        
-        C := V * S
-        X := C * (1 - Abs(Mod(H * 6, 2) - 1))
-        M := V - C
-        
-        if (H < 1/6) {          
-            R := C, G := X, B := 0
-        } else if (H < 2/6) {   
-            R := X, G := C, B := 0
-        } else if (H < 3/6) {   
-            R := 0, G := C, B := X
-        } else if (H < 4/6) {   
-            R := 0, G := X, B := C
-        } else if (H < 5/6) {   
-            R := X, G := 0, B := C
-        } else {                
-            R := C, G := 0, B := X
-        }
-        
-        
-        R := Round((R + M) * 255)
-        G := Round((G + M) * 255)
-        B := Round((B + M) * 255)
-        
-        
-        return (R << 16) | (G << 8) | B
-    }
-    
-    RGBtoHex(RGB) {
-        R := (RGB >> 16) & 0xFF
-        G := (RGB >> 8) & 0xFF
-        B := RGB & 0xFF
-        return Format("#{:02X}{:02X}{:02X}", R, G, B)
-    }
-    
-    GetRGBComponents(RGB) {
-        R := (RGB >> 16) & 0xFF
-        G := (RGB >> 8) & 0xFF
-        B := RGB & 0xFF
-        return {R: R, G: G, B: B}
-    }
-    
-    CreateBitmap(Width, Height) {
-        hDC := DllCall("GetDC", "Ptr", 0, "Ptr")
-        hMemDC := DllCall("CreateCompatibleDC", "Ptr", hDC, "Ptr")
-        hBitmap := DllCall("CreateCompatibleBitmap", "Ptr", hDC, "Int", Width, "Int", Height, "Ptr")
-        DllCall("SelectObject", "Ptr", hMemDC, "Ptr", hBitmap, "Ptr")
-        DllCall("ReleaseDC", "Ptr", 0, "Ptr", hDC)
-        DllCall("DeleteDC", "Ptr", hMemDC)
-        return hBitmap
-    }
-    
-    CreateHueBitmap() {
-        this.HueBitmap := this.CreateBitmap(30, 200)
-        
-        hDC := DllCall("GetDC", "Ptr", 0, "Ptr")
-        hMemDC := DllCall("CreateCompatibleDC", "Ptr", hDC, "Ptr")
-        hOldBitmap := DllCall("SelectObject", "Ptr", hMemDC, "Ptr", this.HueBitmap, "Ptr")
-        
-        Loop 200 {
-            Y := A_Index - 1
-            Hue := (Y / 199) * 360  
-            
-            RGB := this.HSVtoRGB(Hue, 100, 100)
-            BGR := this.RGBtoBGR(RGB)
-
-            hBrush := DllCall("CreateSolidBrush", "UInt", BGR, "Ptr")
-            Rect := Buffer(16, 0)
-            NumPut("Int", 0, Rect, 0)       
-            NumPut("Int", Y, Rect, 4)       
-            NumPut("Int", 30, Rect, 8)      
-            NumPut("Int", Y+1, Rect, 12)    
-            DllCall("FillRect", "Ptr", hMemDC, "Ptr", Rect, "Ptr", hBrush)
-            DllCall("DeleteObject", "Ptr", hBrush)
-        }
-        
-        DllCall("SelectObject", "Ptr", hMemDC, "Ptr", hOldBitmap, "Ptr")
-        DllCall("DeleteDC", "Ptr", hMemDC)
-        DllCall("ReleaseDC", "Ptr", 0, "Ptr", hDC)
-        
-        this.HueStrip.Value := "HBITMAP:" . this.HueBitmap
-    }
-    
-    CreateMainBitmap() {
-        this.MainBitmap := this.CreateBitmap(360, 200)
-        
-        hDC := DllCall("GetDC", "Ptr", 0, "Ptr")
-        hMemDC := DllCall("CreateCompatibleDC", "Ptr", hDC, "Ptr")
-        hOldBitmap := DllCall("SelectObject", "Ptr", hMemDC, "Ptr", this.MainBitmap, "Ptr")
-        
-        Loop 200 {
-            Y := A_Index - 1
-            Brightness := 100 - ((Y / 199) * 100)  
-            
-            Loop 360 {
-                X := A_Index - 1
-                Saturation := (X / 359) * 100  
-                RGB := this.HSVtoRGB(this.CurrentHue, Saturation, Brightness)
-                BGR := this.RGBtoBGR(RGB)
+        for fileObj in this.fileList {
+            if fileObj.isChecked {
+                displayPath := fileObj.displayPath
+                fullPath := fileObj.path
                 
-                DllCall("SetPixel", "Ptr", hMemDC, "Int", X, "Int", Y, "UInt", BGR)
-            }
-        }
-        
-        DllCall("SelectObject", "Ptr", hMemDC, "Ptr", hOldBitmap, "Ptr")
-        DllCall("DeleteDC", "Ptr", hMemDC)
-        DllCall("ReleaseDC", "Ptr", 0, "Ptr", hDC)
-        
-        this.MainRect.Value := "HBITMAP:" . this.MainBitmap
-    }
-    
-    UpdateDisplayHex() {
-        RGB := this.HSVtoRGB(this.CurrentHue, this.CurrentSat, this.CurrentBright)
-        HexColor := this.RGBtoHex(RGB)
-        ColorBlocks := "██████"
-        
-        DisplayText := "HEX " . HexColor . " " . ColorBlocks
-        this.DisplayField.Text := DisplayText
-        
-        
-        this.DisplayField.SetFont("c" . Format("0x{:06X}", RGB))
-    }
-    
-    UpdatePointers() {
-        
-        X := Round((this.CurrentSat / 100) * 359) + 10 - 4
-        Y := Round(((100 - this.CurrentBright) / 100) * 199) + 55 - 4
-        this.MainPointer.Move(X, Y)
-        
-        
-        HueY := Round((this.CurrentHue / 360) * 199) + 55 - 1
-        this.HuePointer.Move(380, HueY)
-    }
-    
-    MainRect_Click(GuiCtrlObj, Info) {
-        CoordMode("Mouse", "Client")
-        MouseGetPos(&X, &Y)
-        this.MainRect.GetPos(&CtrlX, &CtrlY)
-        
-        RelX := Max(0, Min(359, X - CtrlX))
-        RelY := Max(0, Min(199, Y - CtrlY))
-        
-        this.CurrentSat := (RelX / 359) * 100
-        this.CurrentBright := 100 - ((RelY / 199) * 100)
-        
-        this.UpdateDisplayHex()
-        this.UpdatePointers()
-        
-        this.IsDragging := true
-        this.DragTarget := "Main"
-    }
-    
-    HueStrip_Click(GuiCtrlObj, Info) {
-        CoordMode("Mouse", "Client")
-        MouseGetPos(&X, &Y)
-        this.HueStrip.GetPos(&CtrlX, &CtrlY)
-        
-        RelY := Max(0, Min(199, Y - CtrlY))
-        this.CurrentHue := (RelY / 199) * 360
-        
-        this.CreateMainBitmap()
-        this.UpdateDisplayHex()
-        this.UpdatePointers()
-        
-        this.IsDragging := true
-        this.DragTarget := "Hue"
-    }
-    
-    CheckMouseDrag() {
-        if (!this.IsDragging || !this.GUI) {
-            return
-        }
-        
-        if (!GetKeyState("LButton", "P")) {
-            this.IsDragging := false
-            this.DragTarget := ""
-            return
-        }
-        
-        CoordMode("Mouse", "Client")
-        MouseGetPos(&X, &Y)
-        
-        if (this.DragTarget = "Main") {
-            this.MainRect.GetPos(&CtrlX, &CtrlY)
-            RelX := Max(0, Min(359, X - CtrlX))
-            RelY := Max(0, Min(199, Y - CtrlY))
-            
-            NewSat := (RelX / 359) * 100
-            NewBright := 100 - ((RelY / 199) * 100)
-            
-            if (Abs(NewSat - this.CurrentSat) > 0.1 || Abs(NewBright - this.CurrentBright) > 0.1) {
-                this.CurrentSat := NewSat
-                this.CurrentBright := NewBright
-                this.UpdateDisplayHex()
-                this.UpdatePointers()
-            }
-        }
-        else if (this.DragTarget = "Hue") {
-            this.HueStrip.GetPos(&CtrlX, &CtrlY)
-            RelY := Max(0, Min(199, Y - CtrlY))
-            NewHue := (RelY / 199) * 360
-            
-            if (Abs(NewHue - this.CurrentHue) > 0.5) {
-                this.CurrentHue := NewHue
-                this.CreateMainBitmap()
-                this.UpdateDisplayHex()
-                this.UpdatePointers()
-            }
-        }
-    }
-    
-    SendNormal() {
-        RGB := this.HSVtoRGB(this.CurrentHue, this.CurrentSat, this.CurrentBright)
-        HexColor := this.RGBtoHex(RGB)
-        ColorBlocks := "██████"
-        
-        this.Hide()
-        Sleep(50)
-        SendText("HEX " . HexColor . " " . ColorBlocks)
-    }
-    
-    SendFormatted() {
-        RGB := this.HSVtoRGB(this.CurrentHue, this.CurrentSat, this.CurrentBright)
-        HexColor := this.RGBtoHex(RGB)
-        ColorBlocks := "██████"
-        Components := this.GetRGBComponents(RGB)
-        
-        FormattedText := '<span style="color: rgb(' . Components.R . ',' . Components.G . ',' . Components.B . ')">HEX ' . HexColor . ' ' . ColorBlocks . '</span>'
-        this.Hide()
-        Sleep(50)
-        SendText(FormattedText)
-    }
-    
-    CleanupBitmaps() {
-        if (this.MainBitmap) {
-            DllCall("DeleteObject", "Ptr", this.MainBitmap)
-            this.MainBitmap := ""
-        }
-        if (this.HueBitmap) {
-            DllCall("DeleteObject", "Ptr", this.HueBitmap)
-            this.HueBitmap := ""
-        }
-    }
-}
-
-~Esc::
-{
-    global ColorPicker
-    if (ColorPicker && ColorPicker.GUI) {
-        ColorPicker.Hide()
-    }
-}
-
-OnExit(CleanupOnExit)
-
-CleanupOnExit(*) {
-    global ColorPicker
-    if (ColorPicker) {
-        ColorPicker.CleanupBitmaps()
-    }
-}
-
-class x7f9a2 {
-    __New() {
-        this.b4e8c := Gui("+Resize", "D.O.A.R. - Dead on Arrival Report")
-        this.b4e8c.OnEvent("Close", (*) => this.m9d3f())
-        this.b4e8c.Move(, , 1723, 617)
-        this.k8h2n()
-        this.v3x1p()
-        this.t5m4j := this.b4e8c.Add("Tab3", "x10 y10 w1703 h597", ["INPUT", "PRINT FORM", "VIEW"])
-        this.t5m4j.OnEvent("Change", this.r2q8v.Bind(this))
-        this.t5m4j.UseTab(1)
-        this.w6y7u()
-        this.t5m4j.UseTab(2)
-        this.z1n5e()
-        this.t5m4j.UseTab(3)
-        this.v7k3m()
-        this.l4s9k()
-        Hotstring(":O?*:\prdoar", (*) => this.q8p2m())
-    }
-    m9d3f() {
-        c3l7x := MsgBox("Close the D.o.A.R. form ?`nAny Un‑saved datum will be lost.", "Confirm Close", "4")
-        if (c3l7x == "Yes") {
-            this.b4e8c.Destroy()
-            this.h7n8r := true
-        }
-    }
-    v7k3m() {
-        this.q2w8x := this.b4e8c.Add("ListView", "x20 y40 w300 h557 Grid", ["№", "Form №"])
-        this.q2w8x.OnEvent("ItemSelect", (*) => this.f5t9h())
-        
-        try {
-            this.r8j2s := this.b4e8c.Add("ActiveX", "x330 y40 w1373 h557", "Shell.Explorer")
-            this.m6k4p := true
-            
-            wb := this.r8j2s.Value
-            wb.Navigate("about:blank")
-            Sleep(500)
-            
-        } catch Error as err {
-            this.m6k4p := false
-            this.r8j2s := this.b4e8c.Add("Edit", "x330 y40 w1373 h557 VScroll ReadOnly")
-        }
-        
-        this.d9l1v()
-    }
-    d9l1v() {
-        this.q2w8x.Delete()
-        
-        try {
-            o6y2k := "E:\wwwwww\dosyâlar\dreams\doar.txt"
-            
-            if (!FileExist(o6y2k)) {
-                return
-            }
-            
-            z1r5v := FileRead(o6y2k, "UTF-8")
-            d4m9n := StrSplit(z1r5v, "`n")
-            
-            r8k3m := []
-            
-            for line in d4m9n {
-                line := Trim(line)
-                if (line == "") {
-                    continue
-                }
-                
-                y4w9k := this.c6k4w(line)
-                if (y4w9k != "") {
-                    r8k3m.Push({form_id: y4w9k, line: line})
-                }
-            }
-            
-            h3x7c := r8k3m.Length
-            loop r8k3m.Length {
-                item := r8k3m[r8k3m.Length - A_Index + 1]
-                this.q2w8x.Add(, h3x7c, item.form_id)
-                h3x7c--
-            }
-            
-        } catch Error as err {
-        }
-    }
-    
-    f5t9h() {
-        if (this.q2w8x.GetNext() == 0) {
-            return
-        }
-        
-        s8n2t := this.q2w8x.GetNext()
-        u7p3k := this.q2w8x.GetText(s8n2t, 2)
-        
-        try {
-            o6y2k := "E:\wwwwww\dosyâlar\dreams\doar.txt"
-            
-            if (!FileExist(o6y2k)) {
-                return
-            }
-            
-            z1r5v := FileRead(o6y2k, "UTF-8")
-            d4m9n := StrSplit(z1r5v, "`n")
-            
-            for lineData in d4m9n {
-                line := Trim(lineData)
-                if (line == "") {
-                    continue
-                }
-                
-                if (this.c6k4w(line) == u7p3k) {
-                    v2g6x := this.k4z8m(line)
-                    this.n8v5w(v2g6x)
-                    break
-                }
-            }
-            
-        } catch Error as err {
-        }
-    }
-    n8v5w(p5w9d) {
-        html := '<!DOCTYPE html>'
-        html .= '<html><head><meta charset="UTF-8"><title>D.O.A.R. Form</title></head>'
-        html .= '<body><style>#ga tr,td,table{padding:0;margin:0;font-family: Times New Roman, Times, serif;}table{width:100%;border-collapse:collapse;}</style>'
-        html .= '<table id="ga">'
-        html .= '<tr><td colspan="2" style="text-align:center;font-weight:bolder;font-size:16pt">DEAD on ARRIVAL REPORT</td></tr>'
-        html .= '<tr><td style="text-align:left;">№ : ' . (p5w9d.HasOwnProp("doar_form_number") ? p5w9d.doar_form_number : "") . '</td><td style="text-align:right;">Creation : ' . (p5w9d.HasOwnProp("creation_date") ? p5w9d.creation_date : "") . '</td></tr>'
-        html .= '<tr><td style="text-align:left;width:50%;">Eﬆ. On-set time : ' . (p5w9d.HasOwnProp("estimated_onset") ? p5w9d.estimated_onset : "") . '</td><td style="text-align:right;">Eﬆ. Wake time : ' . (p5w9d.HasOwnProp("estimated_wake") ? p5w9d.estimated_wake : "") . '</td></tr>'
-        html .= '</table>'
-        
-        html .= '<table><tr><td>"response_wrapper": { "state": ' . (p5w9d.HasOwnProp("state") ? p5w9d.state : "") . ', "message": "' . (p5w9d.HasOwnProp("message") ? p5w9d.message : "") . '", "result_completeness": "' . (p5w9d.HasOwnProp("completeness") ? p5w9d.completeness : "") . '"}</td></tr></table>'
-        
-        html .= '<table id="ga" style="border:1px solid black;">'
-        html .= '<tr style="height:50%;"><td style="width:50%;vertical-align:top;">'
-        
-        html .= '<table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">A - DREAM INFORMATION</td></tr>'
-        html .= '<tr><td style="width:50%;">Dated : ' . (p5w9d.HasOwnProp("dated") ? p5w9d.dated : "") . '</td><td style="width:50%;">Wake time : ' . (p5w9d.HasOwnProp("wake_time") ? p5w9d.wake_time : "") . '</td></tr>'
-        html .= '<tr><td style="width:50%;">Eﬆ. On‑set start : ' . (p5w9d.HasOwnProp("onset_start") ? p5w9d.onset_start : "") . '</td><td style="width:50%;">Eﬆ. On‑set end : ' . (p5w9d.HasOwnProp("onset_end") ? p5w9d.onset_end : "") . '</td></tr>'
-        html .= '<tr><td style="width:50%;">ʆcraps exist ? ' . (p5w9d.HasOwnProp("scraps_exist") ? p5w9d.scraps_exist : "") . '</td><td style="width:50%;">Comfort dr. sleep : ' . (p5w9d.HasOwnProp("comfort") ? p5w9d.comfort : "") . '</td></tr>'
-        html .= '<tr><td style="width:50%;">Fruﬆration : ' . (p5w9d.HasOwnProp("frustration") ? p5w9d.frustration : "") . '</td><td style="width:50%;">Almoﬆ remembered ? ' . (p5w9d.HasOwnProp("almost_had_it") ? p5w9d.almost_had_it : "") . '</td></tr>'
-        html .= '<tr><td style="width:50%;">Was It tangible ? ' . (p5w9d.HasOwnProp("could_feel_losing") ? p5w9d.could_feel_losing : "") . '</td><td style="width:50%;">ʆhowed eﬀort to maintain ? ' . (p5w9d.HasOwnProp("effort_to_maintain") ? p5w9d.effort_to_maintain : "") . '</td></tr>'
-        html .= '</table>'
-        
-        html .= '<table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">D - A extended</td></tr>'
-        html .= '<tr><td style="width:50%;">ʆleep location : ' . (p5w9d.HasOwnProp("sleep_location") ? p5w9d.sleep_location : "") . '</td><td style="width:50%;">Noise claſsiﬁcation : ' . (p5w9d.HasOwnProp("noise_level") ? p5w9d.noise_level : "") . '</td></tr>'
-        html .= '<tr><td style="width:50%;">Environmental zone : ' . (p5w9d.HasOwnProp("environment_type") ? p5w9d.environment_type : "") . '</td><td style="width:50%;">Acceß type : ' . (p5w9d.HasOwnProp("access_type") ? p5w9d.access_type : "") . '</td></tr>'
-        html .= '</table>'
-        
-        html .= '<table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">B - FILER INFORMATION</td></tr>'
-        html .= '<tr><td style="width:50%;">Filer name : ' . (p5w9d.HasOwnProp("system") ? p5w9d.system : "") . '</td><td style="width:50%;">Filing date : ' . (p5w9d.HasOwnProp("filing_date") ? p5w9d.filing_date : "") . '</td></tr>'
-        html .= '<tr><td style="width:100%;text-align:center;" colspan="2">' . (p5w9d.HasOwnProp("checksum") ? p5w9d.checksum : "") . '</td></tr>'
-        html .= '</table>'
-        
-        html .= '</td><td style="width:50%;vertical-align:top;height:100%;position:relative;">'
-        
-        html .= '<table style="border:1px solid black;position:absolute;top:0;height:50%;width:100%;"><tr><td colspan="2" style="font-weight:bolder;">V - TYPE OF DEATH</td></tr>'
-        html .= '<tr><td style="width:50%;">With reasons ' . (p5w9d.HasOwnProp("with_reasons") ? p5w9d.with_reasons : "") . '</td><td style="width:50%;">With reasons ( inveﬆigation req. ) ' . (p5w9d.HasOwnProp("with_reasons_investment") ? p5w9d.with_reasons_investment : "") . ' - G</td></tr>'
-        html .= '<tr><td style="width:50%;">Without reasons ' . (p5w9d.HasOwnProp("without_reasons") ? p5w9d.without_reasons : "") . '</td><td style="width:50%;">Without reasons ( inveﬆigation req. ) ' . (p5w9d.HasOwnProp("without_reasons_investment") ? p5w9d.without_reasons_investment : "") . ' - G</td></tr>'
-        html .= '</table>'
-        
-        html .= '<table style="border:1px solid black;position:absolute;top:50%;height:50%;width:100%;"><tr><td colspan="2" style="font-weight:bolder;">G - Investigation</td></tr>'
-        html .= '<tr><td style="width:100%;">1. Was It inveﬆigated ? ' . (p5w9d.HasOwnProp("was_investigated") ? p5w9d.was_investigated : "") . '</td></tr>'
-        html .= '<tr><td style="width:100%;">2. Is an inveﬆigation required ? ' . (p5w9d.HasOwnProp("investigation_required") ? p5w9d.investigation_required : "") . '</td></tr>'
-        html .= '<tr><td style="width:100%;">3. ʆcene integrity ? ' . (p5w9d.HasOwnProp("scene_integrity") ? p5w9d.scene_integrity : "") . '</td></tr>'
-        html .= '<tr><td style="width:100%;">4. Witneß ꜹailable ? ' . (p5w9d.HasOwnProp("witness_available") ? p5w9d.witness_available : "") . '</td></tr>'
-        html .= '</table>'
-        
-        html .= '</td></tr>'
-        
-        html .= '<tr><td colspan="2"><table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">E - Reason( s ) for death</td></tr>'
-        html .= '<tr><td style="width:50%;"><table><tr><td>' . (p5w9d.HasOwnProp("primary_cause") ? p5w9d.primary_cause : "") . (p5w9d.HasOwnProp("primary_other") && p5w9d.primary_other ? " ( " . p5w9d.primary_other . " )" : "") . '</td></tr><tr><td>⮴ secondary to ' . (p5w9d.HasOwnProp("secondary_cause") ? p5w9d.secondary_cause : "") . (p5w9d.HasOwnProp("secondary_other") && p5w9d.secondary_other ? " ( " . p5w9d.secondary_other . " )" : "") . '</td></tr><tr><td>⮴ tertiary to ' . (p5w9d.HasOwnProp("tertiary_cause") ? p5w9d.tertiary_cause : "") . (p5w9d.HasOwnProp("tertiary_other") && p5w9d.tertiary_other ? " ( " . p5w9d.tertiary_other . " )" : "") . '</td></tr><tr><td>⮴ quaternary to ' . (p5w9d.HasOwnProp("quaternary_cause") ? p5w9d.quaternary_cause : "") . (p5w9d.HasOwnProp("quaternary_other") && p5w9d.quaternary_other ? " ( " . p5w9d.quaternary_other . " )" : "") . '</td></tr></table></td>'
-        html .= '<td><table style="width:100%;"><tr><td><table style="width:100%;"><tr style="text-align:center;"><td>' . (p5w9d.HasOwnProp("primary_time") ? p5w9d.primary_time : "") . '</td></tr><tr style="text-align:center;"><td>' . (p5w9d.HasOwnProp("secondary_time") ? p5w9d.secondary_time : "") . '</td></tr><tr style="text-align:center;"><td>' . (p5w9d.HasOwnProp("tertiary_time") ? p5w9d.tertiary_time : "") . '</td></tr><tr style="text-align:center;"><td>' . (p5w9d.HasOwnProp("quaternary_time") ? p5w9d.quaternary_time : "") . '</td></tr></table></td></tr></table></td></tr>'
-        html .= '</table></td></tr>'
-        
-        if (p5w9d.HasOwnProp("investigation_required") && p5w9d.investigation_required == "y") {
-            html .= '<tr><table style="border:1px solid black;">'
-            
-            html .= '<tr>'
-            html .= '<td colspan="1" style="font-weight:bolder;">Z - Inv. ext. ( when G 2 y )</td>'
-            html .= '<td style="width: 25%;">Im. analysis :' . (p5w9d.HasOwnProp("investigation_flag") && p5w9d.investigation_flag == "y" ? "☑" : "☐") . '</td>'
-            html .= '<td style="width: 25%;">Pr. level : ' . (p5w9d.HasOwnProp("priority_level") ? p5w9d.priority_level : "") . '</td>'
-            html .= '<td style="width: 25%;">Monitoring ' . (p5w9d.HasOwnProp("monitoring_required") && p5w9d.monitoring_required == "y" ? "☑" : "☐") . '</td>'
-            html .= '</tr>'
-            
-            html .= '<tr>'
-            html .= '<td style="vertical-align:top;width:25%">ʆcene documentation :<br>Immediate : ' . (p5w9d.HasOwnProp("immediate_notes") ? p5w9d.immediate_notes : "") . '<br>Environmental : ' . (p5w9d.HasOwnProp("environmental_changes") ? p5w9d.environmental_changes : "") . '<br>Equipment : ' . (p5w9d.HasOwnProp("equipment_status") ? p5w9d.equipment_status : "") . '<br>Evidence : ' . (p5w9d.HasOwnProp("physical_evidence") ? p5w9d.physical_evidence : "") . '</td>'
-            html .= '<td style="vertical-align:top;width:25%">Time‑line Re-conﬆruction :<br>Pre-failure : ' . (p5w9d.HasOwnProp("pre_failure_sequence") ? p5w9d.pre_failure_sequence : "") . '<br>Failure moment : ' . (p5w9d.HasOwnProp("failure_moment") ? p5w9d.failure_moment : "") . '<br>Post-failure : ' . (p5w9d.HasOwnProp("post_failure_actions") ? p5w9d.post_failure_actions : "") . '<br>Time‑line : ' . (p5w9d.HasOwnProp("estimated_timeline") ? p5w9d.estimated_timeline : "") . '</td>'
-            html .= '<td style="width:25%;vertical-align:top;">Witneſs information :<br><table><tr><td>reliability : ' . (p5w9d.HasOwnProp("reliability") ? p5w9d.reliability : "") . '</td><td>relationship : ' . (p5w9d.HasOwnProp("relationship") ? p5w9d.relationship : "") . '</td></tr><tr><td colspan="2">ﬆatement : ' . (p5w9d.HasOwnProp("statement") ? p5w9d.statement : "") . (p5w9d.HasOwnProp("timeline") && p5w9d.timeline ? " , " . p5w9d.timeline . " ago" : "") . '</td></tr></table></td>'
-            html .= '<td style="width:25%;vertical-align:top;">Pattern analysis :<br>Match : ' . (p5w9d.HasOwnProp("pattern_match") ? p5w9d.pattern_match : "") . '<br>Re-ocurring : ' . (p5w9d.HasOwnProp("recurring_elements") ? p5w9d.recurring_elements : "") . '<br>Anomaly : ' . (p5w9d.HasOwnProp("anomaly_detection") ? p5w9d.anomaly_detection : "") . '<br>Co‑relation : ' . (p5w9d.HasOwnProp("case_correlation") ? p5w9d.case_correlation : "") . '</td>'
-            html .= '</tr>'
-            
-            html .= '<tr><table style="border:1px solid black;">'
-            html .= '<tr><td style="width: 25%;">Photo : ' . (p5w9d.HasOwnProp("photo_documentation") && p5w9d.photo_documentation == "y" ? "☑" : "☐") . '</td><td style="width: 25%;">Audio : ' . (p5w9d.HasOwnProp("audio_evidence") && p5w9d.audio_evidence == "y" ? "☑" : "☐") . '</td><td colspan="2">Markers : ' . (p5w9d.HasOwnProp("markers") ? p5w9d.markers : "") . '</td></tr>'
-            html .= '<tr><td style="width: 25%;">Immediate ' . (p5w9d.HasOwnProp("immediate_actions") && p5w9d.immediate_actions ? "☑" : "☐") . '</td><td style="width: 25%;">Prevention ' . (p5w9d.HasOwnProp("prevention_measures") && p5w9d.prevention_measures ? "☑" : "☐") . '</td><td style="width: 50%;">Actions : ' . (p5w9d.HasOwnProp("immediate_actions") ? p5w9d.immediate_actions : "") . " | Tasks : " . (p5w9d.HasOwnProp("investigation_tasks") ? p5w9d.investigation_tasks : "") . " | " . (p5w9d.HasOwnProp("prevention_measures") ? p5w9d.prevention_measures : "") . '</td></tr>'
-            html .= '</table></tr>'
-            
-            html .= '</table></tr>'
-        }            
-        html .= '</table>'
-        
-        html .= '<table style="width:100%;"><tr><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;">/s/ ʆunt Vĳelie</td></tr><tr> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"><img src="https://files.catbox.moe/k6q0p2.png" width="206px"></td> </tr></table>'
-        html .= '</body></html>'
-        
-        if (this.m6k4p) {
-            try {
-                wb := this.r8j2s.Value
-                
-                wb.Navigate("about:blank")
-                
-                t2x5k := 0
-                while (t2x5k < 100) {
+                if fileObj.isBinary {
+                    result .= displayPath "`n[`n[ Unsupported file: Binary or non-text format ]`n]`n`n"
+                } else if (fileObj.ext == "odt") {
+                    result .= displayPath "`n[`n" fileObj.content "`n]`n`n"
+                } else {
                     try {
-                        if (wb.ReadyState == 4) {
-                            break
-                        }
+                        content := FileRead(fullPath, "UTF-8")
+                        result .= displayPath "`n[`n" content "`n]`n`n"
                     } catch {
+                        result .= displayPath "`n[`n[ Error reading file ]`n]`n`n"
                     }
-                    Sleep(50)
-                    t2x5k++
-                }
-                
-                doc := wb.Document
-                if (!doc) {
-                    throw Error("Document not available")
-                }
-                
-                doc.Open()
-                doc.Write(html)
-                doc.Close()
-                
-            } catch Error as err {
-                this.m6k4p := false
-                this.r8j2s.Opt("+Hidden")
-                this.r8j2s := this.b4e8c.Add("Edit", "x330 y40 w1373 h557 VScroll ReadOnly")
-                this.r8j2s.Text := "ActiveX failed: " . err.Message . "`n`nHTML Content:`n`n" . html
-            }
-        } else {
-            if (HasProp(this, "r8j2s")) {
-                this.r8j2s.Text := html
-            }
-        }
-    }
-    k4z8m(jsonStr) {
-        data := {}
-        
-        if (RegExMatch(jsonStr, '"doar_form_number":"([^"]+)"', &match)) {
-            data.doar_form_number := match[1]
-        }
-        if (RegExMatch(jsonStr, '"creation_date":"([^"]+)"', &match)) {
-            data.creation_date := match[1]
-        }
-        if (RegExMatch(jsonStr, '"filing_date":"([^"]+)"', &match)) {
-            data.filing_date := match[1]
-        }
-        if (RegExMatch(jsonStr, '"checksum":"([^"]+)"', &match)) {
-            data.checksum := match[1]
-        }
-        if (RegExMatch(jsonStr, '"state":"([^"]+)"', &match)) {
-            data.state := match[1]
-        }
-        if (RegExMatch(jsonStr, '"message":"([^"]+)"', &match)) {
-            data.message := match[1]
-        }
-        if (RegExMatch(jsonStr, '"completeness":"([^"]+)"', &match)) {
-            data.completeness := match[1]
-        }
-        
-        if (RegExMatch(jsonStr, '"estimated_onset":"([^"]+)"', &match)) {
-            data.estimated_onset := match[1]
-        }
-        if (RegExMatch(jsonStr, '"estimated_wake":"([^"]+)"', &match)) {
-            data.estimated_wake := match[1]
-        }
-        
-        if (RegExMatch(jsonStr, '"dated":"([^"]+)"', &match)) {
-            data.dated := match[1]
-        }
-        if (RegExMatch(jsonStr, '"wake_time":"([^"]+)"', &match)) {
-            data.wake_time := match[1]
-        }
-        if (RegExMatch(jsonStr, '"onset_start":"([^"]+)"', &match)) {
-            data.onset_start := match[1]
-        }
-        if (RegExMatch(jsonStr, '"onset_end":"([^"]+)"', &match)) {
-            data.onset_end := match[1]
-        }
-        if (RegExMatch(jsonStr, '"scraps_exist":"([^"]+)"', &match)) {
-            data.scraps_exist := match[1]
-        }
-        if (RegExMatch(jsonStr, '"comfort":"([^"]+)"', &match)) {
-            data.comfort := match[1]
-        }
-        if (RegExMatch(jsonStr, '"frustration":"([^"]+)"', &match)) {
-            data.frustration := match[1]
-        }
-        if (RegExMatch(jsonStr, '"almost_had_it":"([^"]+)"', &match)) {
-            data.almost_had_it := match[1]
-        }
-        if (RegExMatch(jsonStr, '"could_feel_losing":"([^"]+)"', &match)) {
-            data.could_feel_losing := match[1]
-        }
-        if (RegExMatch(jsonStr, '"effort_to_maintain":"([^"]+)"', &match)) {
-            data.effort_to_maintain := match[1]
-        }
-        
-        if (RegExMatch(jsonStr, '"sleep_location":"([^"]+)"', &match)) {
-            data.sleep_location := match[1]
-        }
-        if (RegExMatch(jsonStr, '"noise_level":"([^"]+)"', &match)) {
-            data.noise_level := match[1]
-        }
-        if (RegExMatch(jsonStr, '"environment_type":"([^"]+)"', &match)) {
-            data.environment_type := match[1]
-        }
-        if (RegExMatch(jsonStr, '"access_type":"([^"]+)"', &match)) {
-            data.access_type := match[1]
-        }
-        
-        if (RegExMatch(jsonStr, '"system":"([^"]+)"', &match)) {
-            data.system := match[1]
-        }
-        
-        if (RegExMatch(jsonStr, '"with_reasons":"([^"]+)"', &match)) {
-            data.with_reasons := match[1]
-        }
-        if (RegExMatch(jsonStr, '"with_reasons_investigation":"([^"]+)"', &match)) {
-            data.with_reasons_investment := match[1]
-        }
-        if (RegExMatch(jsonStr, '"without_reasons":"([^"]+)"', &match)) {
-            data.without_reasons := match[1]
-        }
-        if (RegExMatch(jsonStr, '"without_reasons_investigation":"([^"]+)"', &match)) {
-            data.without_reasons_investment := match[1]
-        }
-        
-        if (RegExMatch(jsonStr, '"was_investigated":"([^"]+)"', &match)) {
-            data.was_investigated := match[1]
-        }
-        if (RegExMatch(jsonStr, '"investigation_required":"([^"]+)"', &match)) {
-            data.investigation_required := match[1]
-        }
-        if (RegExMatch(jsonStr, '"scene_integrity":"([^"]+)"', &match)) {
-            data.scene_integrity := match[1]
-        }
-        if (RegExMatch(jsonStr, '"witness_available":"([^"]+)"', &match)) {
-            data.witness_available := match[1]
-        }
-        
-        if (RegExMatch(jsonStr, '"causes":\[([^\]]*)\]', &causesMatch)) {
-            causesStr := causesMatch[1]
-            
-            data.primary_cause := ""
-            data.secondary_cause := ""
-            data.tertiary_cause := ""
-            data.quaternary_cause := ""
-            data.primary_time := ""
-            data.secondary_time := ""
-            data.tertiary_time := ""
-            data.quaternary_time := ""
-            data.primary_other := ""
-            data.secondary_other := ""
-            data.tertiary_other := ""
-            data.quaternary_other := ""
-            
-            primaryMatch := ""
-            secondaryMatch := ""
-            tertiaryMatch := ""
-            quaternaryMatch := ""
-            
-            if (RegExMatch(causesStr, '\{[^}]*"level":"primary"[^}]*\}', &primaryMatch)) {
-                primaryObj := primaryMatch[0]
-                if (RegExMatch(primaryObj, '"cause":"([^"]*)"', &match)) {
-                    data.primary_cause := match[1]
-                }
-                if (RegExMatch(primaryObj, '"time":"([^"]*)"', &match)) {
-                    data.primary_time := match[1]
-                }
-                if (RegExMatch(primaryObj, '"other_details":"([^"]*)"', &match)) {
-                    data.primary_other := match[1]
-                }
-            }
-            
-            if (RegExMatch(causesStr, '\{[^}]*"level":"secondary"[^}]*\}', &secondaryMatch)) {
-                secondaryObj := secondaryMatch[0]
-                if (RegExMatch(secondaryObj, '"cause":"([^"]*)"', &match)) {
-                    data.secondary_cause := match[1]
-                }
-                if (RegExMatch(secondaryObj, '"time":"([^"]*)"', &match)) {
-                    data.secondary_time := match[1]
-                }
-                if (RegExMatch(secondaryObj, '"other_details":"([^"]*)"', &match)) {
-                    data.secondary_other := match[1]
-                }
-            }
-            
-            if (RegExMatch(causesStr, '\{[^}]*"level":"tertiary"[^}]*\}', &tertiaryMatch)) {
-                tertiaryObj := tertiaryMatch[0]
-                if (RegExMatch(tertiaryObj, '"cause":"([^"]*)"', &match)) {
-                    data.tertiary_cause := match[1]
-                }
-                if (RegExMatch(tertiaryObj, '"time":"([^"]*)"', &match)) {
-                    data.tertiary_time := match[1]
-                }
-                if (RegExMatch(tertiaryObj, '"other_details":"([^"]*)"', &match)) {
-                    data.tertiary_other := match[1]
-                }
-            }
-            
-            if (RegExMatch(causesStr, '\{[^}]*"level":"quaternary"[^}]*\}', &quaternaryMatch)) {
-                quaternaryObj := quaternaryMatch[0]
-                if (RegExMatch(quaternaryObj, '"cause":"([^"]*)"', &match)) {
-                    data.quaternary_cause := match[1]
-                }
-                if (RegExMatch(quaternaryObj, '"time":"([^"]*)"', &match)) {
-                    data.quaternary_time := match[1]
-                }
-                if (RegExMatch(quaternaryObj, '"other_details":"([^"]*)"', &match)) {
-                    data.quaternary_other := match[1]
                 }
             }
         }
-        
-        if (RegExMatch(jsonStr, '"investigation_extended":', &match)) {
-            if (RegExMatch(jsonStr, '"investigation_flag":"([^"]+)"', &match)) {
-                data.investigation_flag := match[1]
-            }
-            if (RegExMatch(jsonStr, '"priority_level":"([^"]+)"', &match)) {
-                data.priority_level := match[1]
-            }
-            if (RegExMatch(jsonStr, '"monitoring_required":"([^"]+)"', &match)) {
-                data.monitoring_required := match[1]
-            }
-            if (RegExMatch(jsonStr, '"immediate_notes":"([^"]*)"', &match)) {
-                data.immediate_notes := match[1]
-            }
-            if (RegExMatch(jsonStr, '"environmental_changes":"([^"]*)"', &match)) {
-                data.environmental_changes := match[1]
-            }
-            if (RegExMatch(jsonStr, '"equipment_status":"([^"]*)"', &match)) {
-                data.equipment_status := match[1]
-            }
-            if (RegExMatch(jsonStr, '"physical_evidence":"([^"]*)"', &match)) {
-                data.physical_evidence := match[1]
-            }
-            if (RegExMatch(jsonStr, '"pre_failure_sequence":"([^"]*)"', &match)) {
-                data.pre_failure_sequence := match[1]
-            }
-            if (RegExMatch(jsonStr, '"failure_moment":"([^"]*)"', &match)) {
-                data.failure_moment := match[1]
-            }
-            if (RegExMatch(jsonStr, '"post_failure_actions":"([^"]*)"', &match)) {
-                data.post_failure_actions := match[1]
-            }
-            if (RegExMatch(jsonStr, '"estimated_timeline":"([^"]*)"', &match)) {
-                data.estimated_timeline := match[1]
-            }
-            if (RegExMatch(jsonStr, '"relationship":"([^"]*)"', &match)) {
-                data.relationship := match[1]
-            }
-            if (RegExMatch(jsonStr, '"reliability":"([^"]*)"', &match)) {
-                data.reliability := match[1]
-            }
-            if (RegExMatch(jsonStr, '"statement":"([^"]*)"', &match)) {
-                data.statement := match[1]
-            }
-            if (RegExMatch(jsonStr, '"timeline":"([^"]*)"', &match)) {
-                data.timeline := match[1]
-            }
-            if (RegExMatch(jsonStr, '"markers":"([^"]*)"', &match)) {
-                data.markers := match[1]
-            }
-            if (RegExMatch(jsonStr, '"photo_documentation":"([^"]+)"', &match)) {
-                data.photo_documentation := match[1]
-            }
-            if (RegExMatch(jsonStr, '"audio_evidence":"([^"]+)"', &match)) {
-                data.audio_evidence := match[1]
-            }
-            if (RegExMatch(jsonStr, '"pattern_match":"([^"]*)"', &match)) {
-                data.pattern_match := match[1]
-            }
-            if (RegExMatch(jsonStr, '"recurring_elements":"([^"]*)"', &match)) {
-                data.recurring_elements := match[1]
-            }
-            if (RegExMatch(jsonStr, '"anomaly_detection":"([^"]*)"', &match)) {
-                data.anomaly_detection := match[1]
-            }
-            if (RegExMatch(jsonStr, '"case_correlation":"([^"]*)"', &match)) {
-                data.case_correlation := match[1]
-            }
-            if (RegExMatch(jsonStr, '"immediate_actions":"([^"]*)"', &match)) {
-                data.immediate_actions := match[1]
-            }
-            if (RegExMatch(jsonStr, '"investigation_tasks":"([^"]*)"', &match)) {
-                data.investigation_tasks := match[1]
-            }
-            if (RegExMatch(jsonStr, '"prevention_measures":"([^"]*)"', &match)) {
-                data.prevention_measures := match[1]
-            }
-        }
-        
-        return data
-    }
-    k8h2n() {
-        this.f2d9w := [
-            "",
-            "D.1.01 - Memory-consolidation failure during transition to C1",
-            "D.1.02 - External ﬅimuli interference during somnium", 
-            "D.1.03 - Rapid Un-planned awakening",
-            "D.1.04 - Absence of Immediate-recording method",
-            "D.1.05 - R.E.-M.-intrusion phenomena",
-            "D.1.06 - Lucid-dream techniquͤ failure",
-            "D.1.07 - Hypno-pompic-recording failure",
-            "D.1.98 - Other",
-            "D.1.99 - Un-known",
-            "D.2.01 - ʆubﬆance interference",
-            "D.2.02 - Pre-sleep Meal-timing",
-            "D.2.03 - Hydration extremes", 
-            "D.2.04 - Sleep-position complications",
-            "D.2.05 - Pre-sleep ʆcreen-exposure",
-            "D.2.06 - Exercise timing disruption",
-            "D.2.07 - Partner ʆleep-disturbances",
-            "D.2.08 - Performance anxiety",
-            "D.2.09 - Temperature Dis-comfort",
-            "D.2.10 - Environmental noise",
-            "D.2.11 - Environmental light",
-            "D.2.12 - Bladder preßure",
-            "D.2.13 - Stress / worry ﬆate",
-            "D.2.98 - Other",
-            "D.2.99 - Un-known",
-            "D.3.01 - Chronic ʆleep-debt",
-            "D.3.02 - Ir-regular ʆleep-schedule",
-            "D.3.03 - Medication use",
-            "D.3.04 - Sleep-practice In-experience",
-            "D.3.05 - Environmental conditioning",
-            "D.3.06 - Sleep Dis-order symptoms",
-            "D.3.98 - Other",
-            "D.3.99 - Un-known",
-            "D.4.01 - Work-schedule streß",
-            "D.4.02 - Living-situation impacts",
-            "D.4.03 - Information Over‑load",
-            "D.4.98 - Other",
-            "D.4.99 - Un-known"
-        ]
-    }
-    
-    v3x1p() {
-        d8m2s := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-        this.a6t4k := ""
-        loop 13 {
-            this.a6t4k .= SubStr(d8m2s, Random(1, StrLen(d8m2s)), 1)
-        }
-    }
-    
-    w6y7u() {
-        j9g3h := this.b4e8c.Add("GroupBox", "x20 y40 w1683 h80", "HEADER INFORMATION")
-        this.b4e8c.Add("Text", "x30 y60 w100 h20", "№ :")
-        this.o1p7r := this.b4e8c.Add("Edit", "x135 y60 w200 h20 ReadOnly")
-        this.b4e8c.Add("Text", "x350 y60 w100 h20", "Creation date:")
-        this.e5s2t := this.b4e8c.Add("Edit", "x455 y60 w120 h20")
-        this.b4e8c.Add("Text", "x30 y85 w100 h20", "Eﬆ. On‑set time :")
-        this.u9v6n := this.b4e8c.Add("Edit", "x135 y85 w120 h20")
-        this.b4e8c.Add("Text", "x270 y85 w100 h20", "Eﬆ. Wake time :")
-        this.y2c8l := this.b4e8c.Add("Edit", "x375 y85 w120 h20")
-        this.y2c8l.OnEvent("Change", (*) => this.n7w3q())
-        i4f5g := this.b4e8c.Add("GroupBox", "x20 y130 w1683 h50", "RESPONSE WRAPPER")
-        this.b4e8c.Add("Text", "x30 y150 w50 h20", "ﬅate :")
-        this.x8k9b := this.b4e8c.Add("DropDownList", "x85 y150 w60 h120", ["0", "1", "2"])
-        this.x8k9b.Choose(2)
-        this.b4e8c.Add("Text", "x160 y150 w60 h20", "Meßage :")
-        this.m3t1d := this.b4e8c.Add("Edit", "x225 y150 w100 h20", "norm")
-        this.b4e8c.Add("Text", "x340 y150 w80 h20", "Completeneſs :")
-        this.p7h4y := this.b4e8c.Add("DropDownList", "x425 y150 w100 h120", ["basic", "full"])
-        this.p7h4y.Choose(1)
-        s6z2a := this.b4e8c.Add("GroupBox", "x20 y190 w840 h300", "")
-        r9l5c := this.b4e8c.Add("GroupBox", "x30 y200 w820 h120", "A - DREAM INFORMATION")
-        this.b4e8c.Add("Text", "x40 y220 w60 h20", "Dated :")
-        this.q4w7v := this.b4e8c.Add("Edit", "x105 y220 w100 h20")
-        this.b4e8c.Add("Text", "x220 y220 w70 h20", "Wake time :")
-        this.j8x5n := this.b4e8c.Add("Edit", "x295 y220 w100 h20")
-        this.j8x5n.OnEvent("Change", (*) => this.n7w3q())
-        this.b4e8c.Add("Text", "x40 y245 w80 h20", "On‑set ﬆart :")
-        this.k2g9m := this.b4e8c.Add("Edit", "x125 y245 w100 h20")
-        this.b4e8c.Add("Text", "x240 y245 w70 h20", "On‑set end :")
-        this.f1c6t := this.b4e8c.Add("Edit", "x315 y245 w100 h20")
-        this.i5y3e := this.b4e8c.Add("Checkbox", "x40 y270 w120 h20", "ʆcraps exist")
-        this.h7b8d := this.b4e8c.Add("Checkbox", "x170 y270 w120 h20", "Almoﬆ remembered")
-        this.l9s4f := this.b4e8c.Add("Checkbox", "x300 y270 w120 h20", "‘twas tangible")
-        this.w3n1j := this.b4e8c.Add("Checkbox", "x430 y270 w150 h20", "ʆhowed eﬀort to maintain")
-        this.b4e8c.Add("Text", "x40 y295 w80 h20", "Comfort level :")
-        this.v8p2r := this.b4e8c.Add("DropDownList", "x125 y295 w50 h120", ["1", "2", "3", "4", "5"])
-        this.b4e8c.Add("Text", "x190 y295 w90 h20", "Fruﬆration level :")
-        this.t4m7g := this.b4e8c.Add("DropDownList", "x285 y295 w50 h120", ["1", "2", "3", "4", "5"])
-        z5q6u := this.b4e8c.Add("GroupBox", "x30 y330 w820 h80", "D - EXTENDED INFORMATION")
-        this.b4e8c.Add("Text", "x40 y350 w90 h20", "ʆleep Location :")
-        this.d8l3k := this.b4e8c.Add("DropDownList", "x135 y350 w120 h120", ["Bed‑rꝏm", "couch", "hotel", "Guͤﬆ rꝏm", "out‑of‑dꝏrs", "other"])
-        this.b4e8c.Add("Text", "x270 y350 w80 h20", "Noise level :")
-        this.c7x9w := this.b4e8c.Add("DropDownList", "x355 y350 w120 h120", ["quiet", "moderate", "noisy", "chaotic", "other"])
-        this.b4e8c.Add("Text", "x40 y375 w80 h20", "Environment :")
-        this.a1f5h := this.b4e8c.Add("DropDownList", "x125 y375 w120 h120", ["urban", "ʆub‑urban", "rural", "travel", "other"])
-        this.b4e8c.Add("Text", "x260 y375 w80 h20", "Acceſs type :")
-        this.s9v2y := this.b4e8c.Add("DropDownList", "x345 y375 w120 h120", ["personal", "shared", "guͤﬆ", "other"])
-        b6n8c := this.b4e8c.Add("GroupBox", "x30 y420 w820 h60", "B - FILER INFORMATION (Auto-Generated)")
-        this.b4e8c.Add("Text", "x40 y440 w50 h20", "Filer :")
-        this.g3t7p := this.b4e8c.Add("Edit", "x95 y440 w100 h20 ReadOnly", "ELECTRONIC")
-        this.b4e8c.Add("Text", "x210 y440 w70 h20", "Filing date :")
-        this.r5k1z := this.b4e8c.Add("Edit", "x285 y440 w150 h20 ReadOnly")
-        this.b4e8c.Add("Text", "x40 y460 w60 h20", "Check-sum :")
-        this.n4j8x := this.b4e8c.Add("Edit", "x105 y460 w300 h20 ReadOnly")
-        m2w7l := this.b4e8c.Add("GroupBox", "x870 y190 w833 h300", "")
-        q1d6s := this.b4e8c.Add("GroupBox", "x880 y200 w813 h140", "V - TYPE OF DEATH")
-        this.p8h3y := this.b4e8c.Add("Radio", "x890 y220 w200 h20", "With Reasons")
-        this.p8h3y.OnEvent("Click", (*) => this.e7m9f())
-        this.u2b5r := this.b4e8c.Add("Radio", "x890 y245 w250 h20", "With Reasons ( inv. rq. )")
-        this.u2b5r.OnEvent("Click", (*) => this.e7m9f())
-        this.k6l4n := this.b4e8c.Add("Radio", "x890 y270 w200 h20", "Without Reasons")
-        this.k6l4n.OnEvent("Click", (*) => this.e7m9f())
-        this.t3s8w := this.b4e8c.Add("Radio", "x890 y295 w250 h20", "Without Reasons ( inv. req. )")
-        this.t3s8w.OnEvent("Click", (*) => this.e7m9f())
-        this.x1v7c := this.b4e8c.Add("GroupBox", "x880 y350 w813 h140 Disabled", "G - INVESTIGATION BASIC")
-        this.f9g2j := this.b4e8c.Add("Checkbox", "x890 y370 w200 h20 Disabled", "1. Was It inveﬆigated ?")
-        this.h4k6m := this.b4e8c.Add("Checkbox", "x890 y405 w250 h20 Disabled", "2. Is an Inveﬆigation req. ?")
-        this.h4k6m.OnEvent("Click", (*) => this.z8p1q())
-        this.l7n3d := this.b4e8c.Add("Checkbox", "x890 y430 w200 h20 Disabled", "3. ʆcene integrity ?")
-        this.y5t9e := this.b4e8c.Add("Checkbox", "x890 y455 w200 h20 Disabled", "4. Witneß ꜹailable ?")
-        o8i2v := this.b4e8c.Add("GroupBox", "x20 y500 w1683 h80", "E - REASONS FOR DEATH")
-        this.b4e8c.Add("Text", "x30 y520 w80 h20", "Primary Cause:")
-        this.w6u4g := this.b4e8c.Add("DropDownList", "x115 y520 w300 h120", this.f2d9w)
-        this.w6u4g.OnEvent("Change", (*) => this.c2x5l("primary"))
-        this.b4e8c.Add("Text", "x30 y545 w80 h20", "ʆecondary to :")
-        this.d1m8s := this.b4e8c.Add("DropDownList", "x115 y545 w300 h120 Disabled", this.f2d9w)
-        this.d1m8s.OnEvent("Change", (*) => this.c2x5l("secondary"))
-        this.b4e8c.Add("Text", "x430 y520 w70 h20", "Tertiary to :")
-        this.r7q3f := this.b4e8c.Add("DropDownList", "x505 y520 w300 h120 Disabled", this.f2d9w)
-        this.r7q3f.OnEvent("Change", (*) => this.c2x5l("tertiary"))
-        this.b4e8c.Add("Text", "x430 y545 w80 h20", "Quaternary to :")
-        this.j9k2h := this.b4e8c.Add("DropDownList", "x515 y545 w300 h120 Disabled", this.f2d9w)
-        this.j9k2h.OnEvent("Change", (*) => this.c2x5l("quaternary"))
-        this.b4e8c.Add("Text", "x830 y520 w100 h20", "Primary time :")
-        this.i3w7b := this.b4e8c.Add("Edit", "x930 y520 w50 h20 Number Center")
-        this.b4e8c.Add("Text", "x985 y520 w10 h20 Center", "/")
-        this.v4n1t := this.b4e8c.Add("Edit", "x1000 y520 w50 h20 Center")
-        this.b4e8c.Add("Text", "x830 y545 w100 h20", "ʆecondary time :")
-        this.s8l6z := this.b4e8c.Add("Edit", "x930 y545 w50 h20 Number Center Disabled")
-        this.b4e8c.Add("Text", "x985 y545 w10 h20 Center", "/")
-        this.a5p9x := this.b4e8c.Add("Edit", "x1000 y545 w50 h20 Center Disabled")
-        this.b4e8c.Add("Text", "x1070 y520 w80 h20", "Tertiary time :")
-        this.m2j4r := this.b4e8c.Add("Edit", "x1155 y520 w50 h20 Number Center Disabled")
-        this.b4e8c.Add("Text", "x1210 y520 w10 h20 Center", "/")
-        this.g8c3e := this.b4e8c.Add("Edit", "x1225 y520 w50 h20 Center Disabled")
-        this.b4e8c.Add("Text", "x1070 y545 w90 h20", "Quaternary time :")
-        this.f7v5k := this.b4e8c.Add("Edit", "x1165 y545 w50 h20 Number Center Disabled")
-        this.b4e8c.Add("Text", "x1220 y545 w10 h20 Center", "/")
-        this.b1h9u := this.b4e8c.Add("Edit", "x1235 y545 w50 h20 Center Disabled")
-        this.q6d2y := this.b4e8c.Add("Edit", "x1300 y520 w200 h20 Hidden")
-        this.w9x1p := this.b4e8c.Add("Edit", "x1300 y545 w200 h20 Hidden")
-        this.l3f8n := this.b4e8c.Add("Edit", "x1520 y520 w200 h20 Hidden")
-        this.t4s7m := this.b4e8c.Add("Edit", "x1520 y545 w200 h20 Hidden")
-        this.z5g4j := this.b4e8c.Add("Text", "x1300 y500 w200 h20 Hidden", "Primary Other details :")
-        this.c8k1w := this.b4e8c.Add("Text", "x1300 y525 w200 h20 Hidden", "ʆecondary Other details :")
-        this.h6v9r := this.b4e8c.Add("Text", "x1520 y500 w200 h20 Hidden", "Tertiary Other details :")
-        this.o2l3q := this.b4e8c.Add("Text", "x1520 y525 w200 h20 Hidden", "Quaternary Other details :")
-        this.u7n4s := this.b4e8c.Add("GroupBox", "x20 y590 w1683 h340 Hidden", "Z - INVESTIGATION EXTENDED ( Fill when G 2 is y )")
-        a9m5t := this.b4e8c.Add("GroupBox", "x30 y610 w820 h50", "Initial aſseßment")
-        this.b4e8c.Add("Text", "x40 y630 w100 h20", "Investigation ﬂag :")
-        this.e4p8v := this.b4e8c.Add("Checkbox", "x145 y630 w200 h20 Disabled", "Req. Immediate ʆcene‑analysis")
-        this.b4e8c.Add("Text", "x360 y630 w80 h20", "Priority level :")
-        this.k7y2f := this.b4e8c.Add("DropDownList", "x445 y630 w100 h120 Disabled", ["", "low", "medium", "high", "critical"])
-        x1w6g := this.b4e8c.Add("GroupBox", "x860 y610 w820 h50", "Additional Case information")
-        this.b4e8c.Add("Text", "x870 y630 w100 h20", "Case Correlation:")
-        this.n3q9h := this.b4e8c.Add("Edit", "x975 y630 w300 h20 Disabled")
-        this.d6s2c := this.b4e8c.Add("Checkbox", "x1290 y630 w200 h20 Disabled", "Monitoring req. ?")
-        r8b5z := this.b4e8c.Add("GroupBox", "x30 y670 w540 h120", "Scene documentation")
-        this.b4e8c.Add("Text", "x40 y690 w120 h20", "Immediate scene notes :")
-        this.m7t1k := this.b4e8c.Add("Edit", "x165 y690 w390 h25 VScroll Disabled")
-        this.b4e8c.Add("Text", "x40 y720 w120 h20", "Environmental changes :")
-        this.p4x8j := this.b4e8c.Add("Edit", "x165 y720 w390 h25 VScroll Disabled")
-        this.b4e8c.Add("Text", "x40 y750 w100 h20", "Equipment ﬆatus :")
-        this.v9l3w := this.b4e8c.Add("Edit", "x145 y750 w180 h20 Disabled")
-        this.b4e8c.Add("Text", "x340 y750 w100 h20", "Physical evidence :")
-        this.f2h7u := this.b4e8c.Add("Edit", "x445 y750 w110 h20 Disabled")
-        q5i6n := this.b4e8c.Add("GroupBox", "x580 y670 w540 h120", "Time‑line Re-conﬆruction")
-        this.b4e8c.Add("Text", "x590 y690 w120 h20", "Pre-failure sequͤnce :")
-        this.g1c9r := this.b4e8c.Add("Edit", "x715 y690 w390 h25 VScroll Disabled")
-        this.b4e8c.Add("Text", "x590 y720 w100 h20", "Failure moment :")
-        this.y6s4d := this.b4e8c.Add("Edit", "x695 y720 w410 h25 VScroll Disabled")
-        this.b4e8c.Add("Text", "x590 y750 w120 h20", "Post-failure actions :")
-        this.k3m2l := this.b4e8c.Add("Edit", "x715 y750 w180 h20 Disabled")
-        this.b4e8c.Add("Text", "x905 y750 w100 h20", "Eﬆ. Time‑line :")
-        this.j8w5f := this.b4e8c.Add("Edit", "x1010 y750 w95 h20 Disabled")
-        h4z7v := this.b4e8c.Add("GroupBox", "x1130 y670 w540 h120", "Witness ﬆatements")
-        this.b4e8c.Add("Text", "x1140 y690 w80 h20", "Relationship :")
-        this.t9x1b := this.b4e8c.Add("DropDownList", "x1225 y690 w120 h120 Disabled", ["", "partner", "Rꝏm‑mate", "family", "other"])
-        this.b4e8c.Add("Text", "x1360 y690 w60 h20", "Reliability :")
-        this.r2p6k := this.b4e8c.Add("DropDownList", "x1425 y690 w60 h120 Disabled", ["", "1", "2", "3", "4", "5"])
-        this.b4e8c.Add("Text", "x1140 y720 w60 h20", "ﬅatement :")
-        this.n5q8m := this.b4e8c.Add("Edit", "x1205 y720 w450 h25 VScroll Disabled")
-        this.b4e8c.Add("Text", "x1140 y750 w60 h20", "Time‑line :")
-        this.l7d3g := this.b4e8c.Add("Edit", "x1205 y750 w280 h20 Disabled")
-        s4y9e := this.b4e8c.Add("GroupBox", "x30 y800 w540 h120", "Evidence Collection")
-        this.b4e8c.Add("Text", "x40 y820 w100 h20", "Evidence markers :")
-        this.v8h1c := this.b4e8c.Add("Edit", "x145 y820 w390 h25 VScroll Disabled")
-        this.i6f4x := this.b4e8c.Add("Checkbox", "x40 y850 w150 h20 Disabled", "Photo documentation")
-        this.w3j7z := this.b4e8c.Add("Checkbox", "x200 y850 w120 h20 Disabled", "Audio evidence")
-        c1b8u := this.b4e8c.Add("GroupBox", "x580 y800 w540 h120", "Pattern analysis")
-        this.b4e8c.Add("Text", "x590 y820 w80 h20", "Pattern match :")
-        this.o9k2t := this.b4e8c.Add("Edit", "x675 y820 w430 h25 VScroll Disabled")
-        this.b4e8c.Add("Text", "x590 y850 w100 h20", "Re-occuring elements :")
-        this.a7l5s := this.b4e8c.Add("Edit", "x695 y850 w410 h20 Disabled")
-        this.b4e8c.Add("Text", "x590 y875 w100 h20", "Anomaly detection :")
-        this.m4n6p := this.b4e8c.Add("Edit", "x695 y875 w410 h20 Disabled")
-        z2e9w := this.b4e8c.Add("GroupBox", "x1130 y800 w540 h120", "Follow-up actions")
-        this.b4e8c.Add("Text", "x1140 y820 w120 h20", "Immediate actions :")
-        this.u5r3q := this.b4e8c.Add("Edit", "x1265 y820 w390 h25 VScroll Disabled")
-        this.b4e8c.Add("Text", "x1140 y850 w100 h20", "Inveﬆigation tasks :")
-        this.x1g8d := this.b4e8c.Add("Edit", "x1245 y850 w410 h20 Disabled")
-        this.b4e8c.Add("Text", "x1140 y875 w120 h20", "Prevention measures :")
-        this.f6t4y := this.b4e8c.Add("Edit", "x1265 y875 w390 h20 Disabled")
-        this.b9s7v()
+        this.output.Value := Trim(result)
     }
 
-    b8x4k() {
-    l3m2s := 1000
-    c9w7f := 0
-    
-    while (c9w7f < l3m2s) {
-        c9w7f++
-        
-        p5n1q := this.i2d6x()
-        j4r8v := 0
-        
-        for i, char in StrSplit(this.a6t4k) {
-            j4r8v += Ord(char) * i
-        }
-        
-        for key, value in p5n1q.OwnProps() {
-            if (Type(value) == "String") {
-                for i, char in StrSplit(value) {
-                    j4r8v += Ord(char) * i
-                }
-            }
-        }
-        
-        j4r8v += c9w7f * 7919
-        
-        h9t2e := ""
-        d8l5k := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-        y7b3n := Mod(j4r8v, 238328)
-        
-        loop 3 {
-            h9t2e := SubStr(d8l5k, Mod(y7b3n, 62) + 1, 1) . h9t2e
-            y7b3n := y7b3n // 62
-        }
-        
-        w1x6u := SubStr(this.a6t4k, 1, 4) . "-" . SubStr(this.a6t4k, 5, 4) . "-" . SubStr(this.a6t4k, 9, 2) . "-" . SubStr(this.a6t4k, 11, 3) . "/" . h9t2e . "="
-        
-        if (!this.s4c9m(w1x6u)) {
-            this.n4j8x.Text := w1x6u
-            return
-        }
-        
-        this.v3x1p()
-    }
-    
-    this.n4j8x.Text := "ERROR-DUPLICATE-CHECKSUM"
-    }
-
-    t3z7g() {
-    v2k8h := 1000
-    f9l1c := 0
-    
-    r6m4x := this.q7u2n()
-    
-    while (f9l1c < v2k8h) {
-        f9l1c++
-        
-        s3w5j := [
-            this.e4p1t(this.w6u4g.Text),
-            this.e4p1t(this.d1m8s.Text), 
-            this.e4p1t(this.r7q3f.Text),
-            this.e4p1t(this.j9k2h.Text)
-        ]
-        
-        z8y6b := 0
-        for i, cause in s3w5j {
-            if (cause > 0) {
-                z8y6b += cause * i
-            }
-        }
-        
-        z8y6b += f9l1c * 17
-        
-        u4h9d := Format("{:03d}", Mod(z8y6b, 1000))
-        
-        a1k7n := ""
-        loop 5 {
-            a1k7n .= Random(0, 9)
-        }
-        
-        p2x3m := "E.FRM/DAR-" . u4h9d . "-" . a1k7n . "/" . r6m4x
-        
-        if (!this.g8v5s(p2x3m)) {
-            return p2x3m
-        }
-        
-        Random(, A_TickCount + f9l1c)
-    }
-    
-    return "E.FRM/DAR-ERROR-DUPLICATE/" . r6m4x
-    }
-
-    s4c9m(h3w8q) {
+    static IsBinaryFile(filePath) {
         try {
-            o6y2k := "E:\wwwwww\dosyâlar\dreams\doar.txt"
-            
-            if (!FileExist(o6y2k)) {
+            fileObj := FileOpen(filePath, "r")
+            bufSize := Min(fileObj.Length, 1024)
+            if bufSize == 0 {
+                fileObj.Close()
                 return false
             }
-            
-            z1r5v := FileRead(o6y2k, "UTF-8")
-            
-            d4m9n := StrSplit(z1r5v, "`n")
-            
-            for line in d4m9n {
-                line := Trim(line)
-                if (line == "") {
-                    continue
-                }
                 
-                if (this.l7t3x(line) == h3w8q) {
+            buf := Buffer(bufSize)
+            fileObj.RawRead(buf, bufSize)
+            fileObj.Close()
+            
+            loop bufSize {
+                byte := NumGet(buf, A_Index - 1, "UChar")
+                if byte == 0 || (byte < 32 && byte != 9 && byte != 10 && byte != 13)
                     return true
-                }
             }
-            
             return false
-            
-        } catch Error as err {
-            return false
+        } catch {
+            return true
         }
     }
 
-    g8v5s(j2f9u) {
-        try {
-            o6y2k := "E:\wwwwww\dosyâlar\dreams\doar.txt"
-            
-            if (!FileExist(o6y2k)) {
-                return false
-            }
-            
-            z1r5v := FileRead(o6y2k, "UTF-8")
-            
-            d4m9n := StrSplit(z1r5v, "`n")
-            
-            for line in d4m9n {
-                line := Trim(line)
-                if (line == "") {
-                    continue
-                }
-                
-                if (this.c6k4w(line) == j2f9u) {
-                    return true
-                }
-            }
-            
-            return false
-            
-        } catch Error as err {
-            return false
-        }
-    }
-
-    q7u2n() {
-        try {
-            o6y2k := "E:\wwwwww\dosyâlar\dreams\doar.txt"
-            
-            if (!FileExist(o6y2k)) {
-                return 1
-            }
-            
-            z1r5v := FileRead(o6y2k, "UTF-8")
-            
-            d4m9n := StrSplit(z1r5v, "`n")
-            m8x3e := 0
-            
-            for line in d4m9n {
-                line := Trim(line)
-                if (line != "") {
-                    m8x3e++
-                }
-            }
-            
-            return m8x3e + 1
-            
-        } catch Error as err {
-            return 1
-        }
-    }
-
-    l7t3x(s9b6p) {
-        try {
-            if (RegExMatch(s9b6p, '"checksum":"([^"]+)"', &match)) {
-                return match[1]
-            }
-            
-            if (RegExMatch(s9b6p, '"metadata":\s*{[^}]*"checksum":"([^"]+)"', &match)) {
-                return match[1]
-            }
-            
-            return ""
-            
-        } catch Error as err {
-            return ""
-        }
-    }
-
-    b9s7v() {
-        k4w2s := [this.e5s2t, this.u9v6n, this.y2c8l,
-                    this.q4w7v, this.j8x5n, this.k2g9m, this.f1c6t,
-                    this.w6u4g, this.d1m8s, this.r7q3f, this.j9k2h]
+    static GetOdtContent(path) {
+        tempDir := A_Temp "\OdtExtract_" A_TickCount "_" Random(1000, 9999)
+        DirCreate(tempDir)
         
-        for control in k4w2s {
-            if (control.HasMethod("OnEvent")) {
-                control.OnEvent("Change", (*) => this.b8x4k())
-            }
-        }
-    }
-
-    c6k4w(s9b6p) {
-        try {
-            if (RegExMatch(s9b6p, '"doar_form_number":"([^"]+)"', &match)) {
-                return match[1]
-            }
-            
-            if (RegExMatch(s9b6p, '"metadata":\s*{[^}]*"doar_form_number":"([^"]+)"', &match)) {
-                return match[1]
-            }
-            
-            return ""
-            
-        } catch Error as err {
-            return ""
-        }
-    }
-
-        e4p1t(v7n2k) {
-            if (RegExMatch(v7n2k, "D\.(\d)\.(\d+)", &match)) {
-                return Integer(match[2])
-            }
-            return 0
+        archiver := this.FindArchiver()
+        extracted := false
+        if (archiver != "" && InStr(archiver, "7z.exe")) {
+            code := RunWait('"' archiver '" e "' path '" -o"' tempDir '" content.xml -y', , "Hide")
+            extracted := (code == 0)
         }
         
-    e7m9f() {
-        g1x4m := this.h8d2y(FormatTime(, "yyyyMMddhhmmsstt"))
-        this.r5k1z.Text := g1x4m
+        if (!extracted) {
+            code := RunWait('tar -xf "' path '" -C "' tempDir '" content.xml', , "Hide")
+        }
         
-        w3f6s := this.u2b5r.Value || this.t3s8w.Value
+        xmlPath := tempDir "\content.xml"
+        if FileExist(xmlPath) {
+            content := FileRead(xmlPath, "UTF-8")
+            text := RegExReplace(content, "<[^>]+>", "")
+            text := StrReplace(text, "&amp;", "&")
+            text := StrReplace(text, "&lt;", "<")
+            text := StrReplace(text, "&gt;", ">")
+            text := StrReplace(text, "&quot;", "`"")
+            text := StrReplace(text, "&apos;", "'")
+            try DirDelete(tempDir, true)
+            return text
+        }
+        try DirDelete(tempDir, true)
+        return ""
+    }
+
+    static FindArchiver() {
+        paths := [
+            "C:\Program Files\7-Zip\7z.exe",
+            "C:\Program Files (x86)\7-Zip\7z.exe",
+            "C:\Program Files\WinRAR\UnRAR.exe",
+            "C:\Program Files\WinRAR\WinRAR.exe"
+        ]
+        for path in paths {
+            if FileExist(path)
+                return path
+        }
+        return ""
+    }
+
+    static ExtractArchive(archivePath, destDir) {
+        if !DirExist(destDir)
+            DirCreate(destDir)
+            
+        archiver := this.FindArchiver()
+        SplitPath(archivePath, , , &ext)
+        extL := StrLower(ext)
         
-        if (w3f6s) {
-            this.x1v7c.Enabled := true
-            this.f9g2j.Enabled := true
-            this.h4k6m.Enabled := true
-            this.l7n3d.Enabled := true
-            this.y5t9e.Enabled := true
-        } else {
-            this.x1v7c.Enabled := false
-            this.f9g2j.Enabled := false
-            this.h4k6m.Enabled := false
-            this.l7n3d.Enabled := false
-            this.y5t9e.Enabled := false
-            
-            this.u7n4s.Visible := false
-            this.h4k6m.Value := false
-            
-            this.b4e8c.Move(, , 1723, 657)
-            this.t5m4j.Move(, , 1703, 637)
-            
-            if (this.j6n8r) {
-                this.z4x1w.Move(, , 1683, 500)
+        if archiver != "" {
+            if InStr(archiver, "7z.exe") {
+                code := RunWait('"' archiver '" x "' archivePath '" -o"' destDir '" -y', , "Hide")
+                return code == 0
             } else {
-                if (HasProp(this, "k2m7t")) {
-                    this.k2m7t.Move(, , 1683, 500)
-                } else {
-                    this.z4x1w.Move(, , 1683, 500)
-                }
-            }
-            
-            this.s3f9k.Move(, 570, , )
-            this.p1h5v.Move(, 570, , )
-            this.l8w4n.Move(, 570, , )
-        }
-    }
-        
-        c2x5l(level) {
-            g1x4m := this.h8d2y(FormatTime(, "yyyyMMddhhmmsstt"))
-            this.r5k1z.Text := g1x4m
-            
-            this.n9q3b()
-            
-            switch level {
-                case "primary":
-                    if (InStr(this.w6u4g.Text, "Other")) {
-                        this.q6d2y.Visible := true
-                        this.z5g4j.Visible := true
-                    } else {
-                        this.q6d2y.Visible := false
-                        this.z5g4j.Visible := false
-                    }
-                case "secondary":
-                    if (InStr(this.d1m8s.Text, "Other")) {
-                        this.w9x1p.Visible := true
-                        this.c8k1w.Visible := true
-                    } else {
-                        this.w9x1p.Visible := false
-                        this.c8k1w.Visible := false
-                    }
-                case "tertiary":
-                    if (InStr(this.r7q3f.Text, "Other")) {
-                        this.l3f8n.Visible := true
-                        this.h6v9r.Visible := true
-                    } else {
-                        this.l3f8n.Visible := false
-                        this.h6v9r.Visible := false
-                    }
-                case "quaternary":
-                    if (InStr(this.j9k2h.Text, "Other")) {
-                        this.t4s7m.Visible := true
-                        this.o2l3q.Visible := true
-                    } else {
-                        this.t4s7m.Visible := false
-                        this.o2l3q.Visible := false
-                    }
-            }
-            this.x5k7p()
-            this.b8x4k()
-        }
-        
-        n9q3b() {
-            if (this.w6u4g.Text && this.w6u4g.Text != "") {
-                this.d1m8s.Enabled := true
-                this.s8l6z.Enabled := true
-                this.a5p9x.Enabled := true
-            } else {
-                this.d1m8s.Enabled := false
-                this.d1m8s.Choose(1)
-                this.s8l6z.Enabled := false
-                this.a5p9x.Enabled := false
-                this.s8l6z.Text := ""
-                this.a5p9x.Text := ""
-            }
-            
-            if (this.d1m8s.Text && this.d1m8s.Text != "") {
-                this.r7q3f.Enabled := true
-                this.m2j4r.Enabled := true
-                this.g8c3e.Enabled := true
-            } else {
-                this.r7q3f.Enabled := false
-                this.r7q3f.Choose(1)
-                this.m2j4r.Enabled := false
-                this.g8c3e.Enabled := false
-                this.m2j4r.Text := ""
-                this.g8c3e.Text := ""
-            }
-            
-            if (this.r7q3f.Text && this.r7q3f.Text != "") {
-                this.j9k2h.Enabled := true
-                this.f7v5k.Enabled := true
-                this.b1h9u.Enabled := true
-            } else {
-                this.j9k2h.Enabled := false
-                this.j9k2h.Choose(1)
-                this.f7v5k.Enabled := false
-                this.b1h9u.Enabled := false
-                this.f7v5k.Text := ""
-                this.b1h9u.Text := ""
+                code := RunWait('"' archiver '" x -ibck -y "' archivePath '" * "' destDir '"', , "Hide")
+                return code == 0
             }
         }
         
-        x5k7p() {
-            this.o1p7r.Text := this.t3z7g()
-        }
-        
-        n7w3q() {
-            g1x4m := this.h8d2y(FormatTime(, "yyyyMMddhhmmsstt"))
-            this.r5k1z.Text := g1x4m
-            
-            if (this.y2c8l.Focused) {
-                this.j8x5n.Text := this.y2c8l.Text
-            } else if (this.j8x5n.Focused) {
-                this.y2c8l.Text := this.j8x5n.Text
-            }
-        }
-        z8p1q() {
-            if (this.h4k6m.Value) {
-                this.u7n4s.Visible := true
-                
-                this.b4e8c.Move(, , 1723, 1015)
-                this.t5m4j.Move(, , 1703, 995)
-                
-                if (this.j6n8r) {
-                    this.z4x1w.Move(, , 1683, 898)
-                } else {
-                    if (HasProp(this, "k2m7t")) {
-                        this.k2m7t.Move(, , 1683, 898)
-                    } else {
-                        this.z4x1w.Move(, , 1683, 898)
-                    }
-                }
-                
-                this.s3f9k.Move(, 948, , )
-                this.p1h5v.Move(, 948, , )
-                this.l8w4n.Move(, 948, , )
-                
-                this.e4p8v.Enabled := true
-                this.k7y2f.Enabled := true
-                this.n3q9h.Enabled := true
-                this.d6s2c.Enabled := true
-                
-                this.m7t1k.Enabled := true
-                this.p4x8j.Enabled := true
-                this.v9l3w.Enabled := true
-                this.f2h7u.Enabled := true
-                
-                this.g1c9r.Enabled := true
-                this.y6s4d.Enabled := true
-                this.k3m2l.Enabled := true
-                this.j8w5f.Enabled := true
-                
-                this.t9x1b.Enabled := true
-                this.r2p6k.Enabled := true
-                this.n5q8m.Enabled := true
-                this.l7d3g.Enabled := true
-                
-                this.v8h1c.Enabled := true
-                this.i6f4x.Enabled := true
-                this.w3j7z.Enabled := true
-                
-                this.o9k2t.Enabled := true
-                this.a7l5s.Enabled := true
-                this.m4n6p.Enabled := true
-                
-                this.u5r3q.Enabled := true
-                this.x1g8d.Enabled := true
-                this.f6t4y.Enabled := true
-                
-            } else {
-                this.u7n4s.Visible := false
-                
-                this.b4e8c.Move(, , 1723, 657)
-                this.t5m4j.Move(, , 1703, 637)
-                
-                if (this.j6n8r) {
-                    this.z4x1w.Move(, , 1683, 500)
-                } else {
-                    if (HasProp(this, "k2m7t")) {
-                        this.k2m7t.Move(, , 1683, 500)
-                    } else {
-                        this.z4x1w.Move(, , 1683, 500)
-                    }
-                }
-                
-                this.s3f9k.Move(, 570, , )
-                this.p1h5v.Move(, 570, , )
-                this.l8w4n.Move(, 570, , )
-                
-                this.e4p8v.Enabled := false
-                this.k7y2f.Enabled := false
-                this.n3q9h.Enabled := false
-                this.d6s2c.Enabled := false
-                
-                this.m7t1k.Enabled := false
-                this.p4x8j.Enabled := false
-                this.v9l3w.Enabled := false
-                this.f2h7u.Enabled := false
-                
-                this.g1c9r.Enabled := false
-                this.y6s4d.Enabled := false
-                this.k3m2l.Enabled := false
-                this.j8w5f.Enabled := false
-                
-                this.t9x1b.Enabled := false
-                this.r2p6k.Enabled := false
-                this.n5q8m.Enabled := false
-                this.l7d3g.Enabled := false
-                
-                this.v8h1c.Enabled := false
-                this.i6f4x.Enabled := false
-                this.w3j7z.Enabled := false
-                
-                this.o9k2t.Enabled := false
-                this.a7l5s.Enabled := false
-                this.m4n6p.Enabled := false
-                
-                this.u5r3q.Enabled := false
-                this.x1g8d.Enabled := false
-                this.f6t4y.Enabled := false
-            }
-        }
-        
-
-        
-        l4s9k() {
-            this.g3t7p.Text := "ELECTRONIC"
-            this.m3t1d.Text := "norm"
-            
-            v5z8n := FormatTime(, "yyyyMMdd")
-            g1x4m := this.h8d2y(FormatTime(, "yyyyMMddhhmmsstt"))
-            
-            r9w3f := this.h8d2y(FormatTime(, "hhmmsstt"))
-            this.y2c8l.Text := r9w3f
-            this.j8x5n.Text := r9w3f
-            
-            this.r5k1z.Text := g1x4m
-            this.e5s2t.Text := v5z8n
-            this.q4w7v.Text := v5z8n
-            
-            this.x5k7p()
-            this.b8x4k()
-        }
-        
-        h8d2y(timeStr) {
-            timeStr := StrReplace(timeStr, "午前", "AM")
-            timeStr := StrReplace(timeStr, "午後", "PM")
-            
-            if (InStr(timeStr, "12") && InStr(timeStr, "AM")) {
-                timeStr := StrReplace(timeStr, "12", "00")
-            }
-            if (InStr(timeStr, "12") && InStr(timeStr, "PM")) {
-                timeStr := StrReplace(timeStr, "12", "00")
-            }
-            
-            return timeStr
-        }
-        
-        r2q8v(*) {
-            if (this.t5m4j.Value == 2) {
-                this.d3k5x()
-            }
-        }
-        
-        q8p2m() {
-            if (HasProp(this, "h7n8r") && this.h7n8r) {
-                this.__New()
-                this.h7n8r := false
-            }
-            
-            try {
-                this.b4e8c.Show()
-            } catch Error as err {
-                this.__New()
-                this.b4e8c.Show()
-            }
-        }
-        
-        j3u9w() {
-            this.b4e8c.Hide()
-        }
-        
-        
-        
-        i2d6x() {
-            return {
-                system: this.g3t7p.Text,
-                filing_date: this.r5k1z.Text,
-                checksum: this.n4j8x.Text,
-                doar_form_number: this.o1p7r.Text,
-                creation_date: this.e5s2t.Text,
-                onset_time: this.u9v6n.Text,
-                wake_time: this.y2c8l.Text,
-                state: this.x8k9b.Text,
-                message: this.m3t1d.Text,
-                completeness: this.p7h4y.Text,
-                dated: this.q4w7v.Text,
-                dream_wake_time: this.j8x5n.Text,
-                onset_start: this.k2g9m.Text,
-                onset_end: this.f1c6t.Text,
-                scraps_exist: this.i5y3e.Value ? "y" : "n",
-                comfort_level: this.v8p2r.Text,
-                frustration_level: this.t4m7g.Text,
-                almost_had_it: this.h7b8d.Value ? "y" : "n",
-                could_feel_losing: this.l9s4f.Value ? "y" : "n",
-                effort_to_maintain: this.w3n1j.Value ? "y" : "n",
-                sleep_location: this.d8l3k.Text,
-                noise_level: this.c7x9w.Text,
-                environment: this.a1f5h.Text,
-                access_type: this.s9v2y.Text,
-                with_reasons: this.p8h3y.Value ? "☑" : "☐",
-                with_reasons_invest: this.u2b5r.Value ? "☑" : "☐",
-                without_reasons: this.k6l4n.Value ? "☑" : "☐",
-                without_reasons_invest: this.t3s8w.Value ? "☑" : "☐",
-                was_investigated: this.f9g2j.Value ? "y" : "n",
-                investigation_required: this.h4k6m.Value ? "y" : "n",
-                scene_integrity: this.l7n3d.Value ? "y" : "n",
-                witness_available: this.y5t9e.Value ? "y" : "n",
-                primary_cause: this.w6u4g.Text,
-                secondary_to: this.d1m8s.Text,
-                tertiary_to: this.r7q3f.Text,
-                quaternary_to: this.j9k2h.Text,
-                primary_time: this.i3w7b.Text . " / " . this.v4n1t.Text,
-                secondary_time: this.s8l6z.Text . " / " . this.a5p9x.Text,
-                tertiary_time: this.m2j4r.Text . " / " . this.g8c3e.Text,
-                quaternary_time: this.f7v5k.Text . " / " . this.b1h9u.Text,
-                primary_other: this.q6d2y.Text,
-                secondary_other: this.w9x1p.Text,
-                tertiary_other: this.l3f8n.Text,
-                quaternary_other: this.t4s7m.Text,
-                investigation_flag: this.h4k6m.Value ? (this.e4p8v.Value ? "y" : "n") : "",
-                priority_level: this.h4k6m.Value ? this.k7y2f.Text : "",
-                immediate_scene_notes: this.h4k6m.Value ? this.m7t1k.Text : "",
-                environmental_changes: this.h4k6m.Value ? this.p4x8j.Text : "",
-                equipment_status: this.h4k6m.Value ? this.v9l3w.Text : "",
-                physical_evidence: this.h4k6m.Value ? this.f2h7u.Text : "",
-                pre_failure_sequence: this.h4k6m.Value ? this.g1c9r.Text : "",
-                failure_moment: this.h4k6m.Value ? this.y6s4d.Text : "",
-                post_failure_actions: this.h4k6m.Value ? this.k3m2l.Text : "",
-                estimated_timeline: this.h4k6m.Value ? this.j8w5f.Text : "",
-                witness_relationship: this.h4k6m.Value ? this.t9x1b.Text : "",
-                witness_statement: this.h4k6m.Value ? this.n5q8m.Text : "",
-                witness_reliability: this.h4k6m.Value ? this.r2p6k.Text : "",
-                witness_timeline: this.h4k6m.Value ? this.l7d3g.Text : "",
-                evidence_markers: this.h4k6m.Value ? this.v8h1c.Text : "",
-                photo_documentation: this.h4k6m.Value ? (this.i6f4x.Value ? "y" : "n") : "",
-                audio_evidence: this.h4k6m.Value ? (this.w3j7z.Value ? "y" : "n") : "",
-                pattern_match: this.h4k6m.Value ? this.o9k2t.Text : "",
-                recurring_elements: this.h4k6m.Value ? this.a7l5s.Text : "",
-                anomaly_detection: this.h4k6m.Value ? this.m4n6p.Text : "",
-                immediate_actions: this.h4k6m.Value ? this.u5r3q.Text : "",
-                investigation_tasks: this.h4k6m.Value ? this.x1g8d.Text : "",
-                prevention_measures: this.h4k6m.Value ? this.f6t4y.Text : "",
-                case_correlation: this.h4k6m.Value ? this.n3q9h.Text : "",
-                monitoring_required: this.h4k6m.Value ? (this.d6s2c.Value ? "y" : "n") : ""
-            }
-        }
-        x9w2k(data) {
-            html := '<style>#ga tr,td,table{padding:0;margin:0;font-family: Times New Roman, Times, serif;}table{width:100%;border-collapse:collapse;}</style>'
-            html .= '<table id="ga">'
-            html .= '<tr><td colspan="2" style="text-align:center;font-weight:bolder;font-size:16pt">DEAD on ARRIVAL REPORT</td></tr>'
-            html .= '<tr><td style="text-align:left;">№ : ' . data.doar_form_number . '</td><td style="text-align:right;">Creation : ' . data.creation_date . '</td></tr>'
-            html .= '<tr><td style="text-align:left;width:50%;">Eﬆ. On-set time : ' . data.onset_time . '</td><td style="text-align:right;">Eﬆ. Wake time : ' . data.wake_time . '</td></tr>'
-            html .= '</table>'
-            
-            html .= '<table><tr><td>"response_wrapper": { "state": ' . data.state . ', "message": "' . data.message . '", "result_completeness": "' . data.completeness . '"}</td></tr></table>'
-            
-            html .= '<table id="ga" style="border:1px solid black;">'
-            html .= '<tr style="height:50%;"><td style="width:50%;vertical-align:top;">'
-            
-            html .= '<table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">A - DREAM INFORMATION</td></tr>'
-            html .= '<tr><td style="width:50%;">Dated : ' . data.dated . '</td><td style="width:50%;">Wake time : ' . data.dream_wake_time . '</td></tr>'
-            html .= '<tr><td style="width:50%;">Eﬆ. On‑set start : ' . data.onset_start . '</td><td style="width:50%;">Eﬆ. On‑set end : ' . data.onset_end . '</td></tr>'
-            html .= '<tr><td style="width:50%;">ʆcraps exist ? ' . data.scraps_exist . '</td><td style="width:50%;">Comfort dr. sleep : ' . data.comfort_level . '</td></tr>'
-            html .= '<tr><td style="width:50%;">Fruﬆration : ' . data.frustration_level . '</td><td style="width:50%;">Almoﬆ remembered ? ' . data.almost_had_it . '</td></tr>'
-            html .= '<tr><td style="width:50%;">Was It tangible ? ' . data.could_feel_losing . '</td><td style="width:50%;">ʆhowed eﬀort to maintain ? ' . data.effort_to_maintain . '</td></tr>'
-            html .= '</table>'
-            
-            html .= '<table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">D - A extended</td></tr>'
-            html .= '<tr><td style="width:50%;">ʆleep location : ' . data.sleep_location . '</td><td style="width:50%;">Noise claſsiﬁcation : ' . data.noise_level . '</td></tr>'
-            html .= '<tr><td style="width:50%;">Environmental zone : ' . data.environment . '</td><td style="width:50%;">Acceß type : ' . data.access_type . '</td></tr>'
-            html .= '</table>'
-            
-            html .= '<table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">B - FILER INFORMATION</td></tr>'
-            html .= '<tr><td style="width:50%;">Filer name : ' . data.system . '</td><td style="width:50%;">Filing date : ' . data.filing_date . '</td></tr>'
-            html .= '<tr><td style="width:100%;text-align:center;" colspan="2">' . data.checksum . '</td></tr>'
-            html .= '</table>'
-            
-            html .= '</td><td style="width:50%;vertical-align:top;height:100%;position:relative;">'
-            
-            html .= '<table style="border:1px solid black;position:absolute;top:0;height:50%;width:100%;"><tr><td colspan="2" style="font-weight:bolder;">V - TYPE OF DEATH</td></tr>'
-            html .= '<tr><td style="width:50%;">With reasons ' . data.with_reasons . '</td><td style="width:50%;">With reasons ( inveﬆigation req. ) ' . data.with_reasons_invest . ' - G</td></tr>'
-            html .= '<tr><td style="width:50%;">Without reasons ' . data.without_reasons . '</td><td style="width:50%;">Without reasons ( inveﬆigation req. ) ' . data.without_reasons_invest . ' - G</td></tr>'
-            html .= '</table>'
-            
-            html .= '<table style="border:1px solid black;position:absolute;top:50%;height:50%;width:100%;"><tr><td colspan="2" style="font-weight:bolder;">G - Investigation</td></tr>'
-            html .= '<tr><td style="width:100%;">1. Was It inveﬆigated ? ' . data.was_investigated . '</td></tr>'
-            html .= '<tr><td style="width:100%;">2. Is an inveﬆigation required ? ' . data.investigation_required . '</td></tr>'
-            html .= '<tr><td style="width:100%;">3. ʆcene integrity ? ' . data.scene_integrity . '</td></tr>'
-            html .= '<tr><td style="width:100%;">4. Witneß ꜹailable ? ' . data.witness_available . '</td></tr>'
-            html .= '</table>'
-            
-            html .= '</td></tr>'
-            
-            html .= '<tr><td colspan="2"><table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">E - Reason( s ) for death</td></tr>'
-            html .= '<tr><td style="width:50%;"><table><tr><td>' . data.primary_cause . (data.primary_other ? " ( " . data.primary_other . " )" : "") . '</td></tr><tr><td>⮴ secondary to ' . data.secondary_to . (data.secondary_other ? " ( " . data.secondary_other . " )" : "") . '</td></tr><tr><td>⮴ tertiary to ' . data.tertiary_to . (data.tertiary_other ? " ( " . data.tertiary_other . " )" : "") . '</td></tr><tr><td>⮴ quaternary to ' . data.quaternary_to . (data.quaternary_other ? " ( " . data.quaternary_other . " )" : "") . '</td></tr></table></td>'
-            html .= '<td><table style="width:100%;"><tr><td><table style="width:100%;"><tr style="text-align:center;"><td>' . data.primary_time . '</td></tr><tr style="text-align:center;"><td>' . data.secondary_time . '</td></tr><tr style="text-align:center;"><td>' . data.tertiary_time . '</td></tr><tr style="text-align:center;"><td>' . data.quaternary_time . '</td></tr></table></td></tr></table></td></tr>'
-            html .= '</table></td></tr>'
-            
-            if (data.investigation_required == "y") {
-                html .= '<tr><table style="border:1px solid black;">'
-                
-                html .= '<tr>'
-                html .= '<td colspan="1" style="font-weight:bolder;">Z - Inv. ext. ( when G 2 y )</td>'
-                html .= '<td style="width: 25%;">Im. analysis :' . (data.investigation_flag == "y" ? "☑" : "☐") . '</td>'
-                html .= '<td style="width: 25%;">Pr. level : ' . data.priority_level . '</td>'
-                html .= '<td style="width: 25%;">Monitoring ' . (data.monitoring_required == "y" ? "☑" : "☐") . '</td>'
-                html .= '</tr>'
-                
-                html .= '<tr>'
-                html .= '<td style="vertical-align:top;width:25%">ʆcene documentation :<br>Immediate : ' . data.immediate_scene_notes . '<br>Environmental : ' . data.environmental_changes . '<br>Equipment : ' . data.equipment_status . '<br>Evidence : ' . data.physical_evidence . '</td>'
-                html .= '<td style="vertical-align:top;width:25%">Time‑line Re-conﬆruction :<br>Pre-failure : ' . data.pre_failure_sequence . '<br>Failure moment : ' . data.failure_moment . '<br>Post-failure : ' . data.post_failure_actions . '<br>Time‑line : ' . data.estimated_timeline . '</td>'
-                html .= '<td style="width:25%;vertical-align:top;">Witneſs information :<br><table><tr><td>reliability : ' . data.witness_reliability . '</td><td>relationship : ' . data.witness_relationship . '</td></tr><tr><td colspan="2">ﬆatement : ' . data.witness_statement . (data.witness_timeline ? " , " . data.witness_timeline . " ago" : "") . '</td></tr></table></td>'
-                html .= '<td style="width:25%;vertical-align:top;">Pattern analysis :<br>Match : ' . data.pattern_match . '<br>Re-ocurring : ' . data.recurring_elements . '<br>Anomaly : ' . data.anomaly_detection . '<br>Co‑relation : ' . data.case_correlation . '</td>'
-                html .= '</tr>'
-                
-                html .= '<tr><table style="border:1px solid black;">'
-                html .= '<tr><td style="width: 25%;">Photo : ' . (data.photo_documentation == "y" ? "☑" : "☐") . '</td><td style="width: 25%;">Audio : ' . (data.audio_evidence == "y" ? "☑" : "☐") . '</td><td colspan="2">Markers : ' . data.evidence_markers . '</td></tr>'
-                html .= '<tr><td style="width: 25%;">Immediate ' . (data.immediate_actions ? "☑" : "☐") . '</td><td style="width: 25%;">Prevention ' . (data.prevention_measures ? "☑" : "☐") . '</td><td style="width: 50%;">Actions : ' . data.immediate_actions . " | Tasks : " . data.investigation_tasks . " | " . data.prevention_measures . '</td></tr>'
-                html .= '</table></tr>'
-                
-                html .= '</table></tr>'
-            }            
-            html .= '</table>'
-            
-            html .= '<table style="width:100%;"><tr><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;">/s/ ʆunt Vĳelie</td></tr><tr> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"><img src="https://files.catbox.moe/k6q0p2.png" width="206px"></td> </tr></table>'
-            
-            
-            return html
-        }
-
-    y8m3v() {
-        p5w9d := this.i2d6x()
-        html .= this.x9w2k(p5w9d)
-        this.c7b4z()
-        html := StrReplace(html, "`n", "")
-        html := StrReplace(html, "`r", "")
-        html := RegExReplace(html, "\s+", " ")
-        html := Trim(html)
-        
-        this.b4e8c.Hide()
-        Sleep(100)
-        
-        html := StrReplace(html, "<", Chr(0x003C))  
-        html := StrReplace(html, ">", Chr(0x003E))  
-        Send("openthineeyes")
-        
-        SendText(html)
-        Send("openthineeyes")
-        this.b4e8c.Destroy()
-    }
-
-
-    d3k5x() {
-        p5w9d := this.i2d6x()
-        
-        html := '<!DOCTYPE html>'
-        html .= '<html><head><meta charset="UTF-8"><title>D.O.A.R. Form</title></head>'
-        html .= '<body><style>#ga tr,td,table{padding:0;margin:0;}table{width:100%;border-collapse:collapse;}</style>'
-        html .= this.x9w2k(p5w9d)
-        html .= '</body></html>'
-        
-        if (this.j6n8r) {
-            try {
-                wb := this.z4x1w.Value
-                
-                wb.Navigate("about:blank")
-                
-                t2x5k := 0
-                while (t2x5k < 100) {
-                    try {
-                        if (wb.ReadyState == 4) {
-                            break
-                        }
-                    } catch {
-                    }
-                    Sleep(50)
-                    t2x5k++
-                }
-                
-                doc := wb.Document
-                if (!doc) {
-                    throw Error("Document not available")
-                }
-                
-                doc.Open()
-                doc.Write(html)
-                doc.Close()
-                
-            } catch Error as err {
-                this.j6n8r := false
-                this.z4x1w.Opt("+Hidden")
-                this.k2m7t := this.b4e8c.Add("Edit", "x20 y40 w1683 h500 VScroll ReadOnly")
-                this.k2m7t.Text := "ActiveX failed: " . err.Message . "`n`nHTML Content:`n`n" . html
-            }
+        if extL == "zip" {
+            cmd := "powershell -NoProfile -WindowStyle Hidden -Command `"Expand-Archive -Path '" archivePath "' -DestinationPath '" destDir "' -Force`""
+            code := RunWait(cmd, , "Hide")
+            return code == 0
         } else {
-            if (HasProp(this, "k2m7t")) {
-                this.k2m7t.Text := html
-            } else {
-                this.z4x1w.Text := html
-            }
+            code := RunWait('tar -xf "' archivePath '" -C "' destDir '"', , "Hide")
+            return code == 0
         }
-        
-        return html
-    }
-
-    z1n5e() {
-        try {
-            this.z4x1w := this.b4e8c.Add("ActiveX", "x20 y40 w1683 h500", "Shell.Explorer")
-            this.j6n8r := true
-            
-            wb := this.z4x1w.Value
-            wb.Navigate("about:blank")
-            Sleep(500)
-            
-            g4x1p := wb.Document
-            if (!g4x1p) {
-            }
-            
-        } catch Error as err {
-            this.j6n8r := false
-            if (HasProp(this, "z4x1w")) {
-                this.z4x1w.Opt("+Hidden")
-            }
-            this.z4x1w := this.b4e8c.Add("Edit", "x20 y40 w1683 h500 VScroll ReadOnly")
-        }
-        
-        this.s3f9k := this.b4e8c.Add("Button", "x20 y570 w100 h30", "PRINT")
-        this.s3f9k.OnEvent("Click", (*) => this.y8m3v())
-        
-        this.p1h5v := this.b4e8c.Add("Button", "x130 y570 w100 h30", "GENERATE")
-        this.p1h5v.OnEvent("Click", (*) => this.d3k5x())
-        this.l8w4n := this.b4e8c.Add("Button", "x240 y570 w100 h30", "SꜸE")
-        this.l8w4n.OnEvent("Click", (*) => this.c7b4z())
-    }
-    c7b4z() {
-        try {
-            p5w9d := this.i2d6x()
-            
-            k6f1s := "E:\wwwwww\dosyâlar\dreams"
-            if (!DirExist(k6f1s)) {
-                DirCreate(k6f1s)
-            }
-            
-            v9h3t := k6f1s . "\doar.txt"
-            
-            m2q7x := this.w5r8n(p5w9d)
-            
-            l4j6p := this.u3y1c(m2q7x)
-            
-            FileAppend("`n" . l4j6p, v9h3t, "UTF-8")
-            
-            MsgBox("SUCC:`n" . v9h3t, "OK", "0x40")
-            
-        } catch Error as err {
-        }
-    }
-
-    w5r8n(data) {
-        q8z4m := {
-            metadata: {
-                doar_form_number: data.doar_form_number,
-                creation_date: data.creation_date,
-                filing_date: data.filing_date,
-                checksum: data.checksum
-            },
-            
-            response_wrapper: {
-                state: data.state,
-                message: data.message,
-                completeness: data.completeness
-            },
-            
-            header_times: {
-                estimated_onset: data.onset_time,
-                estimated_wake: data.wake_time
-            },
-            
-            dream_information: {
-                dated: data.dated,
-                wake_time: data.dream_wake_time,
-                onset_start: data.onset_start,
-                onset_end: data.onset_end,
-                characteristics: {
-                    scraps_exist: data.scraps_exist,
-                    almost_had_it: data.almost_had_it,
-                    could_feel_losing: data.could_feel_losing,
-                    effort_to_maintain: data.effort_to_maintain
-                },
-                levels: {
-                    comfort: data.comfort_level,
-                    frustration: data.frustration_level
-                }
-            },
-            
-            environment: {
-                sleep_location: data.sleep_location,
-                noise_level: data.noise_level,
-                environment_type: data.environment,
-                access_type: data.access_type
-            },
-            
-            filer_info: {
-                system: data.system,
-                filing_date: data.filing_date,
-                checksum: data.checksum
-            },
-            
-            death_classification: {
-                with_reasons: data.with_reasons,
-                with_reasons_investigation: data.with_reasons_invest,
-                without_reasons: data.without_reasons,
-                without_reasons_investigation: data.without_reasons_invest
-            },
-            
-            investigation_basic: {
-                was_investigated: data.was_investigated,
-                investigation_required: data.investigation_required,
-                scene_integrity: data.scene_integrity,
-                witness_available: data.witness_available
-            },
-            
-            causes: [
-                {
-                    level: "primary",
-                    cause: data.primary_cause,
-                    time: data.primary_time,
-                    other_details: data.primary_other
-                },
-                {
-                    level: "secondary",
-                    cause: data.secondary_to,
-                    time: data.secondary_time,
-                    other_details: data.secondary_other
-                },
-                {
-                    level: "tertiary", 
-                    cause: data.tertiary_to,
-                    time: data.tertiary_time,
-                    other_details: data.tertiary_other
-                },
-                {
-                    level: "quaternary",
-                    cause: data.quaternary_to,
-                    time: data.quaternary_time,
-                    other_details: data.quaternary_other
-                }
-            ]
-        }
-        
-        if (data.investigation_required == "y") {
-            q8z4m.investigation_extended := {
-                flags: {
-                    investigation_flag: data.investigation_flag,
-                    priority_level: data.priority_level,
-                    monitoring_required: data.monitoring_required
-                },
-                
-                scene_documentation: {
-                    immediate_notes: data.immediate_scene_notes,
-                    environmental_changes: data.environmental_changes,
-                    equipment_status: data.equipment_status,
-                    physical_evidence: data.physical_evidence
-                },
-                
-                timeline_reconstruction: {
-                    pre_failure_sequence: data.pre_failure_sequence,
-                    failure_moment: data.failure_moment,
-                    post_failure_actions: data.post_failure_actions,
-                    estimated_timeline: data.estimated_timeline
-                },
-                
-                witness_information: {
-                    relationship: data.witness_relationship,
-                    reliability: data.witness_reliability,
-                    statement: data.witness_statement,
-                    timeline: data.witness_timeline
-                },
-                
-                evidence_collection: {
-                    markers: data.evidence_markers,
-                    photo_documentation: data.photo_documentation,
-                    audio_evidence: data.audio_evidence
-                },
-                
-                pattern_analysis: {
-                    pattern_match: data.pattern_match,
-                    recurring_elements: data.recurring_elements,
-                    anomaly_detection: data.anomaly_detection
-                },
-                
-                follow_up: {
-                    case_correlation: data.case_correlation,
-                    immediate_actions: data.immediate_actions,
-                    investigation_tasks: data.investigation_tasks,
-                    prevention_measures: data.prevention_measures
-                }
-            }
-        }
-        
-        return q8z4m
-    }
-
-    u3y1c(obj) {
-        if (Type(obj) == "Array") {
-            json := "["
-            first := true
-            for item in obj {
-                if (!first) {
-                    json .= ","
-                }
-                first := false
-                json .= this.u3y1c(item)
-            }
-            json .= "]"
-            return json
-        }
-        
-        json := "{"
-        first := true
-        
-        for key, value in obj.OwnProps() {
-            if (!first) {
-                json .= ","
-            }
-            first := false
-            
-            json .= '"' . this.t9x2w(key) . '":'
-            
-            if (Type(value) == "String") {
-                json .= '"' . this.t9x2w(value) . '"'
-            } else if (Type(value) == "Integer" || Type(value) == "Float") {
-                json .= value
-            } else if (HasMethod(value, "OwnProps") || Type(value) == "Array") {
-                json .= this.u3y1c(value)
-            } else {
-                json .= '"' . this.t9x2w(String(value)) . '"'
-            }
-        }
-        
-        json .= "}"
-        return json
-    }
-
-    t9x2w(str) {
-        str := StrReplace(str, "\", "\\")
-        str := StrReplace(str, '"', '\"')
-        str := StrReplace(str, "`n", "\n")
-        str := StrReplace(str, "`r", "\r")
-        str := StrReplace(str, "`t", "\t")
-        return str
-    }
-
-}
-global v4n8z := x7f9a2()
-class SIPPersonManager {
-    __New() {
-        this.mainGui := Gui("+Resize", "sip")
-        this.mainGui.OnEvent("Close", (*) => this.ConfirmClose())
-        this.mainGui.Move(, , 1743, 844)
-        
-        this.greekLetters := ["α", "β", "γ", "δ", "ε", "ζ", "θ", "ι", "κ", "λ", "μ", "ν", "ξ", "ο", "π", "ρ", "σ", "τ", "υ", "φ", "χ", "ψ", "ω"]
-        this.dataFile := "E:\wwwwww\dosyâlar\dreams\p.txt"
-        this.currentRecord := {}
-        this.originalData := {}
-        this.panelleftid := "" 
-        this.isDestroyed := false
-        this.dreamCounter := 1
-        
-        this.CreateLayout()
-        this.LoadDataToLeftPanel()
-        this.PopulateDropdowns()
-        
-        Hotstring(":O?*:\sip", (*) => this.ShowApp())
-    }
-    
-    ShowApp() {
-        if (HasProp(this, "isDestroyed") && this.isDestroyed) {
-            this.__New()
-            this.isDestroyed := false
-        }
-        
-        try {
-            this.mainGui.Show()
-        } catch Error as err {
-            this.__New()
-            this.mainGui.Show()
-        }
-    }
-    
-    SetDefaultNameStatus() {
-        this.nameStatusField.Text := "[ Can't be shared duͤ to This information being a Personally‑identiﬁable information ]"
-    }
-    
-    OnDesignationChange() {
-        if (this.designationField.Text != "" && this.panelleftid != "") {
-            newDesignationId := this.GetNextDesignationId(this.designationField.Text)
-            this.designationIdField.Text := newDesignationId
-        }
-    }
-
-    CreateLayout() {
-        
-        this.leftPanel := this.mainGui.Add("GroupBox", "x10 y10 w340 h824", "Records")
-        this.recordsList := this.mainGui.Add("ListView", "x20 y30 w320 h800 -Multi", ["Designation","L.D.-№", "L"])
-        this.recordsList.ModifyCol(1, 150) 
-        this.recordsList.ModifyCol(2, 50)
-        this.recordsList.ModifyCol(3, 50)
-        this.recordsList.OnEvent("ItemSelect", (*) => this.LoadRecord())
-            
-        
-        this.buttonPanel := this.mainGui.Add("GroupBox", "x360 y10 w1373 h47", "Actions")
-        
-        this.insaBBtn := this.mainGui.Add("Button", "x1621 y20 w101 h28", "INSB")
-        this.insaBBtn.OnEvent("Click", (*) => this.InsertRecordB())
-        
-        this.insaABtn := this.mainGui.Add("Button", "x1520 y20 w101 h28", "INSA")
-        this.insaABtn.OnEvent("Click", (*) => this.InsertRecordA())
-        
-        this.closeBtn := this.mainGui.Add("Button", "x1310 y20 w202 h28", "CLOSE")
-        this.closeBtn.OnEvent("Click", (*) => this.CloseFields())
-        
-        this.newBtn := this.mainGui.Add("Button", "x1100 y20 w202 h28", "NEW")
-        this.newBtn.OnEvent("Click", (*) => this.CreateNewRecord())
-        
-        this.updateBtn := this.mainGui.Add("Button", "x890 y20 w202 h28", "UP‑DATE")
-        this.updateBtn.OnEvent("Click", (*) => this.UpdateRecord())
-        
-        this.saveBtn := this.mainGui.Add("Button", "x680 y20 w202 h28", "SꜸE")
-        this.saveBtn.OnEvent("Click", (*) => this.SaveRecord())
-        this.saveBtn.Enabled := false 
-        
-        this.CreateFormFields()
-        this.CreateEngravePanel()
-    }
-
-    CreateFormFields() {
-        
-        this.coreIdentityGroup := this.mainGui.Add("GroupBox", "x370 y70 w410 h180", "Identity")
-        yPos := 95
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "№ :")
-        this.idField := this.mainGui.Add("Edit", "x460 y" . yPos . " w310 h20 ReadOnly")
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Designation :")
-        this.designationField := this.mainGui.Add("Edit", "x460 y" . yPos . " w310 h20")
-        this.designationField.OnEvent("Change", (*) => this.OnDesignationChange())
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "L :")
-        this.designationIdField := this.mainGui.Add("Edit", "x460 y" . yPos . " w310 h20 ReadOnly")
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Gender :")
-        this.genderField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w310 h120", ["Male", "Female", "Androgynous"])
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "ʆpecies :")
-        this.speciesField := this.mainGui.Add("Edit", "x460 y" . yPos . " w310 h20", "member of the Human race")
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Name ﬆatus :")
-        this.nameStatusField := this.mainGui.Add("Edit", "x460 y" . yPos . " w290 h20")
-        this.nameStatusAutoBtn := this.mainGui.Add("Button", "x755 y" . yPos . " w20 h20", "A")
-        this.nameStatusAutoBtn.OnEvent("Click", (*) => this.SetDefaultNameStatus())
-
-        
-        yPos := 255
-        this.physicalGroup := this.mainGui.Add("GroupBox", "x370 y" . yPos . " w410 h350", "Physical metrics")
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Age ﬆart :")
-        this.ageStartField := this.mainGui.Add("Edit", "x460 y" . yPos . " w60 h20 Number")
-        this.mainGui.Add("Text", "x530 y" . yPos . " w60 h20", "Age end :")
-        this.ageEndField := this.mainGui.Add("Edit", "x590 y" . yPos . " w60 h20 Number")
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Height ( C.‑m. ) :")
-        this.heightStartField := this.mainGui.Add("Edit", "x460 y" . yPos . " w60 h20 Number")
-        this.mainGui.Add("Text", "x530 y" . yPos . " w10 h20", "-")
-        this.heightEndField := this.mainGui.Add("Edit", "x550 y" . yPos . " w60 h20 Number")
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Weight ( K.‑gr. ):")
-        this.weightStartField := this.mainGui.Add("Edit", "x460 y" . yPos . " w60 h20 Number")
-        this.mainGui.Add("Text", "x530 y" . yPos . " w10 h20", "-")
-        this.weightEndField := this.mainGui.Add("Edit", "x550 y" . yPos . " w60 h20 Number")
-        this.weightStartField.OnEvent("Change", (*) => this.CalculateBMI())
-        this.weightEndField.OnEvent("Change", (*) => this.CalculateBMI())
-        this.heightStartField.OnEvent("Change", (*) => this.CalculateBMI())
-        this.heightEndField.OnEvent("Change", (*) => this.CalculateBMI())
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "B.-m.i. range:")
-        this.bmiField := this.mainGui.Add("Edit", "x460 y" . yPos . " w310 h20 ReadOnly")
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "ʆkin colour :")
-        this.skinColorField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w310 h120", ["", "pale ( orange )", "mid ( orange )", "dark ( orange )"])
-        this.skinColorField.Choose(1)
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "'air colour :")
-        this.hairColorField := this.CreateColorAwareComboBox(460, yPos, 310, "hairColor")
-
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Hair length :")
-        this.hairLengthField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w310 h120")
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Hair ﬆyle :")
-        this.hairStyleField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w310 h120")
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Eye colour :")
-        this.eyeColorField := this.CreateColorAwareComboBox(460, yPos, 310, "eyeColor")
-
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Facial 'air :")
-        this.facialHairField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w310 h120", ["no/no", "no/mustache", "beard/no", "beard/mustache"])
-        this.facialHairField.Choose(1)
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Acceßories :")
-        this.accessoriesField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w310 h120")
-
-        
-        yPos2 := 70
-        this.voiceGroup := this.mainGui.Add("GroupBox", "x810 y" . yPos2 . " w380 h130", "Voice")
-        yPos2 += 25
-        
-        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "pitch :")
-        this.voicePitchField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
-        yPos2 += 25
-        
-        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "quality :")
-        this.voiceQualityField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
-        yPos2 += 25
-        
-        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "tone :")
-        this.voiceToneField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
-
-        
-        yPos2 := 255
-        this.clothingGroup := this.mainGui.Add("GroupBox", "x810 y" . yPos2 . " w380 h155", "Clothing")
-        yPos2 += 25
-        
-        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Top :")
-        this.topGarmentField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
-        yPos2 += 25
-        
-        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Bottom :")
-        this.bottomGarmentField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
-        yPos2 += 25
-        
-        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Outer:")
-        this.outerLayerField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
-        yPos2 += 25
-        
-        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Uniform type :")
-        this.uniformTypeField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
-        this.uniformTypeField.Text := "not uniform"
-        yPos2 += 25
-        
-        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Uniform colour :")
-        this.uniformColorField := this.CreateColorAwareComboBox(900, yPos2, 270, "uniformColor")
-
-        
-        yPos3 := 70
-        this.relationshipGroup := this.mainGui.Add("GroupBox", "x1210 y" . yPos3 . " w380 h155", "Relationship")
-        yPos3 += 25
-        
-        this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Relationship type :")
-        this.relationshipTypeField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w245 h120")
-        yPos3 += 25
-        
-        this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Relationship duration :")
-        this.relationshipPeriodField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w245 h120")
-        yPos3 += 25
-        
-        this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Profeßional role :")
-        this.professionalRoleField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w245 h120")
-        yPos3 += 25
-        
-        this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Family relation :")
-        this.familyRelationField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w245 h120")
-        this.familyRelationField.Text := "na"
-
-        
-        yPos3 := 255
-        this.behavioralGroup := this.mainGui.Add("GroupBox", "x1210 y" . yPos3 . " w380 h105", "Behꜹior")
-        yPos3 += 25
-        
-        this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Personality :")
-        this.personalityField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w245 h120")
-        yPos3 += 25
-        
-        this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Behꜹiors :")
-        this.behavioralNotesField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w245 h120")
-
-        
-        this.CreateDreamArea()
-    }
-
-    CreateColorAwareComboBox(x, y, width, field) {
-        ; Create the ComboBox
-        combo := this.mainGui.Add("ComboBox", "x" . x . " y" . y . " w" . (width - 30) . " h120")
-        
-        ; Create color preview rectangle next to it
-        colorPreview := this.mainGui.Add("Progress", "x" . (x + width - 25) . " y" . y . " w20 h20 Background0xFF0000")
-        
-        ; Store references
-        combo.colorPreview := colorPreview
-        
-        ; Add event handler for text changes
-        combo.OnEvent("Change", (*) => this.UpdateColorPreview(combo))
-        
-        return combo
-    }
-    UpdateColorPreview(comboControl) {
-        text := comboControl.Text
-        
-        ; Regex to match: <span style="color: rgb(255,0,0)">HEX #XXXXXX ██████ </span>
-        if (RegExMatch(text, '<span style="color: rgb\((\d+),(\d+),(\d+)\)">HEX #([0-9A-Fa-f]{6}) ██████</span>', &match)) {
-            ; Extract RGB values from the style attribute
-            r := Integer(match[1])
-            g := Integer(match[2]) 
-            b := Integer(match[3])
-            hexColor := match[4]
-            
-            ; Convert to hex color for background
-            bgColor := "0x" . Format("{:02X}{:02X}{:02X}", r, g, b)
-            
-            ; Update color preview
-            try {
-                comboControl.colorPreview.Opt("Background" . bgColor)
-            } catch {
-                ; Handle case where color preview might not exist
-            }
-            
-            ; Store clean text (without formatting) for actual use
-            cleanText := "HEX #" . hexColor
-            comboControl.cleanText := cleanText
-            
-        } else {
-            ; No color formatting found, reset to default
-            try {
-                comboControl.colorPreview.Opt("Background0xF0F0F0")
-            } catch {
-                ; Handle case where color preview might not exist
-            }
-            comboControl.cleanText := text
-        }
-    }
-    CreateDreamArea() {
-        
-        dreamY := 610
-        this.dreamGroup := this.mainGui.Add("GroupBox", "x370 y" . dreamY . " w410 h224", "Dreams")
-        dreamY += 25
-        
-        
-        this.mainGui.Add("Text", "x380 y" . dreamY . " w80 h20", "ʆeen in dream :")
-        this.dreamNumberField := this.mainGui.Add("Edit", "x460 y" . dreamY . " w310 h20 Number")
-        dreamY += 30
-        
-        
-        this.removeDreamBtn := this.mainGui.Add("Button", "x380 y" . dreamY . " w80 h25", "RE‑MOVE")
-        this.removeDreamBtn.OnEvent("Click", (*) => this.RemoveDream())
-        
-        this.reorderDreamBtn := this.mainGui.Add("Button", "x675 y" . dreamY . " w15 h25", "R")
-        this.reorderDreamBtn.OnEvent("Click", (*) => this.ReorderDreams())
-    
-        this.addDreamBtn := this.mainGui.Add("Button", "x690 y" . dreamY . " w80 h25", "ADD")
-        this.addDreamBtn.OnEvent("Click", (*) => this.AddDream())
-        dreamY += 35
-        
-        
-        this.dreamsList := this.mainGui.Add("ListView", "x380 y" . dreamY . " w390 h130 -Multi", ["№", "Dream №"])
-        this.dreamsList.ModifyCol(1, 100)
-        this.dreamsList.ModifyCol(2, 280)
-    }
-    ReorderDreams() {
-        if (this.dreamsList.GetCount() == 0) {
-            return
-        }
-        
-        dreamNumbers := []
-        loop this.dreamsList.GetCount() {
-            dreamNumber := this.dreamsList.GetText(A_Index, 2)
-            if (dreamNumber != "") {
-                dreamNumbers.Push(Integer(dreamNumber))
-            }
-        }
-        
-        this.SortNumbersDesc(dreamNumbers)
-        
-        this.dreamsList.Delete()
-        this.dreamCounter := 1
-        
-        for dreamNumber in dreamNumbers {
-            this.dreamsList.Add("", this.dreamCounter, String(dreamNumber))
-            this.dreamCounter++
-        }
-    }
-    AddDream() {
-        dreamNumber := this.dreamNumberField.Text
-        if (dreamNumber == "") {
-            MsgBox("Enter a dream number first.")
-            return
-        }
-        
-        
-        this.dreamsList.Add("", this.dreamCounter, dreamNumber)
-        this.dreamCounter++
-        
-        
-        this.dreamNumberField.Text := ""
-    }
-
-    RemoveDream() {
-        selectedRow := this.dreamsList.GetNext()
-        if (!selectedRow) {
-            MsgBox("ʆelect a dream from the liﬆ.")
-            return
-        }
-        
-        this.dreamsList.Delete(selectedRow)
-    }
-
-    CreateEngravePanel() {
-        
-        this.engravePanel := this.mainGui.Add("GroupBox", "x1209 y402 w524 h432", "Appendix")
-        
-        buttonY := 425
-        buttonWidth := 135
-        spacing := 25
-        
-        this.deleteBtn := this.mainGui.Add("Button", "x1219 y" . buttonY . " w" . buttonWidth . " h28", "DELETE")
-        this.deleteBtn.OnEvent("Click", (*) => this.DeleteFromEngrave())
-        
-        this.insertBtn := this.mainGui.Add("Button", "x" . (1219 + buttonWidth + spacing) . " y" . buttonY . " w" . buttonWidth . " h28", "INSERT")
-        this.insertBtn.OnEvent("Click", (*) => this.InsertEngrave())
-        
-        this.engraveBtn := this.mainGui.Add("Button", "x" . (1219 + 2 * (buttonWidth + spacing)) . " y" . buttonY . " w" . buttonWidth . " h28", "EN-GRꜸE")
-        this.engraveBtn.OnEvent("Click", (*) => this.AddToEngrave())
-        
-        this.engraveList := this.mainGui.Add("ListView", "x1219 y460 w504 h364 -Multi", ["Designation", "L"])
-        this.engraveList.ModifyCol(1, 300)
-        this.engraveList.ModifyCol(2, 100)
-    }
-
-    
-    AddToEngrave() {
-        selectedRow := this.recordsList.GetNext()
-        if (!selectedRow) {
-            MsgBox("ʆelect a record.")
-            return
-        }
-        
-        designation := this.recordsList.GetText(selectedRow, 1)
-        designationId := this.recordsList.GetText(selectedRow, 2)
-        
-        loop this.engraveList.GetCount() {
-            if (this.engraveList.GetText(A_Index, 1) == designation && 
-                this.engraveList.GetText(A_Index, 2) == designationId) {
-                MsgBox("Already en‑grꜹed.")
-                return
-            }
-        }
-        
-        this.engraveList.Add("", designation, designationId)
-    }
-
-    DeleteFromEngrave() {
-        selectedRow := this.engraveList.GetNext()
-        if (!selectedRow) {
-            MsgBox("ʆelect ʆome‑one from the liﬆ.")
-            return
-        }
-        
-        this.engraveList.Delete(selectedRow)
-    }
-
-    GetPersonInfo(designation, designationId) {
-        try {
-            if (!FileExist(this.dataFile)) {
-                return "information not ꜹailable"
-            }
-            
-            content := FileRead(this.dataFile, "UTF-8")
-            lines := StrSplit(content, "`n")
-            
-            for line in lines {
-                line := Trim(line)
-                if (line == "") {
-                    continue
-                }
-                
-                try {
-                    data := this.ParseJSON(line)
-                    if (data.HasOwnProp("designation") && data.HasOwnProp("designationId")) {
-                        if (data.designation == designation && data.designationId == designationId) {
-                            info := data.designation . " " . data.designationId . " is a "
-                            
-                            species := (data.HasOwnProp("species") && data.species != "member of the Human race") ? data.species : "Human"
-                            info .= species . " "
-                            
-                            gender := data.HasOwnProp("gender") ? data.gender : "不明"
-                            info .= StrLower(gender)
-                            
-                            if (data.HasOwnProp("ageStart") && data.ageStart != "") {
-                                if (data.HasOwnProp("ageEnd") && data.ageEnd != "") {
-                                    info .= " aged " . data.ageStart . " to " . data.ageEnd
-                                } else {
-                                    info .= " aged around " . data.ageStart
-                                }
-                            }
-                            
-                            return info
-                        }
-                    }
-                } catch {
-                    continue
-                }
-            }
-            
-            return "information not available"
-        } catch {
-            return "information not available"
-        }
-    }
-    
-    LoadDataToLeftPanel() {
-        this.recordsList.Delete()
-        
-        try {
-            if (!FileExist(this.dataFile)) {
-                return
-            }
-            
-            content := FileRead(this.dataFile, "UTF-8")
-            lines := StrSplit(content, "`n")
-            
-            records := []
-            
-            for line in lines {
-                line := Trim(line)
-                if (line == "") {
-                    continue
-                }
-                
-                try {
-                    data := this.ParseJSON(line)
-                    if (data.HasOwnProp("designation") && data.HasOwnProp("designationId")) {
-                        ; Get last dream number
-                        lastDream := ""
-                        if (data.HasOwnProp("dreams") && data.dreams != "" && data.dreams != "undefined") {
-                            dreams := this.StringToArray(data.dreams)
-                            if (dreams.Length > 0) {
-                                ; Convert to numbers, sort descending, take first
-                                dreamNumbers := []
-                                for dream in dreams {
-                                    if (dream != "" && dream != "undefined") {
-                                        dreamNumbers.Push(Integer(dream))
-                                    }
-                                }
-                                if (dreamNumbers.Length > 0) {
-                                    ; Sort numbers descending
-                                    this.SortNumbersDesc(dreamNumbers)
-                                    lastDream := String(dreamNumbers[1])
-                                }
-                            }
-                        }
-                        
-                        records.Push({
-                            designation: data.designation,
-                            designationId: data.designationId,
-                            id: data.HasOwnProp("id") ? data.id : "",
-                            lastDream: lastDream
-                        })
-                    }
-                } catch {
-                    continue
-                }
-            }
-            
-            this.SortRecordsCustom(records)
-            
-            for record in records {
-                this.recordsList.Add("", record.designation, record.designationId, record.lastDream)
-            }
-            
-        } catch Error as err {
-            MsgBox("Error loading data: " . err.Message)
-        }
-    }
-    SortNumbersDesc(numbers) {
-        n := numbers.Length
-        loop n - 1 {
-            swapped := false
-            loop n - A_Index {
-                if (numbers[A_Index] < numbers[A_Index + 1]) {  ; Descending order
-                    temp := numbers[A_Index]
-                    numbers[A_Index] := numbers[A_Index + 1]
-                    numbers[A_Index + 1] := temp
-                    swapped := true
-                }
-            }
-            if (!swapped) {
-                break
-            }
-        }
-    }
-
-    SortRecordsCustom(records) {
-        n := records.Length
-        
-        loop n - 1 {
-            swapped := false
-            loop n - A_Index {
-                if (this.CompareRecords(records[A_Index], records[A_Index + 1]) > 0) {
-                    temp := records[A_Index]
-                    records[A_Index] := records[A_Index + 1]
-                    records[A_Index + 1] := temp
-                    swapped := true
-                }
-            }
-            if (!swapped) {
-                break
-            }
-        }
-    }
-
-    CompareRecords(record1, record2) {
-        lastDream1 := record1.lastDream != "" ? Integer(record1.lastDream) : 0
-        lastDream2 := record2.lastDream != "" ? Integer(record2.lastDream) : 0
-        
-        if (lastDream1 != lastDream2) {
-            return lastDream2 - lastDream1  ; Descending order
-        }
-        
-        desigCompare := StrCompare(record1.designation, record2.designation, false)
-        if (desigCompare != 0) {
-            return desigCompare
-        }
-        
-        return this.CompareGreekIds(record2.designationId, record1.designationId)  ; Reversed for DESC
-    }
-
-
-    CompareGreekIds(id1, id2) {
-        order1 := this.GetGreekOrder(id1)
-        order2 := this.GetGreekOrder(id2)
-        
-        return order1 - order2
-    }
-
-    GetGreekOrder(greekId) {
-        if (greekId == "") {
-            return 999999 
-        }
-        
-        totalOrder := 0
-        
-        loop parse, greekId {
-            char := A_LoopField
-            charOrder := 0
-            
-            for i, letter in this.greekLetters {
-                if (letter == char) {
-                    charOrder := i
-                    break
-                }
-            }
-            
-            if (charOrder == 0) {
-                charOrder := 999 
-            }
-            
-            totalOrder := totalOrder * 100 + charOrder
-        }
-        
-        return totalOrder
-    }
-
-    LoadRecord() {
-        selectedRow := this.recordsList.GetNext()
-        if (!selectedRow) {
-            return
-        }
-        
-        this.ClearFieldsOnly()
-        this.saveBtn.Enabled := false
-        
-        designation := this.recordsList.GetText(selectedRow, 1)
-        designationId := this.recordsList.GetText(selectedRow, 2)
-        
-        this.panelleftid := ""
-        
-        try {
-            if (!FileExist(this.dataFile)) {
-                MsgBox("File exiﬆsn't.")
-                return
-            }
-            
-            content := FileRead(this.dataFile, "UTF-8")
-            lines := StrSplit(content, "`n")
-            
-            for lineIndex, line in lines {
-                line := Trim(line)
-                if (line == "") {
-                    continue
-                }
-                
-                try {
-                    data := this.ParseJSON(line)
-                    if (data.HasOwnProp("designation") && data.HasOwnProp("designationId")) {
-                        fileDesignation := String(data.designation)
-                        fileId := String(data.designationId)
-                        
-                        if (fileDesignation == designation && fileId == designationId) {
-                            try {
-                                this.PopulateFields(data)
-                                this.originalData := data.Clone()
-                                this.panelleftid := String(data.id)
-                                return 
-                            } catch Error as err {
-                                MsgBox("Error at loading Record‑data : " . err.Message)
-                                return
-                            }
-                        }
-                    }
-                } catch {
-                    continue
-                }
-            }
-            
-        } catch Error as err {
-            MsgBox("Error : " . err.Message)
-        }
-    }
-
-    ParseJSON(jsonStr) {
-        obj := {}
-        
-        try {
-            jsonStr := Trim(jsonStr)
-            if (SubStr(jsonStr, 1, 1) == "{") {
-                jsonStr := SubStr(jsonStr, 2)
-            }
-            if (SubStr(jsonStr, -1) == "}") {
-                jsonStr := SubStr(jsonStr, 1, -1)
-            }
-            
-            if (Trim(jsonStr) == "") {
-                return obj
-            }
-            
-            pairs := []
-            current := ""
-            inQuotes := false
-            escapeNext := false
-            
-            loop parse, jsonStr {
-                char := A_LoopField
-                
-                if (escapeNext) {
-                    current .= char
-                    escapeNext := false
-                    continue
-                }
-                
-                if (char == '\') {
-                    escapeNext := true
-                    current .= char
-                    continue
-                }
-                
-                if (char == '"') {
-                    inQuotes := !inQuotes
-                    current .= char
-                    continue
-                }
-                
-                if (char == ',' && !inQuotes) {
-                    if (Trim(current) != "") {
-                        pairs.Push(Trim(current))
-                    }
-                    current := ""
-                } else {
-                    current .= char
-                }
-            }
-            
-            if (Trim(current) != "") {
-                pairs.Push(Trim(current))
-            }
-            
-            for pair in pairs {
-                pair := Trim(pair)
-                if (pair == "") {
-                    continue
-                }
-                
-                colonPos := 0
-                inQuotes := false
-                escapeNext := false
-                
-                loop parse, pair {
-                    char := A_LoopField
-                    
-                    if (escapeNext) {
-                        escapeNext := false
-                        continue
-                    }
-                    
-                    if (char == '\') {
-                        escapeNext := true
-                        continue
-                    }
-                    
-                    if (char == '"') {
-                        inQuotes := !inQuotes
-                        continue
-                    }
-                    
-                    if (char == ':' && !inQuotes) {
-                        colonPos := A_Index
-                        break
-                    }
-                }
-                
-                if (colonPos == 0) {
-                    continue
-                }
-                
-                key := Trim(SubStr(pair, 1, colonPos - 1))
-                value := Trim(SubStr(pair, colonPos + 1))
-                
-                key := this.UnescapeJSONString(key)
-                value := this.UnescapeJSONString(value)
-                
-                if (key != "") {
-                    obj.%key% := value
-                }
-            }
-        } catch Error as parseErr {
-            
-        }
-        
-        return obj
-    }
-
-    UnescapeJSONString(str) {
-        if (str == "") {
-            return ""
-        }
-        
-        if (SubStr(str, 1, 1) == '"' && SubStr(str, -1) == '"') {
-            str := SubStr(str, 2, -1)
-        }
-        
-        str := StrReplace(str, '\"', '"')
-        str := StrReplace(str, '\\', '\')
-        
-        return str
-    }
-        
-    ClearFieldsOnly() {
-        this.idField.Text := ""
-        this.designationField.Text := ""
-        this.designationIdField.Text := ""
-        this.genderField.Choose(0)
-        this.speciesField.Text := "member of the Human race"
-        this.nameStatusField.Text := ""
-        
-        this.ageStartField.Text := ""
-        this.ageEndField.Text := ""
-        this.heightStartField.Text := ""
-        this.heightEndField.Text := ""
-        this.weightStartField.Text := ""
-        this.weightEndField.Text := ""
-        this.bmiField.Text := ""
-        
-        this.skinColorField.Choose(1) 
-        this.facialHairField.Choose(1) 
-        this.uniformColorField.Text := ""
-        
-        comboFields := [this.hairColorField, this.hairLengthField, this.hairStyleField, 
-                    this.eyeColorField, this.voicePitchField, this.voiceQualityField, 
-                    this.voiceToneField, this.topGarmentField, this.bottomGarmentField, 
-                    this.outerLayerField, this.relationshipTypeField, this.relationshipPeriodField, 
-                    this.professionalRoleField, this.personalityField, this.behavioralNotesField]
-        
-        for field in comboFields {
-            field.Choose(0)
-            field.Text := ""
-        }
-        
-        this.accessoriesField.Text := ""
-        this.uniformTypeField.Text := "not uniform"
-        this.familyRelationField.Text := "na"
-        
-        
-        this.dreamsList.Delete()
-        this.dreamNumberField.Text := ""
-        this.dreamCounter := 1
-    }
-
-    PopulateFields(data) {
-        this.idField.Text := data.HasOwnProp("id") ? String(data.id) : ""
-        this.designationField.Text := data.HasOwnProp("designation") ? data.designation : ""
-        this.designationIdField.Text := data.HasOwnProp("designationId") ? data.designationId : ""
-        
-        if (data.HasOwnProp("gender")) {
-            try {
-                genderOptions := ["Male", "Female", "Androgynous"]
-                for i, option in genderOptions {
-                    if (option == data.gender) {
-                        this.genderField.Choose(i)
-                        break
-                    }
-                }
-            }
-        }
-        
-        this.speciesField.Text := data.HasOwnProp("species") ? data.species : "member of the Human race"
-        this.nameStatusField.Text := data.HasOwnProp("nameStatus") ? data.nameStatus : ""
-        
-        if (data.HasOwnProp("ageStart")) this.ageStartField.Text := data.ageStart
-        if (data.HasOwnProp("ageEnd")) this.ageEndField.Text := data.ageEnd
-        
-        if (data.HasOwnProp("heightStart")) this.heightStartField.Text := data.heightStart
-        if (data.HasOwnProp("heightEnd")) this.heightEndField.Text := data.heightEnd
-        
-        if (data.HasOwnProp("weightStart")) this.weightStartField.Text := data.weightStart
-        if (data.HasOwnProp("weightEnd")) this.weightEndField.Text := data.weightEnd
-        
-        this.CalculateBMI()
-        
-        if (data.HasOwnProp("skinColor")) {
-            try {
-                skinOptions := ["", "pale ( orange )", "mid ( orange )", "dark ( orange )"]
-                found := false
-                for i, option in skinOptions {
-                    if (Trim(option) == Trim(data.skinColor)) {
-                        this.skinColorField.Choose(i)
-                        found := true
-                        break
-                    }
-                }
-                
-                if (!found) {
-                    for i, option in skinOptions {
-                        if (option == data.skinColor) {
-                            this.skinColorField.Choose(i)
-                            break
-                        }
-                    }
-                }
-            }
-        }
-        
-        this.SetComboBoxValue(this.hairColorField, data.HasOwnProp("hairColor") ? data.hairColor : "")
-        this.SetComboBoxValue(this.hairLengthField, data.HasOwnProp("hairLength") ? data.hairLength : "")
-        this.SetComboBoxValue(this.hairStyleField, data.HasOwnProp("hairStyle") ? data.hairStyle : "")
-        this.SetComboBoxValue(this.eyeColorField, data.HasOwnProp("eyeColor") ? data.eyeColor : "")
-        
-        if (data.HasOwnProp("facialHair")) {
-            facialHairOptions := ["no/no", "no/mustache", "beard/no", "beard/mustache"]
-            for i, option in facialHairOptions {
-                if (option == data.facialHair) {
-                    this.facialHairField.Choose(i)
-                    break
-                }
-            }
-        }
-        
-        this.SetComboBoxValue(this.accessoriesField, data.HasOwnProp("accessories") ? data.accessories : "")
-        
-        this.SetComboBoxValue(this.voicePitchField, data.HasOwnProp("voicePitch") ? data.voicePitch : "")
-        this.SetComboBoxValue(this.voiceQualityField, data.HasOwnProp("voiceQuality") ? data.voiceQuality : "")
-        this.SetComboBoxValue(this.voiceToneField, data.HasOwnProp("voiceTone") ? data.voiceTone : "")
-        
-        this.SetComboBoxValue(this.topGarmentField, data.HasOwnProp("topGarment") ? data.topGarment : "")
-        this.SetComboBoxValue(this.bottomGarmentField, data.HasOwnProp("bottomGarment") ? data.bottomGarment : "")
-        this.SetComboBoxValue(this.outerLayerField, data.HasOwnProp("outerLayer") ? data.outerLayer : "")
-        this.SetComboBoxValue(this.uniformTypeField, data.HasOwnProp("uniformType") ? data.uniformType : "")
-        
-        ; FIX: Use SetComboBoxValue for uniformColorField to trigger color preview
-        this.SetComboBoxValue(this.uniformColorField, data.HasOwnProp("uniformColor") ? data.uniformColor : "")
-        
-        this.SetComboBoxValue(this.relationshipTypeField, data.HasOwnProp("relationshipType") ? data.relationshipType : "")
-        this.SetComboBoxValue(this.relationshipPeriodField, data.HasOwnProp("relationshipPeriod") ? data.relationshipPeriod : "")
-        this.SetComboBoxValue(this.professionalRoleField, data.HasOwnProp("professionalRole") ? data.professionalRole : "")
-        this.SetComboBoxValue(this.familyRelationField, data.HasOwnProp("familyRelation") ? data.familyRelation : "")
-        
-        this.SetComboBoxValue(this.personalityField, data.HasOwnProp("personality") ? data.personality : "")
-        this.SetComboBoxValue(this.behavioralNotesField, data.HasOwnProp("behavioralNotes") ? data.behavioralNotes : "")
-        
-        this.dreamsList.Delete()
-        this.dreamCounter := 1
-        if (data.HasOwnProp("dreams") && data.dreams != "" && data.dreams != "undefined") {
-            dreams := this.StringToArray(data.dreams)
-            dreamNumbers := []
-            
-            for dreamNumber in dreams {
-                if (dreamNumber != "" && dreamNumber != "undefined") {
-                    dreamNumbers.Push(Integer(dreamNumber))
-                }
-            }
-            
-            this.SortNumbersDesc(dreamNumbers)
-            
-            for dreamNumber in dreamNumbers {
-                this.dreamsList.Add("", this.dreamCounter, String(dreamNumber))
-                this.dreamCounter++
-            }
-        }
-    }
-    
-    
-    SetComboBoxValue(control, value) {
-        if (value == "") {
-            control.Text := ""
-            ; Reset color preview for color-aware controls
-            if (control.HasOwnProp("colorPreview")) {
-                try {
-                    control.colorPreview.Opt("Background0xF0F0F0")
-                } catch {
-                }
-            }
-            return
-        }
-        
-        control.Text := value
-        
-        ; Trigger color preview update for color-aware controls
-        if (control.HasOwnProp("colorPreview")) {
-            this.UpdateColorPreview(control)
-        }
-        
-        try {
-            found := false
-            index := 1
-            loop {
-                try {
-                    itemText := control.GetText(index)
-                    if (itemText == "") {
-                        break
-                    }
-                    if (itemText == value) {
-                        control.Choose(index)
-                        found := true
-                        break
-                    }
-                } catch {
-                    break
-                }
-            }
-        } catch {
-            
-        }
-    }
-    
-    CalculateBMI() {
-        try {
-            heightStart := Float(this.heightStartField.Text)
-            heightEnd := Float(this.heightEndField.Text)
-            weightStart := Float(this.weightStartField.Text)
-            weightEnd := Float(this.weightEndField.Text)
-            
-            if (heightStart > 0 && heightEnd > 0 && weightStart > 0 && weightEnd > 0) {
-                bmiStart := Round(weightStart / ((heightStart/100) * (heightStart/100)), 1)
-                bmiEnd := Round(weightEnd / ((heightEnd/100) * (heightEnd/100)), 1)
-                this.bmiField.Text := bmiStart . " - " . bmiEnd
-            }
-        } catch {
-            
-        }
-    }
-    
-    CreateNewRecord() {
-        designation := InputBox("Enter designation:", "New Record", "w300 h100").Value
-        if (designation == "") {
-            return
-        }
-        
-        newDesignationId := this.GetNextDesignationId(designation)
-        nextRecordId := this.GetNextRecordId()
-        
-        this.ClearFields()
-        
-        this.idField.Text := String(nextRecordId)
-        this.designationField.Text := designation
-        this.designationIdField.Text := newDesignationId
-        this.speciesField.Text := "member of the Human race"
-        this.facialHairField.Choose(1) 
-        this.skinColorField.Choose(1) 
-        this.accessoriesField.Text := ""
-        this.uniformTypeField.Text := "not uniform"
-        this.familyRelationField.Text := "na"
-        
-        this.panelleftid := String(nextRecordId)
-        this.saveBtn.Enabled := true
-        this.originalData := {}
-    }
-
-    GetNextDesignationId(designation := "") {
-        if (designation == "") {
-            designation := this.designationField.Text
-        }
-        
-        if (designation == "") {
-            return "α" 
-        }
-        
-        usedIds := []
-        
-        try {
-            if (FileExist(this.dataFile)) {
-                content := FileRead(this.dataFile, "UTF-8")
-                lines := StrSplit(content, "`n")
-                
-                for line in lines {
-                    line := Trim(line)
-                    if (line == "" || line == "{}" || !InStr(line, "designationId")) {
-                        continue
-                    }
-                    
-                    try {
-                        data := this.ParseJSON(line)
-                        
-                        if (data.HasOwnProp("designation") && data.HasOwnProp("designationId") && 
-                            data.designation == designation && data.designationId != "") {
-                            usedIds.Push(data.designationId)
-                        }
-                    } catch {
-                        continue
-                    }
-                }
-            }
-        } catch {
-            
-        }
-        
-        nextId := this.GenerateNextGreekId(usedIds)
-        return nextId
-    }
-
-    GenerateNextGreekId(usedIds) {
-        for letter in this.greekLetters {
-            if (!this.ArrayContains(usedIds, letter)) {
-                return letter
-            }
-        }
-        
-        for firstLetter in this.greekLetters {
-            for secondLetter in this.greekLetters {
-                combo := firstLetter . secondLetter
-                if (!this.ArrayContains(usedIds, combo)) {
-                    return combo
-                }
-            }
-        }
-        
-        for firstLetter in this.greekLetters {
-            for secondLetter in this.greekLetters {
-                for thirdLetter in this.greekLetters {
-                    combo := firstLetter . secondLetter . thirdLetter
-                    if (!this.ArrayContains(usedIds, combo)) {
-                        return combo
-                    }
-                }
-            }
-        }
-        
-        return "α" 
-    }
-
-    StrJoin(arr, delimiter := ", ") {
-        result := ""
-        for i, item in arr {
-            if (i > 1) {
-                result .= delimiter
-            }
-            result .= String(item)
-        }
-        return result
-    }
-    
-    ArrayContains(arr, value) {
-        for item in arr {
-            if (String(item) == String(value)) { 
-                return true
-            }
-        }
-        return false
-    }
-    
-    
-    ArrayToString(arr) {
-        if (arr.Length == 0) {
-            return ""
-        }
-        
-        validItems := []
-        for item in arr {
-            itemStr := String(item)
-            if (itemStr != "" && itemStr != "undefined") {
-                validItems.Push(itemStr)
-            }
-        }
-        
-        if (validItems.Length == 0) {
-            return ""
-        }
-        
-        result := ""
-        for i, item in validItems {
-            if (i > 1) {
-                result .= ","
-            }
-            result .= item
-        }
-        return result
-    }
-    
-    
-    StringToArray(str) {
-        arr := []
-        if (str == "" || str == "undefined") {
-            return arr
-        }
-        
-        parts := StrSplit(str, ",")
-        for part in parts {
-            trimmed := Trim(part)
-            if (trimmed != "" && trimmed != "undefined") {
-                arr.Push(trimmed)
-            }
-        }
-        return arr
-    }
-    
-    GetNextRecordId() {
-        maxId := 0
-        
-        try {
-            if (FileExist(this.dataFile)) {
-                content := FileRead(this.dataFile, "UTF-8")
-                lines := StrSplit(content, "`n")
-                
-                for line in lines {
-                    line := Trim(line)
-                    if (line == "" || line == "{}") {
-                        continue
-                    }
-                    
-                    try {
-                        data := this.ParseJSON(line)
-                        if (data.HasOwnProp("id") && data.id != "") {
-                            currentId := Integer(data.id)
-                            if (currentId > maxId) {
-                                maxId := currentId
-                            }
-                        }
-                    } catch {
-                        continue
-                    }
-                }
-            }
-        } catch {
-            
-        }
-        
-        return maxId + 1
-    }
-    
-    SaveRecord() {
-        data := this.CollectFormData()
-        
-        if (!data.designation || !data.designationId) {
-            MsgBox("Designation & L is required.")
-            return
-        }
-        
-        if (this.panelleftid != "") {
-            data.id := String(this.panelleftid)
-            this.idField.Text := data.id
-        }
-        
-        if (this.IdExistsInFile(data.id)) {
-            MsgBox("& exiﬆs in the ﬁle.")
-            return
-        }
-        
-        if (!data.id || data.id == "") {
-            data.id := String(this.GetNextRecordId())
-            this.panelleftid := data.id
-            this.idField.Text := data.id
-        }
-        
-        try {
-            jsonLine := this.ObjectToJSON(data)
-            
-            dir := RegExReplace(this.dataFile, "[^\\]*$", "")
-            if (!DirExist(dir)) {
-                DirCreate(dir)
-            }
-            
-            FileAppend(jsonLine . "`n", this.dataFile, "UTF-8")
-            
-            this.originalData := data.Clone()
-            this.saveBtn.Enabled := false
-            
-            this.LoadDataToLeftPanel()
-            this.PopulateDropdowns()
-            
-        } catch Error as err {
-            MsgBox("Error saving record: " . err.Message)
-        }
-    }
-    
-    IdExistsInFile(checkId) {
-        try {
-            if (!FileExist(this.dataFile)) {
-                return false
-            }
-            
-            content := FileRead(this.dataFile, "UTF-8")
-            lines := StrSplit(content, "`n")
-            
-            for line in lines {
-                line := Trim(line)
-                if (line == "" || line == "{}") {
-                    continue
-                }
-                
-                try {
-                    data := this.ParseJSON(line)
-                    if (data.HasOwnProp("id") && String(data.id) == String(checkId)) {
-                        return true
-                    }
-                } catch {
-                    continue
-                }
-            }
-            
-            return false
-        } catch {
-            return false
-        }
-    }
-
-
-    UpdateRecord() {
-        if (!this.panelleftid || this.panelleftid == "" || Trim(this.panelleftid) == "") {
-            MsgBox("panelleftid is : '" . this.panelleftid . "'")
-            return
-        }
-        
-        data := this.CollectFormData()
-        
-        data.id := String(this.panelleftid)
-        this.idField.Text := data.id
-        
-        if (this.originalData.HasOwnProp("designation") && data.designation != this.originalData.designation) {
-            result := MsgBox("Designation changed from '" . this.originalData.designation . "' to '" . data.designation . "'. Conﬁrm ?", "Confirmation", "YesNo")
-            if (result == "No") {
-                return
-            }
-        }
-        
-        try {
-            if (!FileExist(this.dataFile)) {
-                MsgBox("Data ﬁle not found.")
-                return
-            }
-            
-            content := FileRead(this.dataFile, "UTF-8")
-            lines := StrSplit(content, "`n")
-            updatedLines := []
-            found := false
-            
-            totalRecords := 0
-            
-            for line in lines {
-                line := Trim(line)
-                if (line == "" || line == "{}") {
-                    continue
-                }
-                
-                totalRecords++
-                
-                try {
-                    existingData := this.ParseJSON(line)
-                    
-                    if (existingData.HasOwnProp("id")) {
-                        currentId := String(existingData.id)
-                        targetId := String(this.panelleftid)
-                        
-                        if (currentId == targetId) {
-                            updatedLines.Push(this.ObjectToJSON(data))
-                            found := true
-                        } else {
-                            updatedLines.Push(line)
-                        }
-                    } else {
-                        updatedLines.Push(line)
-                    }
-                } catch {
-                    updatedLines.Push(line)
-                }
-            }
-            
-            if (!found) {
-                MsgBox("Err L: '" . this.panelleftid)
-                return
-            }
-            
-            newContent := ""
-            for line in updatedLines {
-                newContent .= line . "`n"
-            }
-            
-            FileDelete(this.dataFile)
-            FileAppend(newContent, this.dataFile, "UTF-8")
-            
-            this.originalData := data.Clone()
-            
-            this.LoadDataToLeftPanel()
-            this.PopulateDropdowns()
-            
-        } catch Error as err {
-            MsgBox("Error Up‑date : " . err.Message)
-        }
-    }
-    CloseFields() {
-        if (this.panelleftid != "") {
-            currentData := this.CollectFormData()
-            
-            if (this.HasDataChanged(currentData)) {
-                result := MsgBox("Current data diﬀers , close ?", "Data Changed", "YesNo")
-                if (result == "No") {
-                    return
-                }
-            }
-        }
-        
-        this.ClearFields()
-        this.originalData := {}
-    }
-    
-    HasDataChanged(currentData) {
-        if (!this.panelleftid || this.panelleftid == "") {
-            return currentData.designation != "" || currentData.designationId != "" || 
-                   currentData.gender != "" || currentData.hairColor != "" || 
-                   currentData.ageStart != "" || currentData.ageEnd != "" ||
-                   currentData.dreams != ""
-        }
-        
-        if (!this.originalData.HasOwnProp("id")) {
-            return true 
-        }
-        
-        fields := ["designation", "designationId", "gender", "species", "ageStart", "ageEnd", 
-                   "heightStart", "heightEnd", "weightStart", "weightEnd", "skinColor", 
-                   "hairColor", "hairLength", "hairStyle", "eyeColor", "facialHair", 
-                   "voicePitch", "voiceQuality", "voiceTone", "relationshipType", "familyRelation",
-                   "dreams"]
-        
-        for field in fields {
-            currentVal := currentData.HasOwnProp(field) ? String(currentData.%field%) : ""
-            originalVal := this.originalData.HasOwnProp(field) ? String(this.originalData.%field%) : ""
-            
-            if (currentVal != originalVal) {
-                return true
-            }
-        }
-        
-        return false
-    }
-    
-    ClearFields() {
-        this.panelleftid := ""
-        
-        this.ClearFieldsOnly()
-        
-        this.saveBtn.Enabled := false
-        this.originalData := {}
-        
-        try {
-            this.recordsList.Modify(0, "-Select") 
-        } catch {
-            
-        }
-    }
-
-    GetPersonData(designation, designationId) {
-        try {
-            if (!FileExist(this.dataFile)) {
-                return {}
-            }
-            
-            content := FileRead(this.dataFile, "UTF-8")
-            lines := StrSplit(content, "`n")
-            
-            for line in lines {
-                line := Trim(line)
-                if (line == "") {
-                    continue
-                }
-                
-                try {
-                    data := this.ParseJSON(line)
-                    if (data.HasOwnProp("designation") && data.HasOwnProp("designationId")) {
-                        if (data.designation == designation && data.designationId == designationId) {
-                            return data
-                        }
-                    }
-                } catch {
-                    continue
-                }
-            }
-            
-            return {}
-        } catch {
-            return {}
-        }
-    }
-
-    InsertRecordA() {
-        data := this.CollectFormData()
-        
-        if (!data.designation || !data.designationId) {
-            MsgBox("Fill designation & designation L ﬁrﬆ.")
-            return
-        }
-        
-        detailedInfo := this.GeneratePersonInfo(data)
-        
-        insertText := "— [ " . data.designation . " " . data.designationId . " ] : " . detailedInfo . " —"
-        
-        this.mainGui.Hide()
-        Sleep(100)
-        SendText(insertText)
-    }
-
-    GeneratePersonInfo(data) {
-        if (!data.designation || !data.designationId) {
-            return "In‑complete data"
-        }
-        
-        infoText := data.designation . " " . data.designationId . " is a "
-        
-        gender := data.gender ? data.gender : "不明"
-        species := data.species
-        infoText .= gender . " " . species
-        
-        pronoun := ""
-        if (StrLower(gender) == "male") {
-            pronoun := "His"
-        } else if (StrLower(gender) == "female") {
-            pronoun := "Her"
-        } else {
-            pronoun := "Their"
-        }
-        
-        if (data.ageStart && data.ageEnd) {
-            infoText .= " with an age around " . data.ageStart . "‒" . data.ageEnd
-        } else if (data.ageStart) {
-            infoText .= " with an age around " . data.ageStart
-        } else {
-            infoText .= " with an age of 不明"
-        }
-        
-        infoText .= " and " . pronoun . " traits are : "
-        
-        if (data.hairColor && data.hairColor != "") {
-            infoText .= "has " . data.hairColor . " hair"
-            if (data.hairLength && data.hairLength != "") {
-                infoText .= " with " . data.hairLength
-            }
-            if (data.hairStyle && data.hairStyle != "") {
-                infoText .= " " . data.hairStyle
-            }
-        } else {
-            infoText .= "has 不明 hair"
-        }
-        
-        infoText .= " , "
-        
-        if (data.eyeColor && data.eyeColor != "") {
-            infoText .= data.eyeColor . " Iris‑color"
-        } else {
-            infoText .= "不明 Iris‑color"
-        }
-        
-        infoText .= " , "
-        
-        if (data.accessories && data.accessories != "" && data.accessories != "without glaſses") {
-            infoText .= "has " . data.accessories . " , "
-        }
-        
-        infoText .= pronoun . " height is "
-        if (data.heightStart && data.heightEnd) {
-            infoText .= data.heightStart . "‒" . data.heightEnd . " C.‑m."
-        } else if (data.heightStart) {
-            infoText .= "around " . data.heightStart . " C.‑m."
-        } else {
-            infoText .= "不明 C.‑m."
-        }
-        
-        infoText .= " , " . pronoun . " Skin colour is "
-        if (data.skinColor && data.skinColor != "") {
-            infoText .= data.skinColor
-        } else {
-            infoText .= "不明"
-        }
-        
-        infoText .= " , weight "
-        if (data.weightStart && data.weightEnd) {
-            infoText .= data.weightStart . "‒" . data.weightEnd . " K.‑gr."
-        } else if (data.weightStart) {
-            infoText .= "around " . data.weightStart . " K.‑gr."
-        } else {
-            infoText .= "不明 K.‑gr."
-        }
-        
-        infoText .= " , name : "
-        if (data.nameStatus && data.nameStatus != "") {
-            infoText .= data.nameStatus
-        } else {
-            infoText .= "不明"
-        }
-        
-        infoText .= " , & "
-        if (data.facialHair && data.facialHair != "") {
-            infoText .= StrReplace(data.facialHair, "/", "⧸")
-        }
-        
-        infoText .= " , " . pronoun . " relationship with Me : "
-        if (data.relationshipType && data.relationshipType != "") {
-            relationship := data.relationshipType
-            
-            if (data.relationshipPeriod && data.relationshipPeriod != "") {
-                relationship .= " of " . data.relationshipPeriod
-            }
-            infoText .= relationship
-            
-            if (data.familyRelation && data.familyRelation != "" && data.familyRelation != "na") {
-                infoText .= " with " . pronoun . " Family ﬆatus being " . data.familyRelation
-            }
-        } else {
-            infoText .= "不明"
-        }
-        
-        if (data.professionalRole && data.professionalRole != "") {
-            infoText .= " , Professional role : " . data.professionalRole
-        }
-        
-        if (data.personality && data.personality != "") {
-            infoText .= " , personality : " . data.personality
-        }
-        
-        if (data.behavioralNotes && data.behavioralNotes != "") {
-            infoText .= " , behꜹiors : " . data.behavioralNotes
-        }
-        
-        clothing := []
-        if (data.topGarment && data.topGarment != "") clothing.Push(data.topGarment)
-        if (data.bottomGarment && data.bottomGarment != "") clothing.Push(data.bottomGarment)
-        if (data.outerLayer && data.outerLayer != "") clothing.Push(data.outerLayer)
-        
-        if (clothing.Length > 0) {
-            infoText .= " , clothing : "
-            for i, item in clothing {
-                if (i > 1) infoText .= ", "
-                infoText .= item
-            }
-        }
-        
-        if (data.uniformType && data.uniformType != "" && data.uniformType != "not uniform") {
-            infoText .= " , Uniform type : " . data.uniformType
-            if (data.uniformColor && data.uniformColor != "") {
-                infoText .= " , Uniform colour : " . data.uniformColor
-            }
-        } else if (data.uniformType && data.uniformType != "") {
-            infoText .= " , Uniform type : " . data.uniformType
-        }
-        if ((data.voicePitch && data.voicePitch != "") || (data.voiceQuality && data.voiceQuality != "") || (data.voiceTone && data.voiceTone != "")) {
-            infoText .= " , & " . pronoun . " voice is : "
-            
-            firstVoice := true
-            if (data.voicePitch && data.voicePitch != "") {
-                infoText .= data.voicePitch
-                firstVoice := false
-            }
-            if (data.voiceQuality && data.voiceQuality != "") {
-                if (!firstVoice) infoText .= " , "
-                infoText .= data.voiceQuality
-                firstVoice := false
-            }
-            if (data.voiceTone && data.voiceTone != "") {
-                if (!firstVoice) infoText .= " , "
-                infoText .= data.voiceTone
-            }
-        }
-        
-        if (data.HasOwnProp("dreams") && data.dreams != "" && data.dreams != "undefined") {
-            dreams := this.StringToArray(data.dreams)
-            validDreams := []
-            
-            
-            for dreamNumber in dreams {
-                if (dreamNumber != "" && dreamNumber != "undefined") {
-                    validDreams.Push(dreamNumber)
-                }
-            }
-            
-            if (validDreams.Length > 0) {
-                infoText .= " , appears in dreams : "
-                for i, dreamNumber in validDreams {
-                    infoText .= "№ " . dreamNumber
-                    if (i < validDreams.Length) { 
-                        infoText .= " , "
-                    }
-                }
-            }
-        }
-        
-        return infoText
-    }
-
-    InsertEngrave() {
-        if (this.engraveList.GetCount() == 0) {
-            MsgBox("Engrave list is empty!")
-            return
-        }
-        
-        insertText := '<div style="text-align: justify;"><center>APPENDIX :</center>'
-        
-        loop this.engraveList.GetCount() {
-            designation := this.engraveList.GetText(A_Index, 1)
-            designationId := this.engraveList.GetText(A_Index, 2)
-            
-            personData := this.GetPersonData(designation, designationId)
-            
-            if (personData.HasOwnProp("designation")) {
-                detailedInfo := this.GeneratePersonInfo(personData)
-                insertText .= "<p>[ " . designation . " " . designationId . " ] : " . detailedInfo . ".</p>"
-            } else {
-                insertText .= "<p>[ " . designation . " " . designationId . " ] : information not ꜹailable.`</p>"
-            }
-        }
-        
-        insertText .= "<center>++--++</center>"
-        currentDate := FormatTime(, "yyyyMMdd")
-        insertText .= '<table style="width:100%;"><tr><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;">/s/ ʆunt Vĳelie<br>Data correct as of : ' . currentDate . '</td></tr><tr> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"><img src="https://files.catbox.moe/k6q0p2.png" width="206px"></td> </tr></table></div>'
-
-        
-        this.mainGui.Hide()
-        Sleep(100)
-        SendText(insertText)
-        this.mainGui.Destroy()
-        this.isDestroyed := true
-    }
-
-    InsertRecordB() {
-        data := this.CollectFormData()
-        
-        if (!data.designation || !data.designationId) {
-            MsgBox("Please fill designation and designation ID first!")
-            return
-        }
-        
-        insertText := "[ " . data.designation . " " . data.designationId . " ]"
-        
-        this.mainGui.Hide()
-        Sleep(100)
-        SendText(insertText)
-    }
-
-    CollectFormData() {
-        data := {}
-        
-        data.id := this.idField.Text
-        data.designation := this.designationField.Text
-        data.designationId := this.designationIdField.Text
-        data.gender := this.genderField.Text
-        data.species := this.speciesField.Text
-        data.nameStatus := this.nameStatusField.Text
-        
-        data.ageStart := this.ageStartField.Text
-        data.ageEnd := this.ageEndField.Text
-        data.heightStart := this.heightStartField.Text
-        data.heightEnd := this.heightEndField.Text
-        data.weightStart := this.weightStartField.Text
-        data.weightEnd := this.weightEndField.Text
-        data.bmiRange := this.bmiField.Text
-        
-        data.skinColor := this.skinColorField.Text
-        data.hairColor := this.hairColorField.Text  ; RAW TEXT - KEEPS FORMATTING
-        data.hairLength := this.hairLengthField.Text
-        data.hairStyle := this.hairStyleField.Text
-        data.eyeColor := this.eyeColorField.Text  ; RAW TEXT - KEEPS FORMATTING
-        data.facialHair := this.facialHairField.Text
-        data.accessories := this.accessoriesField.Text
-        
-        data.voicePitch := this.voicePitchField.Text
-        data.voiceQuality := this.voiceQualityField.Text
-        data.voiceTone := this.voiceToneField.Text
-        
-        data.topGarment := this.topGarmentField.Text
-        data.bottomGarment := this.bottomGarmentField.Text
-        data.outerLayer := this.outerLayerField.Text
-        data.uniformType := this.uniformTypeField.Text
-        data.uniformColor := this.uniformColorField.Text  ; RAW TEXT - KEEPS FORMATTING
-        
-        data.relationshipType := this.relationshipTypeField.Text
-        data.relationshipPeriod := this.relationshipPeriodField.Text
-        data.professionalRole := this.professionalRoleField.Text
-        data.familyRelation := this.familyRelationField.Text
-        
-        data.personality := this.personalityField.Text
-        data.behavioralNotes := this.behavioralNotesField.Text
-        
-        ; Dreams
-        dreams := []
-        loop this.dreamsList.GetCount() {
-            dreamNumber := this.dreamsList.GetText(A_Index, 2)
-            if (dreamNumber != "") {
-                dreams.Push(dreamNumber)
-            }
-        }
-        data.dreams := this.ArrayToString(dreams)
-        
-        return data
-    }
-
-    
-    PopulateDropdowns() {
-        distinctValues := {
-            hairColor: [],
-            hairLength: [],
-            hairStyle: [],
-            eyeColor: [],
-            accessories: [],
-            voicePitch: [],
-            voiceQuality: [],
-            voiceTone: [],
-            topGarment: [],
-            bottomGarment: [],
-            outerLayer: [],
-            uniformType: [],
-            uniformColor: [],
-            relationshipType: [],
-            relationshipPeriod: [],
-            professionalRole: [],
-            familyRelation: [],
-            personality: [],
-            behavioralNotes: []
-        }
-        
-        try {
-            if (FileExist(this.dataFile)) {
-                content := FileRead(this.dataFile, "UTF-8")
-                lines := StrSplit(content, "`n")
-                
-                for line in lines {
-                    line := Trim(line)
-                    if (line == "" || line == "{}") {
-                        continue
-                    }
-                    
-                    try {
-                        data := this.ParseJSON(line)
-                        
-                        for field, values in distinctValues.OwnProps() {
-                            if (data.HasOwnProp(field) && data.%field% != "" && !this.ArrayContains(values, data.%field%)) {
-                                values.Push(data.%field%)
-                            }
-                        }
-                    } catch {
-                        continue
-                    }
-                }
-            }
-        } catch {
-            
-        }
-        
-        this.UpdateComboBox(this.hairColorField, distinctValues.hairColor)
-        this.UpdateComboBox(this.hairLengthField, distinctValues.hairLength)
-        this.UpdateComboBox(this.hairStyleField, distinctValues.hairStyle)
-        this.UpdateComboBox(this.eyeColorField, distinctValues.eyeColor)
-        this.UpdateComboBox(this.accessoriesField, distinctValues.accessories)
-        this.UpdateComboBox(this.voicePitchField, distinctValues.voicePitch)
-        this.UpdateComboBox(this.voiceQualityField, distinctValues.voiceQuality)
-        this.UpdateComboBox(this.voiceToneField, distinctValues.voiceTone)
-        this.UpdateComboBox(this.topGarmentField, distinctValues.topGarment)
-        this.UpdateComboBox(this.bottomGarmentField, distinctValues.bottomGarment)
-        this.UpdateComboBox(this.outerLayerField, distinctValues.outerLayer)
-        this.UpdateComboBox(this.uniformTypeField, distinctValues.uniformType)
-        this.UpdateComboBox(this.relationshipTypeField, distinctValues.relationshipType)
-        this.UpdateComboBox(this.relationshipPeriodField, distinctValues.relationshipPeriod)
-        this.UpdateComboBox(this.professionalRoleField, distinctValues.professionalRole)
-        this.UpdateComboBox(this.familyRelationField, distinctValues.familyRelation)
-        this.UpdateComboBox(this.personalityField, distinctValues.personality)
-        this.UpdateComboBox(this.behavioralNotesField, distinctValues.behavioralNotes)
-        this.UpdateComboBox(this.uniformColorField, distinctValues.uniformColor)
-    }
-    
-    UpdateComboBox(control, values) {
-        currentText := control.Text
-        control.Delete()
-        
-        if (values.Length > 0) {
-            control.Add(values)
-        }
-        
-        if (currentText != "") {
-            control.Text := currentText
-        }
-    }
-
-    ObjectToJSON(obj) {
-        jsonStr := "{"
-        first := true
-        
-        for key, value in obj.OwnProps() {
-            if (!first) {
-                jsonStr .= ","
-            }
-            first := false
-            
-            value := StrReplace(String(value), '"', '\"')
-            jsonStr .= '"' . key . '":"' . value . '"'
-        }
-        
-        jsonStr .= "}"
-        return jsonStr
-    }
-    
-    ConfirmClose() {
-        if (this.panelleftid != "") {
-            currentData := this.CollectFormData()
-            
-            if (this.HasDataChanged(currentData)) {
-                result := MsgBox("Close ? Un‑sꜹed hanges will be loﬆ.", "Confirm Close", "YesNo")
-                if (result == "No") {
-                    return
-                }
-            }
-        }
-        
-        this.mainGui.Destroy()
-        this.isDestroyed := true
-    }
-}
-global SIPManager := SIPPersonManager()
-
-class DreamManager {
-    __New() {
-        this.mainGui := Gui("+Resize", "Dream Manager")
-        this.mainGui.OnEvent("Close", (*) => this.ConfirmClose())
-        this.mainGui.Move(, , 1765, 956)
-        
-        this.doarFile := "E:\wwwwww\dosyâlar\dreams\doar.txt"
-        this.dataFile := "E:\wwwwww\dosyâlar\dreams\dreams.txt"
-        this.currentRecord := {}
-        this.originalData := {}
-        this.dreamId := ""
-        this.isDestroyed := false
-        this.mentalLockCounter := 1
-        this.hasUnsavedChanges := false
-        this.timelineGui := ""
-        this.keydownHandler := this.OnWM_KEYDOWN.Bind(this)
-
-        this.CreateLayout()
-        this.LoadDataToLeftPanel()
-        
-        Hotstring(":O?*:\dream", (*) => this.ShowApp())
-    }
-    
-    ShowApp() {
-        if (HasProp(this, "isDestroyed") && this.isDestroyed) {
-            if (HasProp(this, "keydownHandler")) {
-                OnMessage(0x0100, this.keydownHandler, 0)
-            }
-            this.__New()
-            this.isDestroyed := false
-        }
-        
-        try {
-            this.mainGui.Show()
-        } catch Error as err {
-            this.__New()
-            this.mainGui.Show()
-        }
-    }
-    
-    CreateLayout() {
-
-        this.CreateLeftPanel()
-
-        this.buttonPanel := this.mainGui.Add("GroupBox", "x228 y10 w1535 h57", "")
-
-        this.encoderBtn := this.mainGui.Add("Button", "x238 y25 w141 h28", "EN‑CODER")
-        this.encoderBtn.OnEvent("Click", (*) => this.OpenEncoder())
-
-        this.somniumPeopleBtn := this.mainGui.Add("Button", "x389 y25 w141 h28", "ʆomnium people")
-        this.somniumPeopleBtn.OnEvent("Click", (*) => this.OpenSomniumPeople())
-
-        this.somniumHexBtn := this.mainGui.Add("Button", "x540 y25 w141 h28", "ʆomnium HEX")
-        this.somniumHexBtn.OnEvent("Click", (*) => this.OpenSomniumHex())
-
-        this.viewBtn := this.mainGui.Add("Button", "x1612 y25 w141 h28", "VIEW")
-        this.viewBtn.OnEvent("Click", (*) => this.ViewDream())
-
-        this.saveBtn := this.mainGui.Add("Button", "x1461 y25 w141 h28", "SꜸE")
-        this.saveBtn.OnEvent("Click", (*) => this.SaveRecord())
-        this.saveBtn.Enabled := false
-
-        this.newBtn := this.mainGui.Add("Button", "x1310 y25 w141 h28", "NEW")
-        this.newBtn.OnEvent("Click", (*) => this.CreateNewRecord())
-
-        this.updateBtn := this.mainGui.Add("Button", "x1159 y25 w141 h28", "UP‑DATE")
-        this.updateBtn.OnEvent("Click", (*) => this.UpdateRecord())
-        this.infoPanel := this.mainGui.Add("GroupBox", "x228 y77 w1523 h32", "")
-        
-        this.mainGui.Add("Text", "x238 y85 w80 h20 Center", "Dream № :")
-        this.dreamNumberField := this.mainGui.Add("Edit", "x318 y85 w200 h20 ReadOnly")
-
-        this.mainGui.Add("Text", "x538 y85 w50 h20 Center", "Date :")
-        this.dateField := this.mainGui.Add("Edit", "x588 y85 w200 h20")
-        this.dateField.OnEvent("Change", (*) => this.OnFieldChange())
-        
-        this.mainGui.Add("Text", "x1321 y85 w80 h20 Center", "Wake time :")
-        this.wakeTimeField := this.mainGui.Add("Edit", "x1401 y85 w115 h20")
-        this.wakeTimeField.OnEvent("Change", (*) => this.OnFieldChange())
-        
-        this.mainGui.Add("Text", "x1541 y85 w100 h20 Center", "Eﬆ. Onset time :")
-        this.onsetTimeField := this.mainGui.Add("Edit", "x1641 y85 w115 h20")
-        this.onsetTimeField.OnEvent("Change", (*) => this.OnFieldChange())
-        
-        this.CreateMainArea()
-        this.CreateRightPanel()
-    }
-
-    CreateMainArea() {
-        this.ocrArea := this.mainGui.Add("GroupBox", "x228 y119 w1183 h109", "")
-        this.ocrTextArea := this.mainGui.Add("Edit", "x238 y139 w1163 h79 VScroll +Multi +Center")
-        this.ocrTextArea.SetFont("s12", "OCR-B")
-        this.ocrTextArea.OnEvent("Change", (*) => this.OnFieldChange())
-        
-        this.dreamContentArea := this.mainGui.Add("GroupBox", "x228 y237 w1083 h529", "")
-        this.dreamTextArea := this.mainGui.Add("Edit", "x238 y258 w1063 h499 VScroll +Multi +Center")
-        this.dreamTextArea.SetFont("s12", "Times New Roman")
-        this.dreamTextArea.OnEvent("Change", (*) => this.OnFieldChange())
-        this.dreamTextArea.OnEvent("Change", (*) => this.ScanForGreekFormula())
-        
-        this.greekListArea := this.mainGui.Add("GroupBox", "x1321 y237 w90 h529", "")
-        this.greekList := this.mainGui.Add("ListView", "x1326 y258 w80 h499 -Multi -Hdr", [""])
-        this.greekList.ModifyCol(1, 75)
-        this.greekList.OnEvent("ItemSelect", (*) => this.OnGreekSelect())
-        
-        OnMessage(0x0100, this.keydownHandler)
-
-        this.symbolArea := this.mainGui.Add("GroupBox", "x228 y774 w1183 h168", "")
-        yPos := 786
-        symbols := ["†", "‡", "※", "∗", "⁑", "⁂"]
-        this.symbolFields := []
-        
-        for i, symbol in symbols {
-            this.mainGui.Add("Text", "x238 y" . yPos . " w20 h20", symbol)
-            field := this.mainGui.Add("Edit", "x268 y" . yPos . " w1133 h20")
-            field.OnEvent("Change", (*) => this.OnFieldChange())
-            this.symbolFields.Push(field)
-            yPos += 25
-        }
-    }
-
-
-
-    CreateLeftPanel() {
-        this.leftPanel := this.mainGui.Add("GroupBox", "x10 y10 w208 h932", "")
-        
-        this.filterField := this.mainGui.Add("Edit", "x20 y30 w188 h20 +Border")
-        this.filterField.OnEvent("Change", (*) => this.OnFilterChange())
-        
-        this.dreamsList := this.mainGui.Add("ListView", "x20 y64 w188 h803 -Multi -HScroll", ["№", "D", "W"])
-        this.dreamsList.ModifyCol(1, "45 Integer")
-        this.dreamsList.ModifyCol(2, 60)
-        this.dreamsList.ModifyCol(3, 80)
-        this.dreamsList.OnEvent("ItemSelect", (*) => this.OnItemSelect())
-        
-        this.viewTimelineBtn := this.mainGui.Add("Button", "x20 y877 w188 h21", "VIEW TIME‑LINE")
-        this.viewTimelineBtn.OnEvent("Click", (*) => this.ViewTimeline())
-
-        this.showTimelineBtn := this.mainGui.Add("Button", "x20 y898 w188 h21", "SHOW TIME‑LINE")
-        this.showTimelineBtn.OnEvent("Click", (*) => this.ShowTimeline())
-        
-        ; Add date filter buttons - each 1/4 width (47px each)
-        this.filter3DBtn := this.mainGui.Add("Button", "x20 y919 w47 h21", "3D")
-        this.filter3DBtn.OnEvent("Click", (*) => this.SetDateFilter("3D"))
-        
-        this.filter1WBtn := this.mainGui.Add("Button", "x67 y919 w47 h21", "1W")
-        this.filter1WBtn.OnEvent("Click", (*) => this.SetDateFilter("1W"))
-        
-        this.filter1MBtn := this.mainGui.Add("Button", "x114 y919 w47 h21", "1M")
-        this.filter1MBtn.OnEvent("Click", (*) => this.SetDateFilter("1M"))
-        
-        this.filterTDBtn := this.mainGui.Add("Button", "x161 y919 w47 h21", "TD")
-        this.filterTDBtn.OnEvent("Click", (*) => this.SetDateFilter("TD"))
-    }
-
-    CreateRightPanel() {
-        this.statePanel := this.mainGui.Add("GroupBox", "x1421 y119 w342 h110", "")
-        
-        this.soberRadio := this.mainGui.Add("Radio", "x1431 y139 w100 h20 Checked", "ʆober")
-        this.ethanolRadio := this.mainGui.Add("Radio", "x1431 y159 w150 h20", "Ethanol Intoxication")
-        this.otherRadio := this.mainGui.Add("Radio", "x1431 y179 w150 h20", "Intoxication ( Other )")
-        this.otherRadio.OnEvent("Click", (*) => this.ToggleOtherField())
-        this.soberRadio.OnEvent("Click", (*) => this.ToggleOtherField())
-        this.ethanolRadio.OnEvent("Click", (*) => this.ToggleOtherField())
-        
-        this.otherField := this.mainGui.Add("Edit", "x1431 y199 w322 h20")
-        this.otherField.Enabled := false
-        this.otherField.OnEvent("Change", (*) => this.OnFieldChange())
-        
-        this.mentalLockPanel := this.mainGui.Add("GroupBox", "x1421 y239 w342 h379", "")
-        
-        this.mentalLockInput := this.mainGui.Add("Edit", "x1431 y259 w322 h20")
-        
-        this.removeBtn := this.mainGui.Add("Button", "x1431 y289 w120 h25", "REMOVE")
-        this.removeBtn.OnEvent("Click", (*) => this.RemoveMentalLock())
-        this.removeBtn.Enabled := false
-        
-        this.addBtn := this.mainGui.Add("Button", "x1633 y289 w120 h25", "ADD")
-        this.addBtn.OnEvent("Click", (*) => this.AddMentalLock())
-        
-        this.mentalLockList := this.mainGui.Add("ListView", "x1431 y324 w322 h284 -Multi", ["№", "Mental‑lock"])
-        this.mentalLockList.ModifyCol(1, 50)
-        this.mentalLockList.ModifyCol(2, 260)
-        this.mentalLockList.OnEvent("ItemSelect", (*) => this.OnMentalLockSelect())
-        
-        this.evaluationCheck := this.mainGui.Add("CheckBox", "x1421 y628 w20 h20")
-        this.evaluationCheck.OnEvent("Click", (*) => this.ToggleEvaluation())
-        this.mainGui.Add("Text", "x1446 y628 w100 h20 Center", "EVALUATION")
-        
-        this.evaluationField := this.mainGui.Add("Edit", "x1421 y658 w342 h283 VScroll +Multi")
-        this.evaluationField.Enabled := false
-        this.evaluationField.OnEvent("Change", (*) => this.OnFieldChange())
-    }
-    ScanForGreekFormula() {
-        text := this.dreamTextArea.Text
-        pattern := "\[\x{00A0}([^\[\]]+)\x{00A0}([αβγδεζθικλμνξοπρστυφχψω]+)\x{00A0}\]"        
-        this.greekList.Delete()
-        
-        pos := 1
-        while (pos := RegExMatch(text, pattern, &match, pos)) {
-            fullMatch := "[" . Chr(160) . match[1] . Chr(160) . match[2] . Chr(160) . "]"
-            
-            found := false
-            loop this.greekList.GetCount() {
-                if (this.greekList.GetText(A_Index, 1) == fullMatch) {
-                    found := true
-                    break
-                }
-            }
-            
-            if (!found) {
-                this.greekList.Add("", fullMatch)
-            }
-            
-            pos := match.Pos + match.Len
-        }
-    }
-
-    OnGreekSelect() {
-        selectedRow := this.greekList.GetNext()
-        if (!selectedRow) {
-            return
-        }
-        
-        insertText := this.greekList.GetText(selectedRow, 1)
-        
-        this.dreamTextArea.Focus()
-        Send("{End}")
-        Send(insertText)
-    }
-
-    ; Add new method for date filter buttons
-    SetDateFilter(filterType) {
-        today := FormatTime(, "yyyyMMdd")
-        
-        switch filterType {
-            case "3D":
-                ; Calculate 3 days ago
-                threeDaysAgo := DateAdd(today, -3, "Days")
-                threeDaysAgoStr := FormatTime(threeDaysAgo, "yyyyMMdd")
-                this.filterField.Text := threeDaysAgoStr . "‒" . today
-                
-            case "1W":
-                ; Calculate 7 days ago
-                oneWeekAgo := DateAdd(today, -7, "Days")
-                oneWeekAgoStr := FormatTime(oneWeekAgo, "yyyyMMdd")
-                this.filterField.Text := oneWeekAgoStr . "‒" . today
-                
-            case "1M":
-                ; Current month range
-                currentYear := SubStr(today, 1, 4)
-                currentMonth := SubStr(today, 5, 2)
-                monthStart := currentYear . currentMonth . "01"
-                monthEnd := currentYear . currentMonth . "31"
-                this.filterField.Text := monthStart . "‒" . monthEnd
-                
-            case "TD":
-                ; Today only
-                this.filterField.Text := today
-        }
-        
-        ; Trigger filter update
-        this.ApplyFilters()
-    }
-    OnFilterChange() {
-        this.ApplyFilters()
-    }
-
-    IsTimeRange(text) {
-        return (InStr(text, "‑") || InStr(text, "‒") || InStr(text, "-"))
-    }
-
-    ApplyFilters() {
-        filterText := this.filterField.Text
-        
-        this.dreamsList.Delete()
-        this.filteredRecords := []
-        
-        for record in this.allRecords {
-            showRecord := true
-            
-            if (filterText != "") {
-                if (this.IsTimeRange(filterText)) {
-                    if (this.IsDateRange(filterText)) {
-                        showRecord := this.IsInDateRange(record.date, filterText)
-                    } else {
-                        showRecord := this.IsInTimeRange(record.wakeTime, filterText)
-                    }
-                } else {
-                    showRecord := (InStr(record.dreamNumber, filterText) || 
-                                InStr(record.date, filterText) || 
-                                InStr(record.wakeTime, filterText))
-                }
-            }
-            
-            if (showRecord) {
-                this.filteredRecords.Push(record)
-                this.dreamsList.Add("", record.dreamNumber, record.date, record.wakeTime)
-            }
-        }
-    }
-
-    IsInTimeRange(timeStr, rangeStr) {
-        delimiter := ""
-        delimiterPos := 0
-        
-        if (InStr(rangeStr, "‑")) {
-            delimiter := "‑"
-            delimiterPos := InStr(rangeStr, "‑")
-        } else if (InStr(rangeStr, "‒")) {
-            delimiter := "‒"
-            delimiterPos := InStr(rangeStr, "‒")
-        } else if (InStr(rangeStr, "-")) {
-            delimiter := "-"
-            delimiterPos := InStr(rangeStr, "-")
-        } else {
-            return false
-        }
-        
-        if (delimiterPos == 0) {
-            return false
-        }
-        
-        startTime := Trim(SubStr(rangeStr, 1, delimiterPos - 1))
-        endTime := Trim(SubStr(rangeStr, delimiterPos + 1))
-        
-        if (startTime == "" || endTime == "") {
-            return false
-        }
-        
-        if (!this.IsValidTimeFormat(startTime) || !this.IsValidTimeFormat(endTime)) {
-            return false
-        }
-        
-        startTimeComp := this.ConvertToComparable(startTime)
-        endTimeComp := this.ConvertToComparable(endTime)
-        currentTimeComp := this.ConvertToComparable(timeStr)
-        
-        return (currentTimeComp >= startTimeComp && currentTimeComp <= endTimeComp)
-    }
-
-    IsDateRange(text) {
-        if (!this.IsTimeRange(text)) {
-            return false
-        }
-        
-        delimiter := ""
-        delimiterPos := 0
-        
-        if (InStr(text, "‑")) {
-            delimiter := "‑"
-            delimiterPos := InStr(text, "‑")
-        } else if (InStr(text, "‒")) {
-            delimiter := "‒"
-            delimiterPos := InStr(text, "‒")
-        } else if (InStr(text, "-")) {
-            delimiter := "-"
-            delimiterPos := InStr(text, "-")
-        }
-        
-        if (delimiterPos == 0) {
-            return false
-        }
-        
-        startPart := Trim(SubStr(text, 1, delimiterPos - 1))
-        
-        return (StrLen(startPart) == 8 && IsDigit(startPart))
-    }
-
-    IsInDateRange(dateStr, rangeStr) {
-        delimiter := ""
-        delimiterPos := 0
-        
-        if (InStr(rangeStr, "‑")) {
-            delimiter := "‑"
-            delimiterPos := InStr(rangeStr, "‑")
-        } else if (InStr(rangeStr, "‒")) {
-            delimiter := "‒"
-            delimiterPos := InStr(rangeStr, "‒")
-        } else if (InStr(rangeStr, "-")) {
-            delimiter := "-"
-            delimiterPos := InStr(rangeStr, "-")
-        } else {
-            return false
-        }
-        
-        if (delimiterPos == 0) {
-            return false
-        }
-        
-        startDate := Trim(SubStr(rangeStr, 1, delimiterPos - 1))
-        endDate := Trim(SubStr(rangeStr, delimiterPos + 1))
-        
-        if (startDate == "" || endDate == "") {
-            return false
-        }
-        
-        return (dateStr >= startDate && dateStr <= endDate)
-    }
-
-    IsValidTimeFormat(timeStr) {
-        timeStr := Trim(timeStr)
-        
-        if (timeStr == "") {
-            return false
-        }
-        
-        if (InStr(timeStr, "AM") || InStr(timeStr, "PM")) {
-            if (!InStr(timeStr, "AM") && !InStr(timeStr, "PM")) {
-                return false
-            }
-            
-            if (InStr(timeStr, "A") && !InStr(timeStr, "AM")) {
-                return false
-            }
-            if (InStr(timeStr, "P") && !InStr(timeStr, "PM")) {
-                return false
-            }
-            
-            cleanTime := StrReplace(StrReplace(timeStr, "AM", ""), "PM", "")
-            cleanTime := Trim(cleanTime)
-            
-            return (StrLen(cleanTime) >= 4 && IsDigit(cleanTime))
-        }
-        
-        return (StrLen(timeStr) >= 4 && IsDigit(timeStr))
-    }
-
-    ConvertToComparable(timeStr) {
-        timeStr := Trim(timeStr)
-        
-        if (timeStr == "") {
-            return "000000"
-        }
-        
-        if (InStr(timeStr, "AM")) {
-            timeStr := StrReplace(timeStr, "AM", "")
-            timeStr := Trim(timeStr)
-            
-            if (StrLen(timeStr) >= 2) {
-                hour := Integer(SubStr(timeStr, 1, 2))
-                rest := SubStr(timeStr, 3)
-                timeStr := Format("{:02d}", hour) . rest
-            }
-        } else if (InStr(timeStr, "PM")) {
-            timeStr := StrReplace(timeStr, "PM", "")
-            timeStr := Trim(timeStr)
-            
-            if (StrLen(timeStr) >= 2) {
-                hour := Integer(SubStr(timeStr, 1, 2))
-                rest := SubStr(timeStr, 3)
-                newHour := hour + 12
-                timeStr := Format("{:02d}", newHour) . rest
-            }
-        }
-        
-        while (StrLen(timeStr) < 6) {
-            timeStr := timeStr . "0"
-        }
-        
-        return timeStr
-    }
-    OnWM_KEYDOWN(wParam, lParam, msg, hwnd) {
-        if (this.isDestroyed || !HasProp(this, "dreamTextArea"))
-            return
-            
-        try {
-            if (hwnd == this.dreamTextArea.Hwnd && wParam == 8 && GetKeyState("Ctrl", "P")) {
-                Send("{Shift down}{Ctrl down}{Left}{Ctrl up}{Shift up}{Backspace}")
-                return 0
-            }
-        } catch {
-            return
-        }
-    }
-
-    CreateTimelineGui(content) {
-        if (this.timelineGui && WinExist(this.timelineGui.Hwnd)) {
-            this.timelineGui.Close()
-        }
-        
-        this.timelineGui := Gui("+Resize", "Timeline Data")
-        this.timelineGui.OnEvent("Close", (*) => this.CloseTimelineGui())
-        this.timelineGui.Move(, , 1075, 620)
-        
-        this.timelineTextArea := this.timelineGui.Add("Edit", "x10 y10 w1055 h589 VScroll +Multi +ReadOnly")
-        this.timelineTextArea.Text := content
-        this.timelineTextArea.SetFont("s10", "Iosevka Fixed")
-
-        this.timelineCloseBtn := this.timelineGui.Add("Button", "x10 y599 w1055 h21", "CLOSE")
-        this.timelineCloseBtn.OnEvent("Click", (*) => this.CloseTimelineGui())
-        
-        this.timelineGui.Show()
-    }
-
-    CloseTimelineGui() {
-        if (this.timelineGui) {
-            this.timelineGui.Destroy()
-            this.timelineGui := ""
-        }
-    }
-
-    OnFieldChange() {
-        if (this.dreamId != "" && !this.hasUnsavedChanges) {
-            this.hasUnsavedChanges := true
-            this.newBtn.Enabled := false
-        }
-    }
-    
-    OnItemSelect() {
-        if (this.hasUnsavedChanges) {
-            result := MsgBox("Un‐sꜹed data.", "", "YesNo")
-            if (result == "No") {
-                return
-            }
-            this.hasUnsavedChanges := false
-            this.newBtn.Enabled := true
-        }
-        this.LoadRecord()
-    }
-    
-    ToggleOtherField() {
-        this.otherField.Enabled := this.otherRadio.Value
-        if (!this.otherRadio.Value) {
-            this.otherField.Text := ""
-        }
-        this.OnFieldChange()
-    }
-    
-    ToggleEvaluation() {
-        this.evaluationField.Enabled := this.evaluationCheck.Value
-        if (!this.evaluationCheck.Value) {
-            this.evaluationField.Text := ""
-        }
-        this.OnFieldChange()
-    }
-    
-    OnMentalLockSelect() {
-        this.removeBtn.Enabled := this.mentalLockList.GetNext() > 0
-    }
-    
-    AddMentalLock() {
-        lockText := this.mentalLockInput.Text
-        if (lockText == "") {
-            MsgBox("Enter mental‑lock text first.")
-            return
-        }
-        
-        this.mentalLockList.Add("", this.mentalLockCounter, lockText)
-        this.mentalLockCounter++
-        this.mentalLockInput.Text := ""
-        this.OnFieldChange()
-    }
-    
-    RemoveMentalLock() {
-        selectedRow := this.mentalLockList.GetNext()
-        if (!selectedRow) {
-            MsgBox("Select a mental‑lock from the list.")
-            return
-        }
-        
-        this.mentalLockList.Delete(selectedRow)
-        this.removeBtn.Enabled := false
-        this.OnFieldChange()
-    }
-    
-    ShowTimeline() {
-        try {
-            scriptPath := "E:\wwwwww\dosyâlar\dreams\b.py"
-            
-            if (!FileExist(scriptPath)) {
-                MsgBox("b.py not found at: " . scriptPath)
-                return
-            }
-            
-            filterText := this.filterField.Text  ; Get filter text
-            pythonPaths := ["c:\Users\aretha\AppData\Local\Programs\Python\Python312\python.exe", "py", "python3", "python"]
-            
-            success := false
-            result := ""
-            
-            for pythonPath in pythonPaths {
-                try {
-                    tempFile := A_Temp . "\timeline_output.txt"
-                    
-                    command := pythonPath . ' "' . scriptPath . '"'
-                    if (filterText != "") {
-                        command .= ' --filter "' . filterText . '"'
-                    }
-                    command .= ' > "' . tempFile . '"'
-                    
-                    exitCode := RunWait(A_ComSpec . ' /c ' . command, "E:\wwwwww\dosyâlar\dreams", "Hide")
-                    
-                    if (exitCode = 0 && FileExist(tempFile)) {
-                        ; Read file with UTF-8 encoding
-                        result := FileRead(tempFile, "UTF-8")
-                        FileDelete(tempFile)
-                        success := true
-                        break
-                    }
-                } catch {
-                    continue
-                }
-            }
-            
-            if (!success || result = "") {
-                MsgBox("Could not run Python script or no output received")
-                return
-            }
-            
-            this.CreateTimelineGui(result)
-            
-        } catch Error as err {
-            MsgBox("Error running timeline: " . err.Message)
-        }
-    }
-    ViewTimeline() {
-        try {
-            scriptPath := "E:\wwwwww\dosyâlar\dreams\a.py"
-            
-            if (!FileExist(scriptPath)) {
-                MsgBox("a.py not found at: " . scriptPath)
-                return
-            }
-            
-            filterText := this.filterField.Text
-            pythonPaths := ["c:\Users\aretha\AppData\Local\Programs\Python\Python312\python.exe", "py", "python3", "python"]
-            
-            success := false
-            
-            for pythonPath in pythonPaths {
-                try {
-                    command := pythonPath . " `"" . scriptPath . "`""
-                    if (filterText != "") {
-                        command .= " --filter `"" . filterText . "`""
-                    }
-                    
-                    RunWait(command, "E:\wwwwww\dosyâlar\dreams", "")
-                    success := true
-                    break
-                } catch {
-                    continue
-                }
-            }
-            
-            if (!success) {
-                MsgBox("Could not run Python script with any available Python installation")
-            }
-            
-        } catch Error as err {
-            MsgBox("Error running timeline: " . err.Message)
-        }
-    }
-    ViewDream() {
-        selectedRow := this.dreamsList.GetNext()
-        if (!selectedRow) {
-            MsgBox("No dream selected.")
-            return
-        }
-        
-        dreamNumber := this.dreamsList.GetText(selectedRow, 1)
-        
-        try {
-            if (!FileExist(this.dataFile)) {
-                MsgBox("File doesn't exist.")
-                return
-            }
-            
-            content := FileRead(this.dataFile, "UTF-8")
-            lines := StrSplit(content, "`n")
-            
-            for line in lines {
-                line := Trim(line)
-                if (line == "") {
-                    continue
-                }
-                
-                try {
-                    data := this.ParseJSON(line)
-                    if (data.HasOwnProp("dreamNumber") && String(data.dreamNumber) == dreamNumber) {
-                        this.GenerateHTMLView(data)
-                        return
-                    }
-                } catch {
-                    continue
-                }
-            }
-            
-            MsgBox("Dream record not found.")
-            
-        } catch Error as err {
-            MsgBox("Error: " . err.Message)
-        }
-    }
-
-    GenerateHTMLView(data) {
-        dreamDate := data.HasOwnProp("date") ? data.date : ""
-        
-        wakeTime := data.HasOwnProp("wakeTime") ? data.wakeTime : "X"
-        onsetTime := data.HasOwnProp("onsetTime") ? data.onsetTime : "X"
-        dreamNum := data.HasOwnProp("dreamNumber") ? data.dreamNumber : "X"
-        
-
-        ocrRows := ["", "", ""]
-        if (data.HasOwnProp("ocrText")) {
-            ocrText := this.HTMLToPlainText(data.ocrText)
-            ocrText := StrReplace(ocrText, "`r`n", "`n")
-            ocrText := StrReplace(ocrText, "`r", "`n")
-            ocrText := Trim(ocrText)
-            
-            ocrLines := StrSplit(ocrText, "`n")
-            
-            validLines := []
-            for line in ocrLines {
-                trimmedLine := Trim(line)
-                if (trimmedLine != "") {
-                    validLines.Push(trimmedLine)
-                }
-            }
-            
-            loop 3 {
-                if (A_Index <= validLines.Length) {
-                    ocrRows[A_Index] := validLines[A_Index]
-                }
-            }
-        }
-        
-        dreamContent := ""
-        if (data.HasOwnProp("dreamText")) {
-            dreamContent := data.dreamText
-            dreamContent := StrReplace(dreamContent, "`r`n", "<br>")
-            dreamContent := StrReplace(dreamContent, "`n", "<br>")
-        }
-        
-        mentalStateX := ["", "", ""]
-        if (data.HasOwnProp("mentalState")) {
-            switch data.mentalState {
-                case "ʆober":
-                    mentalStateX[1] := "X"
-                case "Ethanol Intoxication":
-                    mentalStateX[2] := "X"
-                case "Other":
-                    mentalStateX[3] := "X"
-            }
-        }
-        
-        mentalLocksHTML := ""
-        if (data.HasOwnProp("mentalLocks") && data.mentalLocks != "") {
-            locks := this.StringToArray(data.mentalLocks)
-            if (locks.Length > 0) {
-                mentalLocksHTML := "<p>Mental-locks recorded :</p>`n"
-                for i, lockText in locks {
-                    if (i == locks.Length) {
-                        mentalLocksHTML .= "<p>ʆomnium " . i . " : " . lockText . ".</p>`n"
-                    } else {
-                        mentalLocksHTML .= "<p>ʆomnium " . i . " : " . lockText . ",</p>`n"
-                    }
-                }
-            } else {
-                mentalLocksHTML := "<p>Mental-locks recorded : Moﬆ Un‑known</p>`n"
-            }
-        } else {
-            mentalLocksHTML := "<p>Mental-locks recorded : Moﬆ Un‑known</p>`n"
-        }
-        
-        symbolFields := []
-        symbolData := ["symbol1", "symbol2", "symbol3", "symbol4", "symbol5", "symbol6"]
-        symbols := ["†", "‡", "※", "∗", "⁑", "⁂"]
-        hasAnySymbol := false
-        
-        for i, symbolKey in symbolData {
-            fieldText := ""
-            if (data.HasOwnProp(symbolKey) && data.%symbolKey% != "") {
-                fieldText := data.%symbolKey%
-                hasAnySymbol := true
-            }
-            symbolFields.Push(fieldText)
-        }
-        
-        symbolHTML := ""
-        if (hasAnySymbol) {
-            symbolHTML := "<hr>`n"
-            for i, fieldText in symbolFields {
-                if (fieldText != "") {
-                    symbolHTML .= "<p>" . symbols[i] . fieldText . "</p>`n"
-                }
-            }
-        }
-        
-        evaluationHTML := ""
-        if (data.HasOwnProp("hasEvaluation") && data.hasEvaluation == "true") {
-            evaluationField := data.HasOwnProp("evaluation") ? data.evaluation : ""
-            evaluationHTML := "<center>EVALUATION</center>`n"
-            evaluationHTML .= "<p style='text-align: justify;'>It appears that " . evaluationField . "</p>`n"
-        }
-        
-        html := "<!DOCTYPE html>`n"
-        html .= "<html lang=`"en`">`n"
-        html .= "    <head>`n"
-        html .= "        <meta charset=`"UTF-8`">`n"
-        html .= "        <meta name=`"viewport`" content=`"width=device-width, initial-scale=1.0`">`n"
-        html .= "        <title>dream</title>`n"
-        html .= "        <style>`n"
-        html .= "        *{`n"
-        html .= "            margin: 0;`n"
-        html .= "            padding: 0;`n"
-        html .= "        }`n"
-        html .= "        @font-face {`n"
-        html .= "            font-family: OCR‑B;`n"
-        html .= "            src: url(E:\\wwwwww\\dosyâlar\\dreams\\OCR-B-regular-web.ttf);`n"
-        html .= "        }`n"
-        html .= "        @font-face {`n"
-        html .= "            font-family: nullpunktsenergiefont;`n"
-        html .= "            src: url(E:\\wwwwww\\dosyâlar\\dreams\nullpunktsenergiefont-Regular.ttf);`n"
-        html .= "        }`n"
-        html .= "        @font-face {`n"
-        html .= "            font-family: Junicode;`n"
-        html .= "            src: url(E:\\wwwwww\\dosyâlar\\dreams\\JunicodeVF-Roman.woff2);`n"
-        html .= "        }`n"
-        html .= "        .katex,`n"
-        html .= "        .katex * {`n"
-        html .= "            -webkit-font-smoothing: antialiased;`n"
-        html .= "            -moz-osx-font-smoothing: grayscale;`n"
-        html .= "            text-rendering: optimizeLegibility;`n"
-        html .= "            font-smooth: always;`n"
-        html .= "            letter-spacing: 0pt;`n"
-        html .= "            font-size: 1em;`n"
-        html .= "            text-indent: 0 !important;`n"
-        html .= "        }`nbody:not(.katex):not(.katex *) { font-family: 'Junicode', 'nullpunktsenergiefont'; letter-spacing: 0; text-rendering: auto; image-rendering: optimizeQuality !important; font-variant-ligatures:discretionary-ligatures contextual common-ligatures; font-feature-settings: 'ss17', 'cv01','cv02','cv22' 2,'cv48'; font-variant-numeric: lining-nums; }`n"
-        html .= "        </style>`n"
-        html .= "        <link rel=`"stylesheet`" href=`"https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css`" integrity=`"sha384-5TcZemv2l/9On385z///+d7MSYlvIEw9FuZTIdZ14vJLqWphw7e7ZPuOiCHJcFCP`" crossorigin=`"anonymous`">`n"
-        html .= "        <script defer src=`"https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js`" integrity=`"sha384-cMkvdD8LoxVzGF/RPUKAcvmm49FQ0oxwDF3BGKtDXcEc+T1b2N+teh/OJfpU0jr6`" crossorigin=`"anonymous`"></script>`n"
-        html .= "        <script defer src=`"https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js`" integrity=`"sha384-hCXGrW6PitJEwbkoStFjeJxv+fSOOQKOPbJxSfM6G5sWZjAyWhXiTIIAmQqnlLlh`" crossorigin=`"anonymous`"`n"
-        html .= "            onload=`"renderMathInElement(document.body);`"></script>`n"
-        html .= "    </head>`n"
-        html .= "    <body>`n"
-        html .= '    <p style="font-weight: bolder;text-align: center;font-size: xx-large;">Oneiric report</p>`n'
-        html .= "        <div style=`"width: 100%;`">`n"
-        html .= "            <table width=`"100%`">`n"
-        html .= "                <tr>`n"
-        html .= "                    <td style=`"font: normal 1.21em KaTeX_TypeWriter`">" . dreamDate . "</td>`n"
-        html .= "                    <td style=`"text-align: right;font: normal 1.21em KaTeX_TypeWriter`">Wake time : " . wakeTime . " | Est. On‑set time : " . onsetTime . "</td>`n"
-        html .= "                </tr>`n"
-        html .= "            </table>`n"
-        html .= "            <p style=`"border:1px solid black;padding: 2em;width: 25%; margin:0 auto;text-align: center;font-weight: bolder`">Place-holder Statement</p>`n"
-        html .= "            <div style=`"text-align: center;font-family: OCR‑B;`">`n"
-        html .= "                <p>" . ocrRows[1] . "</p>`n"
-        html .= "                <p>" . ocrRows[2] . "</p>`n"
-        html .= "                <p>" . ocrRows[3] . "</p>`n"
-        html .= "            </div>`n"
-        html .= "            <p style=`"text-align: center;`"><strong>Events & appendix :</strong></p>`n"
-        html .= "            <table width=`"100%`" cellspacing=`"0`" cellpadding=`"0`">`n"
-        html .= "                <tbody>`n"
-        html .= "                    <tr>`n"
-        html .= "                        <td>`n"
-        html .= "                            <p>🙤</p>`n"
-        html .= "                        </td>`n"
-        html .= "                        <td style=`"text-align: center;`">`n"
-        html .= "                            <p><span lang=`"ja-JP`">︽</span></p>`n"
-        html .= "                        </td>`n"
-        html .= "                        <td style=`"text-align: right;`">`n"
-        html .= "                            <p>🙦</p>`n"
-        html .= "                        </td>`n"
-        html .= "                    </tr>`n"
-        html .= "                </tbody>`n"
-        html .= "            </table>`n"
-        html .= "            <div style=`"text-align: center;`">`n"
-        html .= "                " . dreamContent . "`n"
-        html .= "            </div>`n"
-        html .= "            <table width=`"100%`" cellspacing=`"0`" cellpadding=`"0`">`n"
-        html .= "                <tbody>`n"
-        html .= "                    <tr>`n"
-        html .= "                        <td >`n"
-        html .= "                            <p>🙥</p>`n"
-        html .= "                        </td>`n"
-        html .= "                        <td style=`"text-align: center;`">`n"
-        html .= "                            <p><span lang=`"ja-JP`">︾</span></p>`n"
-        html .= "                        </td>`n"
-        html .= "                        <td style=`"text-align: right;`">`n"
-        html .= "                            <p>🙧</p>`n"
-        html .= "                        </td>`n"
-        html .= "                    </tr>`n"
-        html .= "                </tbody>`n"
-        html .= "            </table>`n"
-        html .= "            <p>Dream № : " . dreamNum . "</p>`n"
-        html .= "            <table width=`"100%`" cellspacing=`"0`" cellpadding=`"4`" style=`"text-align: center;`">`n"
-        html .= "                <tbody>`n"
-        html .= "                    <tr>`n"
-        html .= "                        <td width=`"11`">`n"
-        html .= "                            <p>" . mentalStateX[1] . "</p>`n"
-        html .= "                        </td>`n"
-        html .= "                        <td>`n"
-        html .= "                            <p>ʆober</p>`n"
-        html .= "                        </td>`n"
-        html .= "                        <td width=`"11`">" . mentalStateX[2] . "</td>`n"
-        html .= "                        <td>`n"
-        html .= "                            <p>Ethanol Intoxication</p>`n"
-        html .= "                        </td>`n"
-        html .= "                        <td width=`"11`">" . mentalStateX[3] . "</td>`n"
-        html .= "                        <td>`n"
-        html .= "                            <p>Intoxication ( Other )</p>`n"
-        html .= "                        </td>`n"
-        html .= "                    </tr>`n"
-        html .= "                </tbody>`n"
-        html .= "            </table>`n"
-        html .= "            " . mentalLocksHTML . "`n"
-        html .= "            " . symbolHTML . "`n"
-        html .= "            " . evaluationHTML . "`n"
-        html .= "        </div>`n"
-        html .= "    </body>`n"
-        html .= "</html>"
-        
-        tempFile := "E:\wwwwww\dosyâlar\dreams\dream\№_" . dreamNum . ".html"
-        try {
-            FileDelete(tempFile)
-        } catch {
-        }
-        
-        FileAppend(html, tempFile, "UTF-8")
-        
-        Run(tempFile)
-    }
-    h8d2y(timeStr) {
-    timeStr := StrReplace(timeStr, "午前", "AM")
-    timeStr := StrReplace(timeStr, "午後", "PM")
-    
-    if (InStr(timeStr, "AM")) {
-        timeStr := RegExReplace(timeStr, "^12", "00")
-    }
-    if (InStr(timeStr, "PM")) {
-        timeStr := RegExReplace(timeStr, "^12", "00")
-    }
-    
-    return timeStr
-    }
-    CreateNewRecord() {
-        if (this.hasUnsavedChanges) {
-            result := MsgBox("Un‐sꜹed data.", "", "YesNo")
-            if (result == "No") {
-                return
-            }
-        }
-        
-        this.dreamsList.Modify(0, "-Select")
-        
-        nextDreamNumber := this.GetNextDreamNumber()
-        
-        this.ClearFields()
-        
-        this.dreamNumberField.Text := String(nextDreamNumber)
-        this.dreamId := String(nextDreamNumber)
-        this.dateField.Text := FormatTime(, "yyyyMMdd")
-
-        currentTime := FormatTime(, "hhmmsstt")
-        formattedTime := this.h8d2y(currentTime)
-        this.wakeTimeField.Text := formattedTime
-        
-        this.saveBtn.Enabled := true
-        this.updateBtn.Enabled := false
-        this.newBtn.Enabled := true
-        this.originalData := {}
-        this.hasUnsavedChanges := false
-    }
-    
-    GetNextDreamNumber() {
-        maxNumber := 0
-        
-        try {
-            if (FileExist(this.dataFile)) {
-                content := FileRead(this.dataFile, "UTF-8")
-                lines := StrSplit(content, "`n")
-                
-                for line in lines {
-                    line := Trim(line)
-                    if (line == "" || line == "{}") {
-                        continue
-                    }
-                    
-                    try {
-                        data := this.ParseJSON(line)
-                        if (data.HasOwnProp("dreamNumber")) {
-                            currentNumber := Integer(data.dreamNumber)
-                            if (currentNumber > maxNumber) {
-                                maxNumber := currentNumber
-                            }
-                        }
-                    } catch {
-                        continue
-                    }
-                }
-            }
-        } catch {
-        }
-        
-        return maxNumber + 1
-    }
-    LoadDataToLeftPanel() {
-        this.dreamsList.Delete()
-        this.allRecords := []
-        
-        try {
-            if (!FileExist(this.dataFile)) {
-                return
-            }
-            
-            content := FileRead(this.dataFile, "UTF-8")
-            lines := StrSplit(content, "`n")
-            
-            for line in lines {
-                line := Trim(line)
-                if (line == "") {
-                    continue
-                }
-                
-                try {
-                    data := this.ParseJSON(line)
-                    if (data.HasOwnProp("dreamNumber")) {
-                        record := {
-                            dreamNumber: data.dreamNumber,
-                            date: data.HasOwnProp("date") ? data.date : "",
-                            wakeTime: data.HasOwnProp("wakeTime") ? data.wakeTime : ""
-                        }
-                        this.allRecords.Push(record)
-                    }
-                } catch {
-                    continue
-                }
-            }
-            
-            this.SortRecords(this.allRecords)
-            this.filteredRecords := this.allRecords.Clone()
-            
-            for record in this.allRecords {
-                this.dreamsList.Add("", record.dreamNumber, record.date, record.wakeTime)
-            }
-            
-        } catch Error as err {
-            MsgBox("Error loading data: " . err.Message)
-        }
-    }
-    
-    SortRecords(records) {
-        n := records.Length
-        
-        loop n - 1 {
-            swapped := false
-            loop n - A_Index {
-                num1 := Integer(records[A_Index].dreamNumber)
-                num2 := Integer(records[A_Index + 1].dreamNumber)
-                
-                if (num1 < num2) {
-                    temp := records[A_Index]
-                    records[A_Index] := records[A_Index + 1]
-                    records[A_Index + 1] := temp
-                    swapped := true
-                }
-            }
-            if (!swapped) {
-                break
-            }
-        }
-    }
-        
-
-
-    LoadRecord() {
-        selectedRow := this.dreamsList.GetNext()
-        if (!selectedRow) {
-            return
-        }
-        
-        this.ClearFields()
-        this.saveBtn.Enabled := false
-        this.updateBtn.Enabled := true
-        this.newBtn.Enabled := true
-        this.hasUnsavedChanges := false
-        
-        dreamNumber := this.dreamsList.GetText(selectedRow, 1)
-        this.dreamId := dreamNumber
-        
-        try {
-            if (!FileExist(this.dataFile)) {
-                MsgBox("File doesn't exist.")
-                return
-            }
-            
-            content := FileRead(this.dataFile, "UTF-8")
-            lines := StrSplit(content, "`n")
-            
-            for line in lines {
-                line := Trim(line)
-                if (line == "") {
-                    continue
-                }
-                
-                try {
-                    data := this.ParseJSON(line)
-                    if (data.HasOwnProp("dreamNumber") && String(data.dreamNumber) == dreamNumber) {
-                        this.PopulateFields(data)
-                        this.originalData := data.Clone()
-                        return
-                    }
-                } catch {
-                    continue
-                }
-            }
-            
-        } catch Error as err {
-            MsgBox("Error: " . err.Message)
-        }
-    }
-
-    PopulateFields(data) {
-        this.dreamNumberField.Text := data.HasOwnProp("dreamNumber") ? String(data.dreamNumber) : ""
-        this.dateField.Text := data.HasOwnProp("date") ? data.date : ""
-        this.wakeTimeField.Text := data.HasOwnProp("wakeTime") ? data.wakeTime : ""
-        this.onsetTimeField.Text := data.HasOwnProp("onsetTime") ? data.onsetTime : ""
-        
-        if (data.HasOwnProp("ocrText")) {
-            this.ocrTextArea.Text := this.HTMLToPlainText(data.ocrText)
-        } else {
-            this.ocrTextArea.Text := ""
-        }
-        
-        if (data.HasOwnProp("dreamText")) {
-            this.dreamTextArea.Text := this.HTMLToPlainText(data.dreamText)
-        } else {
-            this.dreamTextArea.Text := ""
-        }
-        
-        if (data.HasOwnProp("mentalState")) {
-            switch data.mentalState {
-                case "ʆober":
-                    this.soberRadio.Value := 1
-                case "Ethanol Intoxication":
-                    this.ethanolRadio.Value := 1
-                case "Other":
-                    this.otherRadio.Value := 1
-                    this.otherField.Enabled := true
-                    this.otherField.Text := data.HasOwnProp("otherIntoxication") ? data.otherIntoxication : ""
-            }
-        }
-        
-        symbolData := ["symbol1", "symbol2", "symbol3", "symbol4", "symbol5", "symbol6"]
-        for i, field in this.symbolFields {
-            if (data.HasOwnProp(symbolData[i])) {
-                field.Text := data.%symbolData[i]%
-            }
-        }
-        
-        this.mentalLockList.Delete()
-        this.mentalLockCounter := 1
-        if (data.HasOwnProp("mentalLocks") && data.mentalLocks != "") {
-            locks := this.StringToArray(data.mentalLocks)
-            for lockText in locks {
-                if (lockText != "") {
-                    this.mentalLockList.Add("", this.mentalLockCounter, lockText)
-                    this.mentalLockCounter++
-                }
-            }
-        }
-        
-        if (data.HasOwnProp("hasEvaluation") && data.hasEvaluation == "true") {
-            this.evaluationCheck.Value := 1
-            this.evaluationField.Enabled := true
-            this.evaluationField.Text := data.HasOwnProp("evaluation") ? data.evaluation : ""
-        }
-    }
-    HTMLToPlainText(html) {
-        if (html == "") {
-            return ""
-        }
-        
-        if (InStr(html, "<div") || InStr(html, "<table") || InStr(html, "<center")) {
-            return html
-        }
-        
-        text := html
-        
-        text := RegExReplace(text, "<p>", "")
-        text := RegExReplace(text, "</p>", "`n")
-        text := RegExReplace(text, "<br>", "`n")
-        text := RegExReplace(text, "<br/>", "`n")
-        text := RegExReplace(text, "<br />", "`n")
-        
-        text := StrReplace(text, '\"', '"')
-        text := StrReplace(text, "\'", "'")
-        text := StrReplace(text, '\n', "`n")
-        text := StrReplace(text, '\r', "`r")
-        text := StrReplace(text, '\t', "`t")
-        
-        
-        return text
-    }
-
-
-    PlainTextToHTML(text) {
-        if (text == "") {
-            return ""
-        }
-        
-        lines := StrSplit(text, "`n")
-        cleanLines := []
-        
-        for line in lines {
-            trimmed := Trim(line)
-            if (trimmed != "") {
-                cleanLines.Push(trimmed)
-            }
-        }
-        
-        if (cleanLines.Length > 3) {
-            MsgBox(">3 rows.", "", "OK")
-            return ""
-        }
-        
-        while (cleanLines.Length < 3) {
-            cleanLines.Push("")
-        }
-        
-        html := ""
-        for i, line in cleanLines {
-            html .= "<p>" . line . "</p>"
-            if (i < cleanLines.Length) {
-                html .= "`n"
-            }
-        }
-        
-        return html
-    }   
-    
-    FormatDreamText(text) {
-            if (text == "") {
-                return ""
-            }
-            
-            if (InStr(text, "<div") || InStr(text, "<p>") || InStr(text, "<table") || InStr(text, "<center")) {
-                return text
-            }
-            
-            text := StrReplace(text, "`r`n", "`n")
-            text := StrReplace(text, "`r", "`n")
-            text := Trim(text)
-            
-            lines := StrSplit(text, "`n")
-            formattedText := ""
-            
-            for i, line in lines {
-                line := Trim(line)
-                if (line != "") {
-                    if (formattedText != "") {
-                        formattedText .= "`n"
-                    }
-                    formattedText .= "<p>" . line . "</p>"
-                }
-            }
-            
-            return formattedText
-        }
-
-    SaveRecord() {
-        ocrHTML := this.PlainTextToHTML(this.ocrTextArea.Text)
-        if (ocrHTML == "" && this.ocrTextArea.Text != "") {
-            return
-        }
-        
-        data := this.CollectFormData()
-        data.ocrText := ocrHTML
-        data.dreamText := this.FormatDreamText(data.dreamText)
-        
-        if (!data.dreamNumber) {
-            MsgBox("Dream number is required.")
-            return
-        }
-        
-        if (this.DreamExistsInFile(data.dreamNumber)) {
-            MsgBox("Dream number already exists in file.")
-            return
-        }
-        
-        try {
-            jsonLine := this.ObjectToJSON(data)
-            
-            dir := RegExReplace(this.dataFile, "[^\\]*$", "")
-            if (!DirExist(dir)) {
-                DirCreate(dir)
-            }
-            
-            FileAppend(jsonLine . "`n", this.dataFile, "UTF-8")
-            
-            this.originalData := data.Clone()
-            this.saveBtn.Enabled := false
-            this.updateBtn.Enabled := true
-            this.hasUnsavedChanges := false
-            
-            this.LoadDataToLeftPanel()
-            
-        } catch Error as err {
-            MsgBox("Error saving record: " . err.Message)
-        }
-    }
-    
-    UpdateRecord() {
-        if (!this.dreamId || this.dreamId == "") {
-            MsgBox("No dream selected for update.")
-            return
-        }
-        
-        ocrHTML := this.PlainTextToHTML(this.ocrTextArea.Text)
-        if (ocrHTML == "" && this.ocrTextArea.Text != "") {
-            return
-        }
-        
-        data := this.CollectFormData()
-        data.dreamNumber := this.dreamId
-        data.ocrText := ocrHTML
-        data.dreamText := this.FormatDreamText(data.dreamText)
-        
-        try {
-            if (!FileExist(this.dataFile)) {
-                MsgBox("Data file not found.")
-                return
-            }
-            
-            content := FileRead(this.dataFile, "UTF-8")
-            lines := StrSplit(content, "`n")
-            updatedLines := []
-            found := false
-            
-            for line in lines {
-                line := Trim(line)
-                if (line == "" || line == "{}") {
-                    continue
-                }
-                
-                try {
-                    existingData := this.ParseJSON(line)
-                    
-                    if (existingData.HasOwnProp("dreamNumber") && String(existingData.dreamNumber) == String(this.dreamId)) {
-                        updatedLines.Push(this.ObjectToJSON(data))
-                        found := true
-                    } else {
-                        updatedLines.Push(line)
-                    }
-                } catch {
-                    updatedLines.Push(line)
-                }
-            }
-            
-            if (!found) {
-                MsgBox("Dream record not found for update.")
-                return
-            }
-            
-            newContent := ""
-            for line in updatedLines {
-                newContent .= line . "`n"
-            }
-            
-            FileDelete(this.dataFile)
-            FileAppend(newContent, this.dataFile, "UTF-8")
-            
-            this.originalData := data.Clone()
-            this.hasUnsavedChanges := false
-            this.LoadDataToLeftPanel()
-            
-        } catch Error as err {
-            MsgBox("Error updating record: " . err.Message)
-        }
-    }
-    
-    DreamExistsInFile(dreamNumber) {
-        try {
-            if (!FileExist(this.dataFile)) {
-                return false
-            }
-            
-            content := FileRead(this.dataFile, "UTF-8")
-            lines := StrSplit(content, "`n")
-            
-            for line in lines {
-                line := Trim(line)
-                if (line == "" || line == "{}") {
-                    continue
-                }
-                
-                try {
-                    data := this.ParseJSON(line)
-                    if (data.HasOwnProp("dreamNumber") && String(data.dreamNumber) == String(dreamNumber)) {
-                        return true
-                    }
-                } catch {
-                    continue
-                }
-            }
-            
-            return false
-        } catch {
-            return false
-        }
-    }
-    
-    CollectFormData() {
-        data := {}
-        
-        data.dreamNumber := this.dreamNumberField.Text
-        data.wakeTime := this.wakeTimeField.Text
-        data.onsetTime := this.onsetTimeField.Text
-        data.dreamText := this.dreamTextArea.Text
-        data.date := this.dateField.Text
-        
-        if (this.soberRadio.Value) {
-            data.mentalState := "ʆober"
-        } else if (this.ethanolRadio.Value) {
-            data.mentalState := "Ethanol Intoxication"
-        } else if (this.otherRadio.Value) {
-            data.mentalState := "Other"
-            data.otherIntoxication := this.otherField.Text
-        }
-        
-        symbolData := ["symbol1", "symbol2", "symbol3", "symbol4", "symbol5", "symbol6"]
-        for i, field in this.symbolFields {
-            data.%symbolData[i]% := field.Text
-        }
-        
-        mentalLocks := []
-        loop this.mentalLockList.GetCount() {
-            lockText := this.mentalLockList.GetText(A_Index, 2)
-            if (lockText != "") {
-                mentalLocks.Push(lockText)
-            }
-        }
-        data.mentalLocks := this.ArrayToString(mentalLocks)
-        
-        data.hasEvaluation := this.evaluationCheck.Value ? "true" : "false"
-        if (this.evaluationCheck.Value) {
-            data.evaluation := this.evaluationField.Text
-        }
-        
-        return data
-    }
-    
-    ClearFields() {
-        this.dreamNumberField.Text := ""
-        this.wakeTimeField.Text := ""
-        this.dateField.Text := ""
-        this.onsetTimeField.Text := ""
-        this.ocrTextArea.Text := ""
-        this.dreamTextArea.Text := ""
-        
-        this.soberRadio.Value := 1
-        this.ethanolRadio.Value := 0
-        this.otherRadio.Value := 0
-        this.otherField.Text := ""
-        this.otherField.Enabled := false
-        
-        for field in this.symbolFields {
-            field.Text := ""
-        }
-        
-        this.mentalLockList.Delete()
-        this.mentalLockInput.Text := ""
-        this.mentalLockCounter := 1
-        this.removeBtn.Enabled := false
-        
-        this.evaluationCheck.Value := 0
-        this.evaluationField.Text := ""
-        this.evaluationField.Enabled := false
-        
-        this.dreamId := ""
-        this.originalData := {}
-    }
-    
-    ParseJSON(jsonStr) {
-        obj := {}
-        
-        try {
-            jsonStr := Trim(jsonStr)
-            if (SubStr(jsonStr, 1, 1) == "{") {
-                jsonStr := SubStr(jsonStr, 2)
-            }
-            if (SubStr(jsonStr, -1) == "}") {
-                jsonStr := SubStr(jsonStr, 1, -1)
-            }
-            
-            if (Trim(jsonStr) == "") {
-                return obj
-            }
-            
-            pairs := []
-            current := ""
-            inQuotes := false
-            escapeNext := false
-            braceLevel := 0
-            
-            loop parse, jsonStr {
-                char := A_LoopField
-                
-                if (escapeNext) {
-                    current .= char
-                    escapeNext := false
-                    continue
-                }
-                
-                if (char == '\') {
-                    escapeNext := true
-                    current .= char
-                    continue
-                }
-                
-                if (char == '"' && !escapeNext) {
-                    inQuotes := !inQuotes
-                    current .= char
-                    continue
-                }
-                
-                if (!inQuotes) {
-                    if (char == '{') {
-                        braceLevel++
-                    } else if (char == '}') {
-                        braceLevel--
-                    }
-                }
-                
-                if (char == ',' && !inQuotes && braceLevel == 0) {
-                    if (Trim(current) != "") {
-                        pairs.Push(Trim(current))
-                    }
-                    current := ""
-                } else {
-                    current .= char
-                }
-            }
-            
-            if (Trim(current) != "") {
-                pairs.Push(Trim(current))
-            }
-            
-            for pair in pairs {
-                pair := Trim(pair)
-                if (pair == "") {
-                    continue
-                }
-                
-                colonPos := 0
-                inQuotes := false
-                escapeNext := false
-                braceLevel := 0
-                
-                loop parse, pair {
-                    char := A_LoopField
-                    
-                    if (escapeNext) {
-                        escapeNext := false
-                        continue
-                    }
-                    
-                    if (char == '\') {
-                        escapeNext := true
-                        continue
-                    }
-                    
-                    if (char == '"' && !escapeNext) {
-                        inQuotes := !inQuotes
-                        continue
-                    }
-                    
-                    if (!inQuotes) {
-                        if (char == '{') {
-                            braceLevel++
-                        } else if (char == '}') {
-                            braceLevel--
-                        }
-                    }
-                    
-                    if (char == ':' && !inQuotes && braceLevel == 0) {
-                        colonPos := A_Index
-                        break
-                    }
-                }
-                
-                if (colonPos == 0) {
-                    continue
-                }
-                
-                key := Trim(SubStr(pair, 1, colonPos - 1))
-                value := Trim(SubStr(pair, colonPos + 1))
-                
-                if (SubStr(key, 1, 1) == '"' && SubStr(key, -1) == '"') {
-                    key := SubStr(key, 2, -1)
-                }
-                
-                if (SubStr(value, 1, 1) == '"' && SubStr(value, -1) == '"') {
-                    value := SubStr(value, 2, -1)
-                }
-                
-                value := StrReplace(value, '\"', '"')
-                value := StrReplace(value, '\\', '\')
-                value := StrReplace(value, '\n', "`n")
-                value := StrReplace(value, '\r', "`r")
-                value := StrReplace(value, '\t', "`t")
-                
-                if (key != "") {
-                    obj.%key% := value
-                }
-            }
-        } catch Error as parseErr {
-        }
-        
-        return obj
-    }
-    
-    ObjectToJSON(obj) {
-        jsonStr := "{"
-        first := true
-        
-        for key, value in obj.OwnProps() {
-            if (!first) {
-                jsonStr .= ","
-            }
-            first := false
-            
-            valueStr := String(value)
-            valueStr := StrReplace(valueStr, '\', '\\')
-            valueStr := StrReplace(valueStr, '"', '\"')
-            valueStr := StrReplace(valueStr, "`n", '\n')
-            valueStr := StrReplace(valueStr, "`r", '\r')
-            valueStr := StrReplace(valueStr, "`t", '\t')
-            
-            jsonStr .= '"' . key . '":"' . valueStr . '"'
-        }
-        
-        jsonStr .= "}"
-        return jsonStr
-    }
-    
-    ArrayToString(arr) {
-        if (arr.Length == 0) {
-            return ""
-        }
-        
-        result := ""
-        for i, item in arr {
-            if (i > 1) {
-                result .= ","
-            }
-            result .= String(item)
-        }
-        return result
-    }
-    
-    StringToArray(str) {
-        arr := []
-        if (str == "") {
-            return arr
-        }
-        
-        parts := StrSplit(str, ",")
-        for part in parts {
-            trimmed := Trim(part)
-            if (trimmed != "") {
-                arr.Push(trimmed)
-            }
-        }
-        return arr
-    }
-
-
-
-    ConfirmClose() {
-        if (this.hasUnsavedChanges) {
-            result := MsgBox("Un‐sꜹed data. Close anyway?", "", "YesNo")
-            if (result == "No") {
-                return true
-            }
-        }
-        
-        if (HasProp(this, "keydownHandler")) {
-            OnMessage(0x0100, this.keydownHandler, 0)
-        }
-        
-        this.mainGui.Destroy()
-        this.isDestroyed := true
-        if (this.timelineGui && WinExist(this.timelineGui.Hwnd)) {
-            this.timelineGui.Close()
-        }
-        return false
-    }
-
-    OpenEncoder() {
-        this.ocrTextArea.Focus()
-        ControlSend("{Ctrl down}a{Ctrl up}", this.ocrTextArea)
-        UnifiedDreamEncoder.OpenGUI()
-    }
-    OpenSomniumPeople() {
-        this.dreamTextArea.Focus()
-        global SIPManager
-        SIPManager.ShowApp()
-    }
-    
-    OpenSomniumHex() {
-        this.dreamTextArea.Focus()  
-        global ColorPicker
-        if (!ColorPicker) {
-            ColorPicker := ColorPickerClass()
-        }
-        ColorPicker.Show()
     }
 }
 
-global DreamMsasanager := DreamManager()
+KopierApp.Init()
