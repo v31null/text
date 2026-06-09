@@ -2069,241 +2069,6 @@ for key, symbol in pressureUnits {
 for key, symbol in frequencyUnits {
     Hotstring(":O:si" . key, symbol)
 }
-mainGui := ""
-controls := Map()
-
-:O?*:\sdl::{
-    OpenDreamDecoderGUI()
-}
-
-OpenDreamDecoderGUI() {
-    global mainGui, controls
-    
-    if (mainGui && IsObject(mainGui)) {
-        try {
-            mainGui.Destroy()
-        }
-    }
-    
-    mainGui := Gui("+Resize +MinSize400x500", "sdl")
-    mainGui.SetFont("s10", "Consolas")
-    
-    controls := Map()
-    
-    CreateDecoderGUI()
-    mainGui.OnEvent("Close", (*) => mainGui.Destroy())
-    mainGui.Show("w580 h525")
-}
-
-CreateDecoderGUI() {
-    global mainGui, controls
-    
-    mainGui.Add("Text", "xm y10 w580 Center", "DREAM DE-CODING SYSTEM").SetFont("s12 Bold")
-    
-    mainGui.Add("Text", "xm y40", "Data :")
-    controls["Input"] := mainGui.Add("Edit", "xm y60 w560 h80 VScroll")
-    
-    mainGui.Add("Button", "xm y150 w120 h30", "DECODE").OnEvent("Click", DecodeData)
-    mainGui.Add("Button", "x+10 yp w120 h30", "Clear").OnEvent("Click", ClearAlldec)
-    
-    mainGui.Add("Text", "xm y190", "Re‑sult :")
-    controls["Output"] := mainGui.Add("Edit", "xm y210 w560 h250 VScroll ReadOnly")
-    
-    mainGui.Add("Text", "xm y470", "ﬅatus :")
-    controls["Status"] := mainGui.Add("Edit", "xm y490 w560 h20 ReadOnly")
-}
-CalculateChecksum(row1) {
-        sum := 0
-        
-        for i in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48] {
-            if (i <= StrLen(row1)) {
-                sum += Ord(SubStr(row1, i, 1))
-            }
-        }
-        
-        while (sum > 9) {
-            sum := Mod(sum, 6)
-        }
-        
-        return String(sum)
-    }
-DecodeData(*) {
-    global controls
-    
-    inputText := controls["Input"].Text
-    if (inputText == "") {
-        controls["Status"].Text := "No In‑put data."
-        return
-    }
-    
-    lines := StrSplit(inputText, "`r`n")
-    if (lines.Length < 2) {
-        controls["Status"].Text := "Need Both rows."
-        return
-    }
-    
-    row1 := Trim(lines[1])
-    row2 := Trim(lines[2])
-    
-    if (StrLen(row1) < 49) {
-        controls["Status"].Text := "Row is 1 Tꝏ short."
-        return
-    }
-    
-    providedChecksum := SubStr(row1, 49, 1)
-    calculatedChecksum := CalculateChecksum(SubStr(row1, 1, 48))
-    
-    if (providedChecksum != calculatedChecksum) {
-        controls["Status"].Text := "Warning : Check‑sum Mis‑match."
-    } else {
-        controls["Status"].Text := "OK"
-    }
-    
-    decoded := DecodeRow1(SubStr(row1, 1, 48)) . "`r`n`r`n" . DecodeRow2(row2)
-    
-    controls["Output"].Text := decoded
-}
-
-DecodeRow1(row1) {
-    result := "===DREAM PARA-AMETERS===`r`n`r`n"
-    
-    mValue := SubStr(row1, 3, 1)
-    result .= "Dream was "
-    if (mValue == "1") {
-        result .= "with memories of Real-world"
-    } else if (mValue == "2") {
-        result .= "without memories of Real‑world"
-    } else {
-        result .= "without Meta‑cognitive capabilities"
-    }
-    
-    cValue := SubStr(row1, 8, 1)
-    result .= " and had In‑dream‑cognitive capabilities "
-    if (cValue == "C") {
-        result .= "present , moreover ; "
-    } else {
-        result .= "not present , moreover ; "
-    }
-	
-    enValue := SubStr(row1, 9, 1)
-    result .= "Dream control was "
-    if (enValue == "E") {
-        result .= "existent and "
-    } else if (enValue == "N") {
-        result .= "Non-existent and "
-    } else {
-        result .= "不明 and "
-    }
-    
-    sValue := SubStr(row1, 12, 1)
-    result .= "Dream ﬆability was "
-    if (sValue == "1") {
-        result .= "ﬆable.`r`n"
-    } else if (sValue == "2") {
-        result .= "Non‑ﬆable.`r`n"
-    } else {
-        result .= "不明.`r`n"
-    }
-    
-    noteSection := SubStr(row1, 14, 28)
-    noteSection := RegExReplace(noteSection, ">", " ")
-    noteSection := Trim(noteSection)
-    result .= "Note : "
-    if (noteSection != "") {
-        result .= noteSection . ".`r`n"
-    } else {
-        result .= "na.`r`n"
-    }
-    
-    lucidityValue := SubStr(row1, 43, 1)
-    result .= "Lucidity type"
-    if (lucidityValue == "F") {
-        result .= " was false and "
-    } else if (lucidityValue == "T") {
-        result .= " was truͤ and "
-    } else if (lucidityValue == "U") {
-        result .= " was 不明 and "
-    } else if (lucidityValue == "X") {
-        result .= "isn’t applicable and "
-    } else {
-        result .= " isn’t present and "
-    }
-    
-    borderValue := SubStr(row1, 45, 1)
-    result .= "Dream"
-    if (borderValue == "B") {
-        result .= " achieved Border-line lucidity.`r`n"
-    } else if (borderValue == "N") {
-        result .= " is not a Lucid dream.`r`n"
-    } else {
-        result .= " is a Normal Lucid‑dream.`r`n"
-    }
-    
-    return result
-}
-
-DecodeRow2(row2) {
-    result := "===REALITY TESTS===`r`n`r`n"
-    
-    if (row2 == "" || RegExReplace(row2, ">", "") == "") {
-        result .= "No Reality teﬆs.`r`n"
-        return result
-    }
-    
-    cleanRow2 := RegExReplace(row2, ">+$", "")
-    
-    testCount := 0
-    i := 1
-    while (i <= StrLen(cleanRow2)) {
-        if (i + 2 <= StrLen(cleanRow2)) {
-            testNum := SubStr(cleanRow2, i, 1)
-            rChar := SubStr(cleanRow2, i + 1, 1)
-            testType := SubStr(cleanRow2, i + 2, 1)
-            
-            if (rChar == "R" && IsDigit(testNum)) {
-                testCount++
-                result .= testCount . ". "
-                
-                if (testType == "b") {
-                    result .= "Breath check.`r`n"
-                } else if (testType == "h") {
-                    result .= "Hand check.`r`n"
-                } else if (testType == "n") {
-                    result .= "Nꜷght check.`r`n"
-                } else if (testType == "m") {
-                    result .= "Mirror check.`r`n"
-                } else {
-                    result .= "Un‑known Teﬆ type : " . testType . "`r`n"
-                }
-                
-                i += 3
-            } else {
-                i++
-            }
-        } else {
-            i++
-        }
-    }
-    
-    if (testCount == 0) {
-        result .= "No Reality teﬆs were found.`r`n"
-    }
-    
-    return result
-}
-
-
-IsDigit(char) {
-    return (char >= "0" && char <= "9")
-}
-
-ClearAlldec(*) {
-    global controls
-    
-    controls["Input"].Text := ""
-    controls["Output"].Text := ""
-    controls["Status"].Text := ""
-}
 
 class UnifiedDreamEncoder {
     static mainGui := ""
@@ -3337,6 +3102,373 @@ class UnifiedDreamEncoder {
 }
 
 UnifiedDreamEncoder.Init()
+
+
+ColorPicker := ""
+
+::\shex::
+{
+    global ColorPicker
+    if (!ColorPicker) {
+        ColorPicker := ColorPickerClass()
+    }
+    ColorPicker.Show()
+}
+
+
+class ColorPickerClass {
+    
+    GUI := ""
+    MainRect := ""
+    HueStrip := ""
+    DisplayField := ""
+    MainPointer := ""
+    HuePointer := ""
+    MainBitmap := ""
+    HueBitmap := ""
+    CurrentHue := 0          
+    CurrentSat := 100        
+    CurrentBright := 100     
+    IsDragging := false
+    DragTarget := ""
+    
+    __New() {
+        this.CurrentHue := 0
+        this.CurrentSat := 100
+        this.CurrentBright := 100
+        this.IsDragging := false
+        this.DragTarget := ""
+    }
+    
+    Show() {
+        this.GUI := Gui("+Resize +MinSize450x350", "Color Picker")
+        this.GUI.MarginX := 10
+        this.GUI.MarginY := 10
+        this.GUI.OnEvent("Close", (*) => this.Hide())
+        this.GUI.OnEvent("Escape", (*) => this.Hide())
+        
+        this.DisplayField := this.GUI.Add("Edit", "x10 y10 w410 h35 ReadOnly Center Background0xFFFFFF")
+        this.DisplayField.SetFont("s16 Bold")
+        
+        this.MainRect := this.GUI.Add("Picture", "x10 y55 w360 h200 Border")
+        this.MainRect.OnEvent("Click", (ctrl, info) => this.MainRect_Click(ctrl, info))
+        
+        this.MainPointer := this.GUI.Add("Text", "x10 y55 w8 h8 Center BackgroundWhite Border", "")
+        
+        this.HueStrip := this.GUI.Add("Picture", "x380 y55 w30 h200 Border")
+        this.HueStrip.OnEvent("Click", (ctrl, info) => this.HueStrip_Click(ctrl, info))
+        
+        this.HuePointer := this.GUI.Add("Text", "x380 y55 w30 h2 Center BackgroundBlack", "")
+        
+        SendNBtn := this.GUI.Add("Button", "x125 y270 w100 h35", "SEND N")
+        SendNBtn.OnEvent("Click", (*) => this.SendNormal())
+        
+        SendFBtn := this.GUI.Add("Button", "x235 y270 w100 h35", "SEND F")
+        SendFBtn.OnEvent("Click", (*) => this.SendFormatted())
+        
+        this.CreateHueBitmap()
+        this.CreateMainBitmap()
+        this.UpdateDisplayHex()
+        this.UpdatePointers()
+        
+        this.GUI.Show("w450 h350")
+        this.CenterWindow()
+        
+        SetTimer(() => this.CheckMouseDrag(), 5)
+    }
+    
+    Hide() {
+        if (this.GUI) {
+            SetTimer(() => this.CheckMouseDrag(), 0)
+            this.CleanupBitmaps()
+            this.GUI.Destroy()
+            this.GUI := ""
+        }
+    }
+    
+    CenterWindow() {
+        this.GUI.GetPos(,, &Width, &Height)
+        NewX := (A_ScreenWidth - Width) / 2
+        NewY := (A_ScreenHeight - Height) / 2
+        this.GUI.Move(NewX, NewY)
+    }
+    
+    RGBtoBGR(RGB) {
+        R := (RGB >> 16) & 0xFF
+        G := (RGB >> 8) & 0xFF
+        B := RGB & 0xFF
+        
+        return (B << 16) | (G << 8) | R
+    }
+    HSVtoRGB(H, S, V) {
+        
+        H := Mod(H, 360) / 360  
+        S := S / 100            
+        V := V / 100            
+        
+        
+        C := V * S
+        X := C * (1 - Abs(Mod(H * 6, 2) - 1))
+        M := V - C
+        
+        if (H < 1/6) {          
+            R := C, G := X, B := 0
+        } else if (H < 2/6) {   
+            R := X, G := C, B := 0
+        } else if (H < 3/6) {   
+            R := 0, G := C, B := X
+        } else if (H < 4/6) {   
+            R := 0, G := X, B := C
+        } else if (H < 5/6) {   
+            R := X, G := 0, B := C
+        } else {                
+            R := C, G := 0, B := X
+        }
+        
+        
+        R := Round((R + M) * 255)
+        G := Round((G + M) * 255)
+        B := Round((B + M) * 255)
+        
+        
+        return (R << 16) | (G << 8) | B
+    }
+    
+    RGBtoHex(RGB) {
+        R := (RGB >> 16) & 0xFF
+        G := (RGB >> 8) & 0xFF
+        B := RGB & 0xFF
+        return Format("#{:02X}{:02X}{:02X}", R, G, B)
+    }
+    
+    GetRGBComponents(RGB) {
+        R := (RGB >> 16) & 0xFF
+        G := (RGB >> 8) & 0xFF
+        B := RGB & 0xFF
+        return {R: R, G: G, B: B}
+    }
+    
+    CreateBitmap(Width, Height) {
+        hDC := DllCall("GetDC", "Ptr", 0, "Ptr")
+        hMemDC := DllCall("CreateCompatibleDC", "Ptr", hDC, "Ptr")
+        hBitmap := DllCall("CreateCompatibleBitmap", "Ptr", hDC, "Int", Width, "Int", Height, "Ptr")
+        DllCall("SelectObject", "Ptr", hMemDC, "Ptr", hBitmap, "Ptr")
+        DllCall("ReleaseDC", "Ptr", 0, "Ptr", hDC)
+        DllCall("DeleteDC", "Ptr", hMemDC)
+        return hBitmap
+    }
+    
+    CreateHueBitmap() {
+        this.HueBitmap := this.CreateBitmap(30, 200)
+        
+        hDC := DllCall("GetDC", "Ptr", 0, "Ptr")
+        hMemDC := DllCall("CreateCompatibleDC", "Ptr", hDC, "Ptr")
+        hOldBitmap := DllCall("SelectObject", "Ptr", hMemDC, "Ptr", this.HueBitmap, "Ptr")
+        
+        Loop 200 {
+            Y := A_Index - 1
+            Hue := (Y / 199) * 360  
+            
+            RGB := this.HSVtoRGB(Hue, 100, 100)
+            BGR := this.RGBtoBGR(RGB)
+
+            hBrush := DllCall("CreateSolidBrush", "UInt", BGR, "Ptr")
+            Rect := Buffer(16, 0)
+            NumPut("Int", 0, Rect, 0)       
+            NumPut("Int", Y, Rect, 4)       
+            NumPut("Int", 30, Rect, 8)      
+            NumPut("Int", Y+1, Rect, 12)    
+            DllCall("FillRect", "Ptr", hMemDC, "Ptr", Rect, "Ptr", hBrush)
+            DllCall("DeleteObject", "Ptr", hBrush)
+        }
+        
+        DllCall("SelectObject", "Ptr", hMemDC, "Ptr", hOldBitmap, "Ptr")
+        DllCall("DeleteDC", "Ptr", hMemDC)
+        DllCall("ReleaseDC", "Ptr", 0, "Ptr", hDC)
+        
+        this.HueStrip.Value := "HBITMAP:" . this.HueBitmap
+    }
+    
+    CreateMainBitmap() {
+        this.MainBitmap := this.CreateBitmap(360, 200)
+        
+        hDC := DllCall("GetDC", "Ptr", 0, "Ptr")
+        hMemDC := DllCall("CreateCompatibleDC", "Ptr", hDC, "Ptr")
+        hOldBitmap := DllCall("SelectObject", "Ptr", hMemDC, "Ptr", this.MainBitmap, "Ptr")
+        
+        Loop 200 {
+            Y := A_Index - 1
+            Brightness := 100 - ((Y / 199) * 100)  
+            
+            Loop 360 {
+                X := A_Index - 1
+                Saturation := (X / 359) * 100  
+                RGB := this.HSVtoRGB(this.CurrentHue, Saturation, Brightness)
+                BGR := this.RGBtoBGR(RGB)
+                
+                DllCall("SetPixel", "Ptr", hMemDC, "Int", X, "Int", Y, "UInt", BGR)
+            }
+        }
+        
+        DllCall("SelectObject", "Ptr", hMemDC, "Ptr", hOldBitmap, "Ptr")
+        DllCall("DeleteDC", "Ptr", hMemDC)
+        DllCall("ReleaseDC", "Ptr", 0, "Ptr", hDC)
+        
+        this.MainRect.Value := "HBITMAP:" . this.MainBitmap
+    }
+    
+    UpdateDisplayHex() {
+        RGB := this.HSVtoRGB(this.CurrentHue, this.CurrentSat, this.CurrentBright)
+        HexColor := this.RGBtoHex(RGB)
+        ColorBlocks := "██████"
+        
+        DisplayText := "HEX " . HexColor . " " . ColorBlocks
+        this.DisplayField.Text := DisplayText
+        
+        
+        this.DisplayField.SetFont("c" . Format("0x{:06X}", RGB))
+    }
+    
+    UpdatePointers() {
+        
+        X := Round((this.CurrentSat / 100) * 359) + 10 - 4
+        Y := Round(((100 - this.CurrentBright) / 100) * 199) + 55 - 4
+        this.MainPointer.Move(X, Y)
+        
+        
+        HueY := Round((this.CurrentHue / 360) * 199) + 55 - 1
+        this.HuePointer.Move(380, HueY)
+    }
+    
+    MainRect_Click(GuiCtrlObj, Info) {
+        CoordMode("Mouse", "Client")
+        MouseGetPos(&X, &Y)
+        this.MainRect.GetPos(&CtrlX, &CtrlY)
+        
+        RelX := Max(0, Min(359, X - CtrlX))
+        RelY := Max(0, Min(199, Y - CtrlY))
+        
+        this.CurrentSat := (RelX / 359) * 100
+        this.CurrentBright := 100 - ((RelY / 199) * 100)
+        
+        this.UpdateDisplayHex()
+        this.UpdatePointers()
+        
+        this.IsDragging := true
+        this.DragTarget := "Main"
+    }
+    
+    HueStrip_Click(GuiCtrlObj, Info) {
+        CoordMode("Mouse", "Client")
+        MouseGetPos(&X, &Y)
+        this.HueStrip.GetPos(&CtrlX, &CtrlY)
+        
+        RelY := Max(0, Min(199, Y - CtrlY))
+        this.CurrentHue := (RelY / 199) * 360
+        
+        this.CreateMainBitmap()
+        this.UpdateDisplayHex()
+        this.UpdatePointers()
+        
+        this.IsDragging := true
+        this.DragTarget := "Hue"
+    }
+    
+    CheckMouseDrag() {
+        if (!this.IsDragging || !this.GUI) {
+            return
+        }
+        
+        if (!GetKeyState("LButton", "P")) {
+            this.IsDragging := false
+            this.DragTarget := ""
+            return
+        }
+        
+        CoordMode("Mouse", "Client")
+        MouseGetPos(&X, &Y)
+        
+        if (this.DragTarget = "Main") {
+            this.MainRect.GetPos(&CtrlX, &CtrlY)
+            RelX := Max(0, Min(359, X - CtrlX))
+            RelY := Max(0, Min(199, Y - CtrlY))
+            
+            NewSat := (RelX / 359) * 100
+            NewBright := 100 - ((RelY / 199) * 100)
+            
+            if (Abs(NewSat - this.CurrentSat) > 0.1 || Abs(NewBright - this.CurrentBright) > 0.1) {
+                this.CurrentSat := NewSat
+                this.CurrentBright := NewBright
+                this.UpdateDisplayHex()
+                this.UpdatePointers()
+            }
+        }
+        else if (this.DragTarget = "Hue") {
+            this.HueStrip.GetPos(&CtrlX, &CtrlY)
+            RelY := Max(0, Min(199, Y - CtrlY))
+            NewHue := (RelY / 199) * 360
+            
+            if (Abs(NewHue - this.CurrentHue) > 0.5) {
+                this.CurrentHue := NewHue
+                this.CreateMainBitmap()
+                this.UpdateDisplayHex()
+                this.UpdatePointers()
+            }
+        }
+    }
+    
+    SendNormal() {
+        RGB := this.HSVtoRGB(this.CurrentHue, this.CurrentSat, this.CurrentBright)
+        HexColor := this.RGBtoHex(RGB)
+        ColorBlocks := "██████"
+        
+        this.Hide()
+        Sleep(50)
+        SendText("HEX " . HexColor . " " . ColorBlocks)
+    }
+    
+    SendFormatted() {
+        RGB := this.HSVtoRGB(this.CurrentHue, this.CurrentSat, this.CurrentBright)
+        HexColor := this.RGBtoHex(RGB)
+        ColorBlocks := "██████"
+        Components := this.GetRGBComponents(RGB)
+        
+        FormattedText := "[COLOR=rgb(" . Components.R . "," . Components.G . "," . Components.B . ")]HEX " . HexColor . " " . ColorBlocks . " [/COLOR]"
+        
+        this.Hide()
+        Sleep(50)
+        SendText(FormattedText)
+    }
+    
+    CleanupBitmaps() {
+        if (this.MainBitmap) {
+            DllCall("DeleteObject", "Ptr", this.MainBitmap)
+            this.MainBitmap := ""
+        }
+        if (this.HueBitmap) {
+            DllCall("DeleteObject", "Ptr", this.HueBitmap)
+            this.HueBitmap := ""
+        }
+    }
+}
+
+~Esc::
+{
+    global ColorPicker
+    if (ColorPicker && ColorPicker.GUI) {
+        ColorPicker.Hide()
+    }
+}
+
+OnExit(CleanupOnExit)
+
+CleanupOnExit(*) {
+    global ColorPicker
+    if (ColorPicker) {
+        ColorPicker.CleanupBitmaps()
+    }
+}
+
 class x7f9a2 {
     __New() {
         this.b4e8c := Gui("+Resize", "D.O.A.R. - Dead on Arrival Report")
@@ -3354,7 +3486,7 @@ class x7f9a2 {
         Hotstring(":O?*:\prdoar", (*) => this.q8p2m())
     }
     m9d3f() {
-        c3l7x := MsgBox("Are you sure you want to close the DOAR form?`nAny unsaved data will be lost.", "Confirm Close", "4")
+        c3l7x := MsgBox("Close the D.o.A.R. form ?`nAny Un‑saved datum will be lost.", "Confirm Close", "4")
         if (c3l7x == "Yes") {
             this.b4e8c.Destroy()
             this.h7n8r := true
@@ -3363,43 +3495,43 @@ class x7f9a2 {
     k8h2n() {
         this.f2d9w := [
             "",
-            "D.1.01 - Memory Consolidation failure during transition to C1",
-            "D.1.02 - External Stimuli interference during somnium", 
-            "D.1.03 - Rapid Unplanned awakening",
-            "D.1.04 - Absence of Immediate recording method",
-            "D.1.05 - REM Intrusion phenomena",
-            "D.1.06 - Lucid dream technique failure",
-            "D.1.07 - Hypnopompic recording failure",
+            "D.1.01 - Memory-consolidation failure during transition to C1",
+            "D.1.02 - External ﬅimuli interference during somnium", 
+            "D.1.03 - Rapid Un-planned awakening",
+            "D.1.04 - Absence of Immediate-recording method",
+            "D.1.05 - R.E.-M.-intrusion phenomena",
+            "D.1.06 - Lucid-dream techniquͤ failure",
+            "D.1.07 - Hypno-pompic-recording failure",
             "D.1.98 - Other",
-            "D.1.99 - Unknown",
-            "D.2.01 - Substance interference",
-            "D.2.02 - Pre-sleep meal timing",
+            "D.1.99 - Un-known",
+            "D.2.01 - ʃubﬆance interference",
+            "D.2.02 - Pre-sleep Meal-timing",
             "D.2.03 - Hydration extremes", 
-            "D.2.04 - Sleep position complications",
-            "D.2.05 - Pre-sleep screen exposure",
+            "D.2.04 - Sleep-position complications",
+            "D.2.05 - Pre-sleep ʃcreen-exposure",
             "D.2.06 - Exercise timing disruption",
-            "D.2.07 - Partner sleep disturbances",
+            "D.2.07 - Partner ʃleep-disturbances",
             "D.2.08 - Performance anxiety",
-            "D.2.09 - Temperature discomfort",
+            "D.2.09 - Temperature Dis-comfort",
             "D.2.10 - Environmental noise",
             "D.2.11 - Environmental light",
-            "D.2.12 - Bladder pressure",
-            "D.2.13 - Stress/worry state",
+            "D.2.12 - Bladder preßure",
+            "D.2.13 - Stress / worry ﬆate",
             "D.2.98 - Other",
-            "D.2.99 - Unknown",
-            "D.3.01 - Chronic sleep debt",
-            "D.3.02 - Irregular sleep schedule",
+            "D.2.99 - Un-known",
+            "D.3.01 - Chronic ʃleep-debt",
+            "D.3.02 - Ir-regular ʃleep-schedule",
             "D.3.03 - Medication use",
-            "D.3.04 - Sleep practice inexperience",
+            "D.3.04 - Sleep-practice In-experience",
             "D.3.05 - Environmental conditioning",
-            "D.3.06 - Sleep disorder symptoms",
+            "D.3.06 - Sleep Dis-order symptoms",
             "D.3.98 - Other",
-            "D.3.99 - Unknown",
-            "D.4.01 - Work schedule stress",
-            "D.4.02 - Living situation impacts",
-            "D.4.03 - Information overload",
+            "D.3.99 - Un-known",
+            "D.4.01 - Work-schedule streß",
+            "D.4.02 - Living-situation impacts",
+            "D.4.03 - Information Over‑load",
             "D.4.98 - Other",
-            "D.4.99 - Unknown"
+            "D.4.99 - Un-known"
         ]
     }
     
@@ -3443,7 +3575,7 @@ class x7f9a2 {
         this.b4e8c.Add("Text", "x240 y245 w70 h20", "On‑set end :")
         this.f1c6t := this.b4e8c.Add("Edit", "x315 y245 w100 h20")
         this.i5y3e := this.b4e8c.Add("Checkbox", "x40 y270 w120 h20", "ʃcraps exist")
-        this.h7b8d := this.b4e8c.Add("Checkbox", "x170 y270 w120 h20", "Almoﬆ Re‑membered")
+        this.h7b8d := this.b4e8c.Add("Checkbox", "x170 y270 w120 h20", "Almoﬆ remembered")
         this.l9s4f := this.b4e8c.Add("Checkbox", "x300 y270 w120 h20", "‘twas tangible")
         this.w3n1j := this.b4e8c.Add("Checkbox", "x430 y270 w150 h20", "ʃhowed eﬀort to maintain")
         this.b4e8c.Add("Text", "x40 y295 w80 h20", "Comfort level :")
@@ -3484,41 +3616,41 @@ class x7f9a2 {
         this.y5t9e := this.b4e8c.Add("Checkbox", "x890 y455 w200 h20 Disabled", "4. Witneß ꜹailable ?")
         o8i2v := this.b4e8c.Add("GroupBox", "x20 y500 w1683 h80", "E - REASONS FOR DEATH")
         this.b4e8c.Add("Text", "x30 y520 w80 h20", "Primary Cause:")
-        this.w6u4g := this.b4e8c.Add("DropDownList", "x115 y520 w200 h120", this.f2d9w)
+        this.w6u4g := this.b4e8c.Add("DropDownList", "x115 y520 w300 h120", this.f2d9w)
         this.w6u4g.OnEvent("Change", (*) => this.c2x5l("primary"))
-        this.b4e8c.Add("Text", "x30 y545 w80 h20", "ʃecondary to :")
-        this.d1m8s := this.b4e8c.Add("DropDownList", "x115 y545 w200 h120 Disabled", this.f2d9w)
+        this.b4e8c.Add("Text", "x30 y545 w80 h20", "ʃecondary to :")
+        this.d1m8s := this.b4e8c.Add("DropDownList", "x115 y545 w300 h120 Disabled", this.f2d9w)
         this.d1m8s.OnEvent("Change", (*) => this.c2x5l("secondary"))
-        this.b4e8c.Add("Text", "x330 y520 w70 h20", "Tertiary to :")
-        this.r7q3f := this.b4e8c.Add("DropDownList", "x405 y520 w200 h120 Disabled", this.f2d9w)
+        this.b4e8c.Add("Text", "x430 y520 w70 h20", "Tertiary to :")
+        this.r7q3f := this.b4e8c.Add("DropDownList", "x505 y520 w300 h120 Disabled", this.f2d9w)
         this.r7q3f.OnEvent("Change", (*) => this.c2x5l("tertiary"))
-        this.b4e8c.Add("Text", "x330 y545 w80 h20", "Quaternary to :")
-        this.j9k2h := this.b4e8c.Add("DropDownList", "x415 y545 w200 h120 Disabled", this.f2d9w)
+        this.b4e8c.Add("Text", "x430 y545 w80 h20", "Quaternary to :")
+        this.j9k2h := this.b4e8c.Add("DropDownList", "x515 y545 w300 h120 Disabled", this.f2d9w)
         this.j9k2h.OnEvent("Change", (*) => this.c2x5l("quaternary"))
-        this.b4e8c.Add("Text", "x630 y520 w100 h20", "Primary time :")
-        this.i3w7b := this.b4e8c.Add("Edit", "x730 y520 w50 h20 Number Center")
-        this.b4e8c.Add("Text", "x785 y520 w10 h20 Center", "/")
-        this.v4n1t := this.b4e8c.Add("Edit", "x800 y520 w50 h20 Center")
-        this.b4e8c.Add("Text", "x630 y545 w100 h20", "ʃecondary time :")
-        this.s8l6z := this.b4e8c.Add("Edit", "x730 y545 w50 h20 Number Center Disabled")
-        this.b4e8c.Add("Text", "x785 y545 w10 h20 Center", "/")
-        this.a5p9x := this.b4e8c.Add("Edit", "x800 y545 w50 h20 Center Disabled")
-        this.b4e8c.Add("Text", "x870 y520 w80 h20", "Tertiary time :")
-        this.m2j4r := this.b4e8c.Add("Edit", "x955 y520 w50 h20 Number Center Disabled")
-        this.b4e8c.Add("Text", "x1010 y520 w10 h20 Center", "/")
-        this.g8c3e := this.b4e8c.Add("Edit", "x1025 y520 w50 h20 Center Disabled")
-        this.b4e8c.Add("Text", "x870 y545 w90 h20", "Quaternary time :")
-        this.f7v5k := this.b4e8c.Add("Edit", "x965 y545 w50 h20 Number Center Disabled")
-        this.b4e8c.Add("Text", "x1020 y545 w10 h20 Center", "/")
-        this.b1h9u := this.b4e8c.Add("Edit", "x1035 y545 w50 h20 Center Disabled")
-        this.q6d2y := this.b4e8c.Add("Edit", "x1100 y520 w200 h20 Hidden")
-        this.w9x1p := this.b4e8c.Add("Edit", "x1100 y545 w200 h20 Hidden")
-        this.l3f8n := this.b4e8c.Add("Edit", "x1320 y520 w200 h20 Hidden")
-        this.t4s7m := this.b4e8c.Add("Edit", "x1320 y545 w200 h20 Hidden")
-        this.z5g4j := this.b4e8c.Add("Text", "x1100 y500 w200 h20 Hidden", "Primary Other details :")
-        this.c8k1w := this.b4e8c.Add("Text", "x1100 y525 w200 h20 Hidden", "ʃecondary Other details :")
-        this.h6v9r := this.b4e8c.Add("Text", "x1320 y500 w200 h20 Hidden", "Tertiary Other details :")
-        this.o2l3q := this.b4e8c.Add("Text", "x1320 y525 w200 h20 Hidden", "Quaternary Other details :")
+        this.b4e8c.Add("Text", "x830 y520 w100 h20", "Primary time :")
+        this.i3w7b := this.b4e8c.Add("Edit", "x930 y520 w50 h20 Number Center")
+        this.b4e8c.Add("Text", "x985 y520 w10 h20 Center", "/")
+        this.v4n1t := this.b4e8c.Add("Edit", "x1000 y520 w50 h20 Center")
+        this.b4e8c.Add("Text", "x830 y545 w100 h20", "ʃecondary time :")
+        this.s8l6z := this.b4e8c.Add("Edit", "x930 y545 w50 h20 Number Center Disabled")
+        this.b4e8c.Add("Text", "x985 y545 w10 h20 Center", "/")
+        this.a5p9x := this.b4e8c.Add("Edit", "x1000 y545 w50 h20 Center Disabled")
+        this.b4e8c.Add("Text", "x1070 y520 w80 h20", "Tertiary time :")
+        this.m2j4r := this.b4e8c.Add("Edit", "x1155 y520 w50 h20 Number Center Disabled")
+        this.b4e8c.Add("Text", "x1210 y520 w10 h20 Center", "/")
+        this.g8c3e := this.b4e8c.Add("Edit", "x1225 y520 w50 h20 Center Disabled")
+        this.b4e8c.Add("Text", "x1070 y545 w90 h20", "Quaternary time :")
+        this.f7v5k := this.b4e8c.Add("Edit", "x1165 y545 w50 h20 Number Center Disabled")
+        this.b4e8c.Add("Text", "x1220 y545 w10 h20 Center", "/")
+        this.b1h9u := this.b4e8c.Add("Edit", "x1235 y545 w50 h20 Center Disabled")
+        this.q6d2y := this.b4e8c.Add("Edit", "x1300 y520 w200 h20 Hidden")
+        this.w9x1p := this.b4e8c.Add("Edit", "x1300 y545 w200 h20 Hidden")
+        this.l3f8n := this.b4e8c.Add("Edit", "x1520 y520 w200 h20 Hidden")
+        this.t4s7m := this.b4e8c.Add("Edit", "x1520 y545 w200 h20 Hidden")
+        this.z5g4j := this.b4e8c.Add("Text", "x1300 y500 w200 h20 Hidden", "Primary Other details :")
+        this.c8k1w := this.b4e8c.Add("Text", "x1300 y525 w200 h20 Hidden", "ʃecondary Other details :")
+        this.h6v9r := this.b4e8c.Add("Text", "x1520 y500 w200 h20 Hidden", "Tertiary Other details :")
+        this.o2l3q := this.b4e8c.Add("Text", "x1520 y525 w200 h20 Hidden", "Quaternary Other details :")
         this.u7n4s := this.b4e8c.Add("GroupBox", "x20 y590 w1683 h340 Hidden", "Z - INVESTIGATION EXTENDED ( Fill when G 2 is y )")
         a9m5t := this.b4e8c.Add("GroupBox", "x30 y610 w820 h50", "Initial aſseßment")
         this.b4e8c.Add("Text", "x40 y630 w100 h20", "Investigation ﬂag :")
@@ -4206,7 +4338,7 @@ class x7f9a2 {
             html .= '<tr><td style="width:50%;">Dated : ' . data.dated . '</td><td style="width:50%;">Wake time : ' . data.dream_wake_time . '</td></tr>'
             html .= '<tr><td style="width:50%;">Eﬆ. On‑set start : ' . data.onset_start . '</td><td style="width:50%;">Eﬆ. On‑set end : ' . data.onset_end . '</td></tr>'
             html .= '<tr><td style="width:50%;">ʃcraps exist ? ' . data.scraps_exist . '</td><td style="width:50%;">Comfort dr. sleep : ' . data.comfort_level . '</td></tr>'
-            html .= '<tr><td style="width:50%;">Fruﬆration : ' . data.frustration_level . '</td><td style="width:50%;">Almoﬆ Re‑membered ? ' . data.almost_had_it . '</td></tr>'
+            html .= '<tr><td style="width:50%;">Fruﬆration : ' . data.frustration_level . '</td><td style="width:50%;">Almoﬆ remembered ? ' . data.almost_had_it . '</td></tr>'
             html .= '<tr><td style="width:50%;">Was It tangible ? ' . data.could_feel_losing . '</td><td style="width:50%;">ʃhowed eﬀort to maintain ? ' . data.effort_to_maintain . '</td></tr>'
             html .= '</table>'
             
@@ -4598,4 +4730,1752 @@ class x7f9a2 {
 global v4n8z := x7f9a2()
 
 
+class SIPPersonManager {
+    __New() {
+        this.mainGui := Gui("+Resize", "sip")
+        this.mainGui.OnEvent("Close", (*) => this.ConfirmClose())
+        this.mainGui.Move(, , 1743, 844)
+        
+        this.greekLetters := ["α", "β", "γ", "δ", "ε", "ζ", "θ", "ι", "κ", "λ", "μ", "ν", "ξ", "ο", "π", "ρ", "σ", "τ", "υ", "φ", "χ", "ψ", "ω"]
+        this.dataFile := "E:\wwwwww\dosyâlar\dreams\p.txt"
+        this.currentRecord := {}
+        this.originalData := {}
+        this.panelleftid := "" 
+        this.isDestroyed := false
+        
+        this.CreateLayout()
+        this.LoadDataToLeftPanel()
+        this.PopulateDropdowns()
+        
+        Hotstring(":O?*:\sip", (*) => this.ShowApp())
+    }
+    
+    ShowApp() {
+        if (HasProp(this, "isDestroyed") && this.isDestroyed) {
+            this.__New()
+            this.isDestroyed := false
+        }
+        
+        try {
+            this.mainGui.Show()
+        } catch Error as err {
+            this.__New()
+            this.mainGui.Show()
+        }
+    }
+    
+    SetDefaultNameStatus() {
+        this.nameStatusField.Text := "[ Can’t be shared duͤ to This information being a Personally‑identiﬁable information ]"
+    }
+    
 
+    
+    OnDesignationChange() {
+        
+        if (this.designationField.Text != "" && this.panelleftid != "") {
+            
+            newDesignationId := this.GetNextDesignationId(this.designationField.Text)
+            this.designationIdField.Text := newDesignationId
+        }
+    }
+
+    
+    CreateLayout() {
+        
+        this.leftPanel := this.mainGui.Add("GroupBox", "x10 y10 w340 h824", "Records")
+        this.recordsList := this.mainGui.Add("ListView", "x20 y30 w320 h800 -Multi", ["Designation", "L"])
+        this.recordsList.ModifyCol(1, 250) 
+        this.recordsList.OnEvent("ItemSelect", (*) => this.LoadRecord())
+        
+        
+        
+        this.buttonPanel := this.mainGui.Add("GroupBox", "x360 y10 w1373 h47", "Actions")
+        
+        
+        this.insaBBtn := this.mainGui.Add("Button", "x1621 y20 w101 h28", "INSB")
+        this.insaBBtn.OnEvent("Click", (*) => this.InsertRecordB())
+        
+        this.insaABtn := this.mainGui.Add("Button", "x1520 y20 w101 h28", "INSA")
+        this.insaABtn.OnEvent("Click", (*) => this.InsertRecordA())
+        
+        this.closeBtn := this.mainGui.Add("Button", "x1310 y20 w202 h28", "CLOSE")
+        this.closeBtn.OnEvent("Click", (*) => this.CloseFields())
+        
+        this.newBtn := this.mainGui.Add("Button", "x1100 y20 w202 h28", "NEW")
+        this.newBtn.OnEvent("Click", (*) => this.CreateNewRecord())
+        
+        this.updateBtn := this.mainGui.Add("Button", "x890 y20 w202 h28", "UP‑DATE")
+        this.updateBtn.OnEvent("Click", (*) => this.UpdateRecord())
+        
+        this.saveBtn := this.mainGui.Add("Button", "x680 y20 w202 h28", "SꜸE")
+        this.saveBtn.OnEvent("Click", (*) => this.SaveRecord())
+        this.saveBtn.Enabled := false 
+        
+        
+        this.CreateFormFields()
+        
+        
+        this.CreateEngravePanel()
+    }
+
+    
+    CreateFormFields() {
+        yPos := 70
+        
+        
+        this.coreIdentityGroup := this.mainGui.Add("GroupBox", "x370 y" . yPos . " w410 h180", "Identity")
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "№ :")
+        this.idField := this.mainGui.Add("Edit", "x460 y" . yPos . " w100 h20 ReadOnly")
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Designation :")
+        this.designationField := this.mainGui.Add("Edit", "x460 y" . yPos . " w200 h20")
+        this.designationField.OnEvent("Change", (*) => this.OnDesignationChange())
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "L :")
+        this.designationIdField := this.mainGui.Add("Edit", "x460 y" . yPos . " w100 h20 ReadOnly")
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Gender :")
+        this.genderField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w150 h120", ["Male", "Female", "Androgynous"])
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "ʃpecies :")
+        this.speciesField := this.mainGui.Add("Edit", "x460 y" . yPos . " w300 h20", "member of the Human race")
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Name ﬆatus :")
+        this.nameStatusField := this.mainGui.Add("Edit", "x460 y" . yPos . " w270 h20")
+        this.nameStatusAutoBtn := this.mainGui.Add("Button", "x735 y" . yPos . " w20 h20", "A")
+        this.nameStatusAutoBtn.OnEvent("Click", (*) => this.SetDefaultNameStatus())
+        yPos += 45 
+        
+        
+        this.physicalGroup := this.mainGui.Add("GroupBox", "x370 y" . yPos . " w410 h350", "Physical metrics")
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Age ﬆart :")
+        this.ageStartField := this.mainGui.Add("Edit", "x460 y" . yPos . " w60 h20 Number")
+        this.mainGui.Add("Text", "x530 y" . yPos . " w60 h20", "Age end :")
+        this.ageEndField := this.mainGui.Add("Edit", "x590 y" . yPos . " w60 h20 Number")
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Height ( C.‑m. ) :")
+        this.heightStartField := this.mainGui.Add("Edit", "x460 y" . yPos . " w60 h20 Number")
+        this.mainGui.Add("Text", "x530 y" . yPos . " w10 h20", "-")
+        this.heightEndField := this.mainGui.Add("Edit", "x550 y" . yPos . " w60 h20 Number")
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Weight ( K.‑gr. ):")
+        this.weightStartField := this.mainGui.Add("Edit", "x460 y" . yPos . " w60 h20 Number")
+        this.mainGui.Add("Text", "x530 y" . yPos . " w10 h20", "-")
+        this.weightEndField := this.mainGui.Add("Edit", "x550 y" . yPos . " w60 h20 Number")
+        this.weightStartField.OnEvent("Change", (*) => this.CalculateBMI())
+        this.weightEndField.OnEvent("Change", (*) => this.CalculateBMI())
+        this.heightStartField.OnEvent("Change", (*) => this.CalculateBMI())
+        this.heightEndField.OnEvent("Change", (*) => this.CalculateBMI())
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "B.-m.i. range:")
+        this.bmiField := this.mainGui.Add("Edit", "x460 y" . yPos . " w120 h20 ReadOnly")
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "ʃkin colour :")
+        this.skinColorField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w120 h120", ["", "pale ( orange )", "mid ( orange )", "dark ( orange )"])
+        this.skinColorField.Choose(3)
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "‘air colour :")
+        this.hairColorField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w120 h120")
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Hair length :")
+        this.hairLengthField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w150 h120")
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Hair ﬆyle :")
+        this.hairStyleField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w150 h120")
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Eye colour :")
+        this.eyeColorField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w120 h120")
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Facial ‘air :")
+        this.facialHairField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w150 h120", ["no/no", "no/mustache", "beard/no", "beard/mustache"])
+        this.facialHairField.Choose(1)
+        yPos += 25
+        
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Acceßories :")
+        this.accessoriesField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w200 h120")
+        this.accessoriesField.Text := "without glasses"
+        
+        
+        yPos2 := 115
+        this.voiceGroup := this.mainGui.Add("GroupBox", "x810 y" . yPos2 . " w380 h130", "Voice")
+        yPos2 += 25
+        
+        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "pitch :")
+        this.voicePitchField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        yPos2 += 25
+        
+        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "quality :")
+        this.voiceQualityField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        yPos2 += 25
+        
+        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "tone :")
+        this.voiceToneField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        yPos2 += 55
+        
+        
+        yPos2 := 295 
+        this.clothingGroup := this.mainGui.Add("GroupBox", "x810 y" . yPos2 . " w380 h155", "Clothing")
+        yPos2 += 25
+        
+        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Top :")
+        this.topGarmentField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        yPos2 += 25
+        
+        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Bottom :")
+        this.bottomGarmentField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        yPos2 += 25
+        
+        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Outer:")
+        this.outerLayerField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        yPos2 += 25
+        
+        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Uniform type :")
+        this.uniformTypeField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        this.uniformTypeField.Text := "not uniform"
+        yPos2 += 25
+        
+        this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Uniform colour :")
+        this.uniformColorField := this.mainGui.Add("Edit", "x900 y" . yPos2 . " w150 h20")
+        yPos2 += 55
+        
+        
+        yPos3 := 115
+        this.relationshipGroup := this.mainGui.Add("GroupBox", "x1210 y" . yPos3 . " w380 h155", "Relationship")
+        yPos3 += 25
+        
+        this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Relationship type :")
+        this.relationshipTypeField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w150 h120")
+        yPos3 += 25
+        
+        this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Relationship duration :")
+        this.relationshipPeriodField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w150 h120")
+        yPos3 += 25
+        
+        this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Profeßional role :")
+        this.professionalRoleField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w150 h120")
+        yPos3 += 25
+        
+        this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Family relation :")
+        this.familyRelationField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w150 h120")
+        this.familyRelationField.Text := "na"
+        yPos3 += 55
+        
+        
+        yPos3 := 295 
+        this.behavioralGroup := this.mainGui.Add("GroupBox", "x1210 y" . yPos3 . " w380 h105", "Behꜹior")
+        yPos3 += 25
+        
+        this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Personality :")
+        this.personalityField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w150 h120")
+        yPos3 += 25
+        
+        this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Behꜹiors :")
+        this.behavioralNotesField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w150 h120")
+    }
+
+    
+    CreateEngravePanel() {
+        
+        this.engravePanel := this.mainGui.Add("GroupBox", "x1209 y402 w524 h432", "Appendix")
+        
+        
+        buttonY := 425
+        buttonWidth := 135
+        spacing := 25
+        
+        this.deleteBtn := this.mainGui.Add("Button", "x1219 y" . buttonY . " w" . buttonWidth . " h28", "DELETE")
+        this.deleteBtn.OnEvent("Click", (*) => this.DeleteFromEngrave())
+        
+        this.insertBtn := this.mainGui.Add("Button", "x" . (1219 + buttonWidth + spacing) . " y" . buttonY . " w" . buttonWidth . " h28", "INSERT")
+        this.insertBtn.OnEvent("Click", (*) => this.InsertEngrave())
+        
+        this.engraveBtn := this.mainGui.Add("Button", "x" . (1219 + 2 * (buttonWidth + spacing)) . " y" . buttonY . " w" . buttonWidth . " h28", "EN-GRꜸE")
+        this.engraveBtn.OnEvent("Click", (*) => this.AddToEngrave())
+        
+        
+        this.engraveList := this.mainGui.Add("ListView", "x1219 y460 w504 h364 -Multi", ["Designation", "L"])
+        this.engraveList.ModifyCol(1, 300)
+        this.engraveList.ModifyCol(2, 100)
+    }
+
+    
+    AddToEngrave() {
+        selectedRow := this.recordsList.GetNext()
+        if (!selectedRow) {
+            MsgBox("ʃelect a record.")
+            return
+        }
+        
+        designation := this.recordsList.GetText(selectedRow, 1)
+        designationId := this.recordsList.GetText(selectedRow, 2)
+        
+        
+        loop this.engraveList.GetCount() {
+            if (this.engraveList.GetText(A_Index, 1) == designation && 
+                this.engraveList.GetText(A_Index, 2) == designationId) {
+                MsgBox("Already en‑grꜹed.")
+                return
+            }
+        }
+        
+        
+        this.engraveList.Add("", designation, designationId)
+    }
+
+    
+    DeleteFromEngrave() {
+        selectedRow := this.engraveList.GetNext()
+        if (!selectedRow) {
+            MsgBox("ʃelect ſome‑one from the liﬆ.")
+            return
+        }
+        
+        this.engraveList.Delete(selectedRow)
+    }
+
+    
+    GetPersonInfo(designation, designationId) {
+        
+        try {
+            if (!FileExist(this.dataFile)) {
+                return "information not ꜹailable"
+            }
+            
+            content := FileRead(this.dataFile, "UTF-8")
+            lines := StrSplit(content, "`n")
+            
+            for line in lines {
+                line := Trim(line)
+                if (line == "") {
+                    continue
+                }
+                
+                try {
+                    data := this.ParseJSON(line)
+                    if (data.HasOwnProp("designation") && data.HasOwnProp("designationId")) {
+                        if (data.designation == designation && data.designationId == designationId) {
+                            
+                            info := data.designation . " " . data.designationId . " is a "
+                            
+                            species := (data.HasOwnProp("species") && data.species != "member of the Human race") ? data.species : "Human"
+                            info .= species . " "
+                            
+                            gender := data.HasOwnProp("gender") ? data.gender : "不明"
+                            info .= StrLower(gender)
+                            
+                            if (data.HasOwnProp("ageStart") && data.ageStart != "") {
+                                if (data.HasOwnProp("ageEnd") && data.ageEnd != "") {
+                                    info .= " aged " . data.ageStart . " to " . data.ageEnd
+                                } else {
+                                    info .= " aged around " . data.ageStart
+                                }
+                            }
+                            
+                            return info
+                        }
+                    }
+                } catch {
+                    continue
+                }
+            }
+            
+            return "information not available"
+        } catch {
+            return "information not available"
+        }
+    }
+    
+    LoadDataToLeftPanel() {
+        this.recordsList.Delete()
+        
+        try {
+            if (!FileExist(this.dataFile)) {
+                return
+            }
+            
+            content := FileRead(this.dataFile, "UTF-8")
+            lines := StrSplit(content, "`n")
+            
+            
+            records := []
+            
+            for line in lines {
+                line := Trim(line)
+                if (line == "") {
+                    continue
+                }
+                
+                try {
+                    data := this.ParseJSON(line)
+                    if (data.HasOwnProp("designation") && data.HasOwnProp("designationId")) {
+                        records.Push({
+                            designation: data.designation,
+                            designationId: data.designationId,
+                            id: data.HasOwnProp("id") ? data.id : ""
+                        })
+                    }
+                } catch {
+                    continue
+                }
+            }
+            
+            
+            this.SortRecordsCustom(records)
+            
+            
+            for record in records {
+                this.recordsList.Add("", record.designation, record.designationId)
+            }
+            
+        } catch Error as err {
+            MsgBox("Error loading data: " . err.Message)
+        }
+    }
+
+    
+    SortRecordsCustom(records) {
+        
+        n := records.Length
+        
+        loop n - 1 {
+            swapped := false
+            loop n - A_Index {
+                if (this.CompareRecords(records[A_Index], records[A_Index + 1]) > 0) {
+                    
+                    temp := records[A_Index]
+                    records[A_Index] := records[A_Index + 1]
+                    records[A_Index + 1] := temp
+                    swapped := true
+                }
+            }
+            if (!swapped) {
+                break
+            }
+        }
+    }
+
+    
+    CompareRecords(record1, record2) {
+        
+        desigCompare := StrCompare(record1.designation, record2.designation, false)
+        if (desigCompare != 0) {
+            return desigCompare
+        }
+        
+        
+        return this.CompareGreekIds(record1.designationId, record2.designationId)
+    }
+
+    
+    CompareGreekIds(id1, id2) {
+        order1 := this.GetGreekOrder(id1)
+        order2 := this.GetGreekOrder(id2)
+        
+        return order1 - order2
+    }
+
+    
+    GetGreekOrder(greekId) {
+        if (greekId == "") {
+            return 999999 
+        }
+        
+        totalOrder := 0
+        
+        
+        loop parse, greekId {
+            char := A_LoopField
+            charOrder := 0
+            
+            
+            for i, letter in this.greekLetters {
+                if (letter == char) {
+                    charOrder := i
+                    break
+                }
+            }
+            
+            if (charOrder == 0) {
+                charOrder := 999 
+            }
+            
+            
+            totalOrder := totalOrder * 100 + charOrder
+        }
+        
+        return totalOrder
+    }
+    LoadRecord() {
+        selectedRow := this.recordsList.GetNext()
+        if (!selectedRow) {
+            return
+        }
+        
+        
+        this.ClearFieldsOnly()
+        
+        
+        this.saveBtn.Enabled := false
+        
+        designation := this.recordsList.GetText(selectedRow, 1)
+        designationId := this.recordsList.GetText(selectedRow, 2)
+        
+        
+        this.panelleftid := ""
+        
+        
+        try {
+            if (!FileExist(this.dataFile)) {
+                MsgBox("File exiﬆsn’t.")
+                return
+            }
+            
+            content := FileRead(this.dataFile, "UTF-8")
+            lines := StrSplit(content, "`n")
+            
+            
+            for lineIndex, line in lines {
+                line := Trim(line)
+                if (line == "") {
+                    continue
+                }
+                
+                try {
+                    data := this.ParseJSON(line)
+                    if (data.HasOwnProp("designation") && data.HasOwnProp("designationId")) {
+                        fileDesignation := String(data.designation)
+                        fileId := String(data.designationId)
+                        
+                        
+                        if (fileDesignation == designation && fileId == designationId) {
+                            
+                            try {
+                                this.PopulateFields(data)
+                                this.originalData := data.Clone()
+                                this.panelleftid := String(data.id)
+                                return 
+                            } catch Error as err {
+                                MsgBox("Error at loading Record‑data : " . err.Message)
+                                return
+                            }
+                        }
+                    }
+                } catch {
+                    continue
+                }
+            }
+            
+        } catch Error as err {
+            MsgBox("Error : " . err.Message)
+        }
+    }
+
+    
+    ParseJSON(jsonStr) {
+        obj := {}
+        
+        try {
+            
+            jsonStr := Trim(jsonStr)
+            if (SubStr(jsonStr, 1, 1) == "{") {
+                jsonStr := SubStr(jsonStr, 2)
+            }
+            if (SubStr(jsonStr, -1) == "}") {
+                jsonStr := SubStr(jsonStr, 1, -1)
+            }
+            
+            
+            if (Trim(jsonStr) == "") {
+                return obj
+            }
+            
+            
+            pairs := []
+            current := ""
+            inQuotes := false
+            escapeNext := false
+            
+            loop parse, jsonStr {
+                char := A_LoopField
+                
+                if (escapeNext) {
+                    current .= char
+                    escapeNext := false
+                    continue
+                }
+                
+                if (char == '\') {
+                    escapeNext := true
+                    current .= char
+                    continue
+                }
+                
+                if (char == '"') {
+                    inQuotes := !inQuotes
+                    current .= char
+                    continue
+                }
+                
+                if (char == ',' && !inQuotes) {
+                    if (Trim(current) != "") {
+                        pairs.Push(Trim(current))
+                    }
+                    current := ""
+                } else {
+                    current .= char
+                }
+            }
+            
+            
+            if (Trim(current) != "") {
+                pairs.Push(Trim(current))
+            }
+            
+            for pair in pairs {
+                pair := Trim(pair)
+                if (pair == "") {
+                    continue
+                }
+                
+                
+                colonPos := 0
+                inQuotes := false
+                escapeNext := false
+                
+                loop parse, pair {
+                    char := A_LoopField
+                    
+                    if (escapeNext) {
+                        escapeNext := false
+                        continue
+                    }
+                    
+                    if (char == '\') {
+                        escapeNext := true
+                        continue
+                    }
+                    
+                    if (char == '"') {
+                        inQuotes := !inQuotes
+                        continue
+                    }
+                    
+                    if (char == ':' && !inQuotes) {
+                        colonPos := A_Index
+                        break
+                    }
+                }
+                
+                if (colonPos == 0) {
+                    continue
+                }
+                
+                key := Trim(SubStr(pair, 1, colonPos - 1))
+                value := Trim(SubStr(pair, colonPos + 1))
+                
+                
+                key := StrReplace(StrReplace(key, '"', ''), '\"', '"')
+                value := StrReplace(StrReplace(value, '"', ''), '\"', '"')
+                
+                if (key != "") {
+                    obj.%key% := value
+                }
+            }
+        } catch Error as parseErr {
+            
+            
+        }
+        
+        return obj
+    }
+    
+    ClearFieldsOnly() {
+        
+        this.idField.Text := ""
+        this.designationField.Text := ""
+        this.designationIdField.Text := ""
+        this.genderField.Choose(0)
+        this.speciesField.Text := "member of the Human race"
+        this.nameStatusField.Text := ""
+        
+        this.ageStartField.Text := ""
+        this.ageEndField.Text := ""
+        this.heightStartField.Text := ""
+        this.heightEndField.Text := ""
+        this.weightStartField.Text := ""
+        this.weightEndField.Text := ""
+        this.bmiField.Text := ""
+        
+        
+        this.skinColorField.Choose(3) 
+        this.facialHairField.Choose(1) 
+        this.uniformColorField.Text := ""
+        
+        
+        comboFields := [this.hairColorField, this.hairLengthField, this.hairStyleField, 
+                    this.eyeColorField, this.voicePitchField, this.voiceQualityField, 
+                    this.voiceToneField, this.topGarmentField, this.bottomGarmentField, 
+                    this.outerLayerField, this.relationshipTypeField, this.relationshipPeriodField, 
+                    this.professionalRoleField, this.personalityField, this.behavioralNotesField]
+        
+        for field in comboFields {
+            field.Choose(0)
+            field.Text := ""
+        }
+        
+        this.accessoriesField.Text := "without glasses"
+        this.uniformTypeField.Text := "not uniform"
+        this.familyRelationField.Text := "na"
+    }
+    
+
+    
+    PopulateFields(data) {
+        
+        this.idField.Text := data.HasOwnProp("id") ? String(data.id) : ""
+        this.designationField.Text := data.HasOwnProp("designation") ? data.designation : ""
+        this.designationIdField.Text := data.HasOwnProp("designationId") ? data.designationId : ""
+        
+        if (data.HasOwnProp("gender")) {
+            try {
+                genderOptions := ["Male", "Female", "Androgynous"]
+                for i, option in genderOptions {
+                    if (option == data.gender) {
+                        this.genderField.Choose(i)
+                        break
+                    }
+                }
+            }
+        }
+        
+        this.speciesField.Text := data.HasOwnProp("species") ? data.species : "member of the Human race"
+        this.nameStatusField.Text := data.HasOwnProp("nameStatus") ? data.nameStatus : ""
+        
+        
+        if (data.HasOwnProp("ageStart")) this.ageStartField.Text := data.ageStart
+        if (data.HasOwnProp("ageEnd")) this.ageEndField.Text := data.ageEnd
+        
+        
+        if (data.HasOwnProp("heightStart")) this.heightStartField.Text := data.heightStart
+        if (data.HasOwnProp("heightEnd")) this.heightEndField.Text := data.heightEnd
+        
+        
+        if (data.HasOwnProp("weightStart")) this.weightStartField.Text := data.weightStart
+        if (data.HasOwnProp("weightEnd")) this.weightEndField.Text := data.weightEnd
+        
+        this.CalculateBMI()
+        
+        
+        if (data.HasOwnProp("skinColor")) {
+            try {
+                skinOptions := ["", "pale ( orange )", "mid ( orange )", "dark ( orange )"]
+                found := false
+                for i, option in skinOptions {
+                    
+                    if (Trim(option) == Trim(data.skinColor)) {
+                        this.skinColorField.Choose(i)
+                        found := true
+                        break
+                    }
+                }
+                
+                if (!found) {
+                    for i, option in skinOptions {
+                        if (option == data.skinColor) {
+                            this.skinColorField.Choose(i)
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        
+        
+        this.SetComboBoxValue(this.hairColorField, data.HasOwnProp("hairColor") ? data.hairColor : "")
+        this.SetComboBoxValue(this.hairLengthField, data.HasOwnProp("hairLength") ? data.hairLength : "")
+        this.SetComboBoxValue(this.hairStyleField, data.HasOwnProp("hairStyle") ? data.hairStyle : "")
+        this.SetComboBoxValue(this.eyeColorField, data.HasOwnProp("eyeColor") ? data.eyeColor : "")
+        
+        
+        if (data.HasOwnProp("facialHair")) {
+            facialHairOptions := ["no/no", "no/mustache", "beard/no", "beard/mustache"]
+            for i, option in facialHairOptions {
+                if (option == data.facialHair) {
+                    this.facialHairField.Choose(i)
+                    break
+                }
+            }
+        }
+        
+        this.SetComboBoxValue(this.accessoriesField, data.HasOwnProp("accessories") ? data.accessories : "")
+        
+        
+        this.SetComboBoxValue(this.voicePitchField, data.HasOwnProp("voicePitch") ? data.voicePitch : "")
+        this.SetComboBoxValue(this.voiceQualityField, data.HasOwnProp("voiceQuality") ? data.voiceQuality : "")
+        this.SetComboBoxValue(this.voiceToneField, data.HasOwnProp("voiceTone") ? data.voiceTone : "")
+        
+        
+        this.SetComboBoxValue(this.topGarmentField, data.HasOwnProp("topGarment") ? data.topGarment : "")
+        this.SetComboBoxValue(this.bottomGarmentField, data.HasOwnProp("bottomGarment") ? data.bottomGarment : "")
+        this.SetComboBoxValue(this.outerLayerField, data.HasOwnProp("outerLayer") ? data.outerLayer : "")
+        this.SetComboBoxValue(this.uniformTypeField, data.HasOwnProp("uniformType") ? data.uniformType : "")
+        this.uniformColorField.Text := data.HasOwnProp("uniformColor") ? data.uniformColor : ""
+        
+        
+        this.SetComboBoxValue(this.relationshipTypeField, data.HasOwnProp("relationshipType") ? data.relationshipType : "")
+        this.SetComboBoxValue(this.relationshipPeriodField, data.HasOwnProp("relationshipPeriod") ? data.relationshipPeriod : "")
+        this.SetComboBoxValue(this.professionalRoleField, data.HasOwnProp("professionalRole") ? data.professionalRole : "")
+        this.SetComboBoxValue(this.familyRelationField, data.HasOwnProp("familyRelation") ? data.familyRelation : "")
+        
+        
+        this.SetComboBoxValue(this.personalityField, data.HasOwnProp("personality") ? data.personality : "")
+        this.SetComboBoxValue(this.behavioralNotesField, data.HasOwnProp("behavioralNotes") ? data.behavioralNotes : "")
+    }
+    
+    SetComboBoxValue(control, value) {
+        if (value == "") {
+            control.Text := ""
+            return
+        }
+        
+        
+        control.Text := value
+        
+        
+        try {
+            found := false
+            
+            
+            index := 1
+            loop {
+                try {
+                    itemText := control.GetText(index)
+                    if (itemText == "") {
+                        
+                        break
+                    }
+                    if (itemText == value) {
+                        control.Choose(index)
+                        found := true
+                        break
+                    }
+                    index++
+                } catch {
+                    
+                    break
+                }
+            }
+            
+            
+            
+        } catch {
+            
+            
+        }
+    }
+    
+    CalculateBMI() {
+        try {
+            heightStart := Float(this.heightStartField.Text)
+            heightEnd := Float(this.heightEndField.Text)
+            weightStart := Float(this.weightStartField.Text)
+            weightEnd := Float(this.weightEndField.Text)
+            
+            if (heightStart > 0 && heightEnd > 0 && weightStart > 0 && weightEnd > 0) {
+                bmiStart := Round(weightStart / ((heightStart/100) * (heightStart/100)), 1)
+                bmiEnd := Round(weightEnd / ((heightEnd/100) * (heightEnd/100)), 1)
+                this.bmiField.Text := bmiStart . " - " . bmiEnd
+            }
+        } catch {
+            
+        }
+    }
+    
+    CreateNewRecord() {
+        designation := InputBox("Enter designation:", "New Record", "w300 h100").Value
+        if (designation == "") {
+            return
+        }
+        
+        
+        newDesignationId := this.GetNextDesignationId(designation)
+        nextRecordId := this.GetNextRecordId()
+        
+        
+        this.ClearFields()
+        
+        
+        this.idField.Text := String(nextRecordId)
+        this.designationField.Text := designation
+        this.designationIdField.Text := newDesignationId
+        this.speciesField.Text := "member of the Human race"
+        this.facialHairField.Choose(1) 
+        this.skinColorField.Choose(3) 
+        this.accessoriesField.Text := "without glasses"
+        this.uniformTypeField.Text := "not uniform"
+        this.familyRelationField.Text := "na"
+        
+        
+        this.panelleftid := String(nextRecordId)
+        
+        
+        this.saveBtn.Enabled := true
+        
+        
+        this.originalData := {}
+    }
+
+    GetNextDesignationId(designation := "") {
+        
+        if (designation == "") {
+            designation := this.designationField.Text
+        }
+        
+        
+        if (designation == "") {
+            return "α" 
+        }
+        
+        usedIds := []
+        
+        
+        try {
+            if (FileExist(this.dataFile)) {
+                content := FileRead(this.dataFile, "UTF-8")
+                lines := StrSplit(content, "`n")
+                
+                for line in lines {
+                    line := Trim(line)
+                    if (line == "" || line == "{}" || !InStr(line, "designationId")) {
+                        continue
+                    }
+                    
+                    try {
+                        data := this.ParseJSON(line)
+                        
+                        if (data.HasOwnProp("designation") && data.HasOwnProp("designationId") && 
+                            data.designation == designation && data.designationId != "") {
+                            usedIds.Push(data.designationId)
+                        }
+                    } catch {
+                        continue
+                    }
+                }
+            }
+        } catch {
+            
+        }
+        
+        
+        
+        
+        
+        nextId := this.GenerateNextGreekId(usedIds)
+        
+        
+        
+        
+        return nextId
+    }
+
+    GenerateNextGreekId(usedIds) {
+        
+        for letter in this.greekLetters {
+            if (!this.ArrayContains(usedIds, letter)) {
+                return letter
+            }
+        }
+        
+        
+        for firstLetter in this.greekLetters {
+            for secondLetter in this.greekLetters {
+                combo := firstLetter . secondLetter
+                if (!this.ArrayContains(usedIds, combo)) {
+                    return combo
+                }
+            }
+        }
+        
+        
+        for firstLetter in this.greekLetters {
+            for secondLetter in this.greekLetters {
+                for thirdLetter in this.greekLetters {
+                    combo := firstLetter . secondLetter . thirdLetter
+                    if (!this.ArrayContains(usedIds, combo)) {
+                        return combo
+                    }
+                }
+            }
+        }
+        
+        return "α" 
+    }
+
+    
+    StrJoin(arr, delimiter := ", ") {
+        result := ""
+        for i, item in arr {
+            if (i > 1) {
+                result .= delimiter
+            }
+            result .= String(item)
+        }
+        return result
+    }
+    
+    ArrayContains(arr, value) {
+        for item in arr {
+            if (String(item) == String(value)) { 
+                return true
+            }
+        }
+        return false
+    }
+    
+    GetNextRecordId() {
+        maxId := 0
+        
+        try {
+            if (FileExist(this.dataFile)) {
+                content := FileRead(this.dataFile, "UTF-8")
+                lines := StrSplit(content, "`n")
+                
+                for line in lines {
+                    line := Trim(line)
+                    if (line == "" || line == "{}") {
+                        continue
+                    }
+                    
+                    try {
+                        data := this.ParseJSON(line)
+                        if (data.HasOwnProp("id") && data.id != "") {
+                            currentId := Integer(data.id)
+                            if (currentId > maxId) {
+                                maxId := currentId
+                            }
+                        }
+                    } catch {
+                        continue
+                    }
+                }
+            }
+        } catch {
+            
+        }
+        
+        return maxId + 1
+    }
+    
+    SaveRecord() {
+        data := this.CollectFormData()
+        
+        
+        if (!data.designation || !data.designationId) {
+            MsgBox("Designation & L is required.")
+            return
+        }
+        
+        
+        if (this.panelleftid != "") {
+            data.id := String(this.panelleftid)
+            this.idField.Text := data.id
+        }
+        
+        
+        if (this.IdExistsInFile(data.id)) {
+            MsgBox("& exiﬆs in the ﬁle.")
+            return
+        }
+        
+        
+        if (!data.id || data.id == "") {
+            data.id := String(this.GetNextRecordId())
+            this.panelleftid := data.id
+            this.idField.Text := data.id
+        }
+        
+        try {
+            
+            jsonLine := this.ObjectToJSON(data)
+            
+            
+            dir := RegExReplace(this.dataFile, "[^\\]*$", "")
+            if (!DirExist(dir)) {
+                DirCreate(dir)
+            }
+            
+            FileAppend(jsonLine . "`n", this.dataFile, "UTF-8")
+            
+            
+            this.originalData := data.Clone()
+            
+            
+            this.saveBtn.Enabled := false
+            
+            
+            this.LoadDataToLeftPanel()
+            this.PopulateDropdowns()
+            
+            MsgBox("ʃaved.")
+        } catch Error as err {
+            MsgBox("Error saving record: " . err.Message)
+        }
+    }
+    
+    IdExistsInFile(checkId) {
+        try {
+            if (!FileExist(this.dataFile)) {
+                return false
+            }
+            
+            content := FileRead(this.dataFile, "UTF-8")
+            lines := StrSplit(content, "`n")
+            
+            for line in lines {
+                line := Trim(line)
+                if (line == "" || line == "{}") {
+                    continue
+                }
+                
+                try {
+                    data := this.ParseJSON(line)
+                    if (data.HasOwnProp("id") && String(data.id) == String(checkId)) {
+                        return true
+                    }
+                } catch {
+                    continue
+                }
+            }
+            
+            return false
+        } catch {
+            return false
+        }
+    }
+    
+    UpdateRecord() {
+        
+        if (!this.panelleftid || this.panelleftid == "" || Trim(this.panelleftid) == "") {
+            MsgBox("panelleftid is : '" . this.panelleftid . "'")
+            return
+        }
+        
+        data := this.CollectFormData()
+        
+        
+        data.id := String(this.panelleftid)
+        this.idField.Text := data.id
+        
+        
+        if (this.originalData.HasOwnProp("designation") && data.designation != this.originalData.designation) {
+            result := MsgBox("Designation changed from '" . this.originalData.designation . "' to '" . data.designation . "'. Conﬁrm ?", "Confirmation", "YesNo")
+            if (result == "No") {
+                return
+            }
+        }
+        
+        try {
+            
+            if (!FileExist(this.dataFile)) {
+                MsgBox("Data ﬁle not found.")
+                return
+            }
+            
+            content := FileRead(this.dataFile, "UTF-8")
+            lines := StrSplit(content, "`n")
+            updatedLines := []
+            found := false
+            
+            
+            totalRecords := 0
+            
+            for line in lines {
+                line := Trim(line)
+                if (line == "" || line == "{}") {
+                    continue
+                }
+                
+                totalRecords++
+                
+                try {
+                    existingData := this.ParseJSON(line)
+                    
+                    if (existingData.HasOwnProp("id")) {
+                        currentId := String(existingData.id)
+                        targetId := String(this.panelleftid)
+                        
+                        if (currentId == targetId) {
+                            
+                            updatedLines.Push(this.ObjectToJSON(data))
+                            found := true
+                            
+                            
+                        } else {
+                            updatedLines.Push(line)
+                        }
+                    } else {
+                        
+                        updatedLines.Push(line)
+                    }
+                } catch {
+                    
+                    updatedLines.Push(line)
+                }
+            }
+            
+            if (!found) {
+                MsgBox("Err L: '" . this.panelleftid)
+                return
+            }
+            
+            
+            newContent := ""
+            for line in updatedLines {
+                newContent .= line . "`n"
+            }
+            
+            FileDelete(this.dataFile)
+            FileAppend(newContent, this.dataFile, "UTF-8")
+            
+            
+            this.originalData := data.Clone()
+            
+            
+            this.LoadDataToLeftPanel()
+            this.PopulateDropdowns()
+            
+            MsgBox("Up‑dated.")
+        } catch Error as err {
+            MsgBox("Error Up‑date : " . err.Message)
+        }
+    }
+    
+    CloseFields() {
+        
+        if (this.panelleftid != "") {
+            currentData := this.CollectFormData()
+            
+            if (this.HasDataChanged(currentData)) {
+                result := MsgBox("Current data diﬀers , close ?", "Data Changed", "YesNo")
+                if (result == "No") {
+                    return
+                }
+            }
+        }
+        
+        this.ClearFields()
+        this.originalData := {}
+    }
+    
+    HasDataChanged(currentData) {
+        if (!this.panelleftid || this.panelleftid == "") {
+            
+            return currentData.designation != "" || currentData.designationId != "" || 
+                   currentData.gender != "" || currentData.hairColor != "" || 
+                   currentData.ageStart != "" || currentData.ageEnd != ""
+        }
+        
+        if (!this.originalData.HasOwnProp("id")) {
+            return true 
+        }
+        
+        
+        fields := ["designation", "designationId", "gender", "species", "ageStart", "ageEnd", 
+                   "heightStart", "heightEnd", "weightStart", "weightEnd", "skinColor", 
+                   "hairColor", "hairLength", "hairStyle", "eyeColor", "facialHair", 
+                   "voicePitch", "voiceQuality", "voiceTone", "relationshipType", "familyRelation"]
+        
+        for field in fields {
+            currentVal := currentData.HasOwnProp(field) ? String(currentData.%field%) : ""
+            originalVal := this.originalData.HasOwnProp(field) ? String(this.originalData.%field%) : ""
+            
+            if (currentVal != originalVal) {
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    ClearFields() {
+        this.panelleftid := ""
+        
+        
+        this.ClearFieldsOnly()
+        
+        
+        this.saveBtn.Enabled := false
+        
+        
+        this.originalData := {}
+        
+        
+        try {
+            this.recordsList.Modify(0, "-Select") 
+        } catch {
+            
+        }
+    }
+    
+
+    
+    GetPersonData(designation, designationId) {
+        try {
+            if (!FileExist(this.dataFile)) {
+                return {}
+            }
+            
+            content := FileRead(this.dataFile, "UTF-8")
+            lines := StrSplit(content, "`n")
+            
+            for line in lines {
+                line := Trim(line)
+                if (line == "") {
+                    continue
+                }
+                
+                try {
+                    data := this.ParseJSON(line)
+                    if (data.HasOwnProp("designation") && data.HasOwnProp("designationId")) {
+                        if (data.designation == designation && data.designationId == designationId) {
+                            return data
+                        }
+                    }
+                } catch {
+                    continue
+                }
+            }
+            
+            return {}
+        } catch {
+            return {}
+        }
+    }
+
+    
+    InsertRecordA() {
+        data := this.CollectFormData()
+        
+        if (!data.designation || !data.designationId) {
+            MsgBox("Fill designation & designation L ﬁrﬆ.")
+            return
+        }
+        
+        
+        detailedInfo := this.GeneratePersonInfo(data)
+        
+        
+        insertText := "— [ " . data.designation . " " . data.designationId . " ] : " . detailedInfo . " —"
+        
+        
+        this.mainGui.Hide()
+        Sleep(100)
+        SendText(insertText)
+        this.mainGui.Destroy()
+        this.isDestroyed := true
+    }
+    GeneratePersonInfo(data) {
+        if (!data.designation || !data.designationId) {
+            return "In‑complete data"
+        }
+        
+        
+        infoText := data.designation . " " . data.designationId . " is a "
+        
+        
+        gender := data.gender ? data.gender : "不明"
+        species := data.species
+        infoText .= gender . " " . species
+        
+        
+        pronoun := ""
+        if (StrLower(gender) == "male") {
+            pronoun := "His"
+        } else if (StrLower(gender) == "female") {
+            pronoun := "Her"
+        } else {
+            pronoun := "Their"
+        }
+        
+        
+        if (data.ageStart && data.ageEnd) {
+            infoText .= " with an age around " . data.ageStart . "‒" . data.ageEnd
+        } else if (data.ageStart) {
+            infoText .= " with an age around " . data.ageStart
+        } else {
+            infoText .= " with an age of 不明"
+        }
+        
+        infoText .= " and " . pronoun . " traits are : "
+        
+        if (data.hairColor && data.hairColor != "") {
+            infoText .= "has " . data.hairColor . " hair"
+            if (data.hairLength && data.hairLength != "") {
+                infoText .= " with " . data.hairLength
+            }
+            if (data.hairStyle && data.hairStyle != "") {
+                infoText .= " " . data.hairStyle
+            }
+        } else {
+            infoText .= "has 不明 hair"
+        }
+        
+        infoText .= " , "
+        
+        if (data.eyeColor && data.eyeColor != "") {
+            infoText .= data.eyeColor . " Iris‑color"
+        } else {
+            infoText .= "不明 Iris‑color"
+        }
+        
+        infoText .= " , "
+        
+        if (data.accessories && data.accessories != "" && data.accessories != "without glaſses") {
+            infoText .= "has " . data.accessories . " , "
+        }
+        
+        infoText .= pronoun . " height is "
+        if (data.heightStart && data.heightEnd) {
+            infoText .= data.heightStart . "‒" . data.heightEnd . " C.‑m."
+        } else if (data.heightStart) {
+            infoText .= "around " . data.heightStart . " C.‑m."
+        } else {
+            infoText .= "不明 C.‑m."
+        }
+        
+        infoText .= " , " . pronoun . " Skin colour is "
+        if (data.skinColor && data.skinColor != "") {
+            infoText .= data.skinColor
+        } else {
+            infoText .= "不明"
+        }
+        
+        infoText .= " , weight "
+        if (data.weightStart && data.weightEnd) {
+            infoText .= data.weightStart . "‒" . data.weightEnd . " K.‑gr."
+        } else if (data.weightStart) {
+            infoText .= "around " . data.weightStart . " K.‑gr."
+        } else {
+            infoText .= "不明 K.‑gr."
+        }
+        
+        infoText .= " , name : "
+        if (data.nameStatus && data.nameStatus != "") {
+            infoText .= data.nameStatus
+        } else {
+            infoText .= "不明"
+        }
+        
+        infoText .= " , & "
+        if (data.facialHair && data.facialHair != "") {
+            infoText .= StrReplace(data.facialHair, "/", "⧸")
+        }
+        
+        infoText .= " , " . pronoun . " relationship with Me : "
+        if (data.relationshipType && data.relationshipType != "") {
+            relationship := data.relationshipType
+            
+            if (data.relationshipPeriod && data.relationshipPeriod != "") {
+                relationship .= " of " . data.relationshipPeriod
+            }
+            infoText .= relationship
+            
+            
+            if (data.familyRelation && data.familyRelation != "" && data.familyRelation != "na") {
+                infoText .= " with " . pronoun . " Family ﬆatus being " . data.familyRelation
+            }
+        } else {
+            infoText .= "不明"
+        }
+        
+        if (data.professionalRole && data.professionalRole != "") {
+            infoText .= " , Professional role : " . data.professionalRole
+        }
+        
+        if (data.personality && data.personality != "") {
+            infoText .= " , personality : " . data.personality
+        }
+        
+        if (data.behavioralNotes && data.behavioralNotes != "") {
+            infoText .= " , behꜹiors : " . data.behavioralNotes
+        }
+        
+        clothing := []
+        if (data.topGarment && data.topGarment != "") clothing.Push(data.topGarment)
+        if (data.bottomGarment && data.bottomGarment != "") clothing.Push(data.bottomGarment)
+        if (data.outerLayer && data.outerLayer != "") clothing.Push(data.outerLayer)
+        
+        if (clothing.Length > 0) {
+            infoText .= " , clothing : "
+            for i, item in clothing {
+                if (i > 1) infoText .= ", "
+                infoText .= item
+            }
+        }
+        
+        if (data.uniformType && data.uniformType != "" && data.uniformType != "not uniform") {
+            infoText .= " , Uniform type : " . data.uniformType
+            if (data.uniformColor && data.uniformColor != "") {
+                infoText .= " , Uniform colour : " . data.uniformColor
+            }
+        } else if (data.uniformType && data.uniformType != "") {
+            infoText .= " , Uniform type : " . data.uniformType
+        }
+        if ((data.voicePitch && data.voicePitch != "") || (data.voiceQuality && data.voiceQuality != "") || (data.voiceTone && data.voiceTone != "")) {
+            infoText .= " , & " . pronoun . " voice is : "
+            
+            firstVoice := true
+            if (data.voicePitch && data.voicePitch != "") {
+                infoText .= data.voicePitch
+                firstVoice := false
+            }
+            if (data.voiceQuality && data.voiceQuality != "") {
+                if (!firstVoice) infoText .= " , "
+                infoText .= data.voiceQuality
+                firstVoice := false
+            }
+            if (data.voiceTone && data.voiceTone != "") {
+                if (!firstVoice) infoText .= " , "
+                infoText .= data.voiceTone
+            }
+        }
+        return infoText
+    }
+    InsertEngrave() {
+        if (this.engraveList.GetCount() == 0) {
+            MsgBox("Engrave list is empty!")
+            return
+        }
+        
+        insertText := "[CENTER][FONT=times new roman]`n"
+        insertText .= "++--++`n"
+        insertText .= "APPENDIX — PEOPLE :[/CENTER]"
+        
+        
+        loop this.engraveList.GetCount() {
+            designation := this.engraveList.GetText(A_Index, 1)
+            designationId := this.engraveList.GetText(A_Index, 2)
+            
+            
+            personData := this.GetPersonData(designation, designationId)
+            
+            if (personData.HasOwnProp("designation")) {
+                
+                detailedInfo := this.GeneratePersonInfo(personData)
+                insertText .= "[ " . designation . " " . designationId . " ] : " . detailedInfo . ".`n"
+            } else {
+                
+                insertText .= "[ " . designation . " " . designationId . " ] : information not available.`n"
+            }
+        }
+        
+        insertText .= "[CENTER]++--++[/FONT][/CENTER]"
+        
+        this.mainGui.Hide()
+        Sleep(100)
+        SendText(insertText)
+    }
+    InsertRecordB() {
+        data := this.CollectFormData()
+        
+        if (!data.designation || !data.designationId) {
+            MsgBox("Please fill designation and designation ID first!")
+            return
+        }
+        
+        insertText := " [ " . data.designation . " " . data.designationId . " ] "
+        
+        this.mainGui.Hide()
+        Sleep(100)
+        SendText(insertText)
+    }
+
+    CollectFormData() {
+        data := {}
+        
+        data.id := this.idField.Text
+        data.designation := this.designationField.Text
+        data.designationId := this.designationIdField.Text
+        data.gender := this.genderField.Text
+        data.species := this.speciesField.Text
+        data.nameStatus := this.nameStatusField.Text
+        
+        data.ageStart := this.ageStartField.Text
+        data.ageEnd := this.ageEndField.Text
+        data.heightStart := this.heightStartField.Text
+        data.heightEnd := this.heightEndField.Text
+        data.weightStart := this.weightStartField.Text
+        data.weightEnd := this.weightEndField.Text
+        data.bmiRange := this.bmiField.Text
+        
+        data.skinColor := this.skinColorField.Text
+        data.hairColor := this.hairColorField.Text
+        data.hairLength := this.hairLengthField.Text
+        data.hairStyle := this.hairStyleField.Text
+        data.eyeColor := this.eyeColorField.Text
+        data.facialHair := this.facialHairField.Text
+        data.accessories := this.accessoriesField.Text
+        
+        data.voicePitch := this.voicePitchField.Text
+        data.voiceQuality := this.voiceQualityField.Text
+        data.voiceTone := this.voiceToneField.Text
+        
+        data.topGarment := this.topGarmentField.Text
+        data.bottomGarment := this.bottomGarmentField.Text
+        data.outerLayer := this.outerLayerField.Text
+        data.uniformType := this.uniformTypeField.Text
+        data.uniformColor := this.uniformColorField.Text
+        
+        data.relationshipType := this.relationshipTypeField.Text
+        data.relationshipPeriod := this.relationshipPeriodField.Text
+        data.professionalRole := this.professionalRoleField.Text
+        data.familyRelation := this.familyRelationField.Text
+        
+        data.personality := this.personalityField.Text
+        data.behavioralNotes := this.behavioralNotesField.Text
+        
+        return data
+    }
+    
+    PopulateDropdowns() {
+        
+        distinctValues := {
+            hairColor: [],
+            hairLength: [],
+            hairStyle: [],
+            eyeColor: [],
+            accessories: [],
+            voicePitch: [],
+            voiceQuality: [],
+            voiceTone: [],
+            topGarment: [],
+            bottomGarment: [],
+            outerLayer: [],
+            uniformType: [],
+            relationshipType: [],
+            relationshipPeriod: [],
+            professionalRole: [],
+            familyRelation: [],
+            personality: [],
+            behavioralNotes: []
+        }
+        
+        try {
+            if (FileExist(this.dataFile)) {
+                content := FileRead(this.dataFile, "UTF-8")
+                lines := StrSplit(content, "`n")
+                
+                for line in lines {
+                    line := Trim(line)
+                    if (line == "" || line == "{}") {
+                        continue
+                    }
+                    
+                    try {
+                        data := this.ParseJSON(line)
+                        
+                        for field, values in distinctValues.OwnProps() {
+                            if (data.HasOwnProp(field) && data.%field% != "" && !this.ArrayContains(values, data.%field%)) {
+                                values.Push(data.%field%)
+                            }
+                        }
+                    } catch {
+                        continue
+                    }
+                }
+            }
+        } catch {
+            
+        }
+        
+        
+        this.UpdateComboBox(this.hairColorField, distinctValues.hairColor)
+        this.UpdateComboBox(this.hairLengthField, distinctValues.hairLength)
+        this.UpdateComboBox(this.hairStyleField, distinctValues.hairStyle)
+        this.UpdateComboBox(this.eyeColorField, distinctValues.eyeColor)
+        this.UpdateComboBox(this.accessoriesField, distinctValues.accessories)
+        this.UpdateComboBox(this.voicePitchField, distinctValues.voicePitch)
+        this.UpdateComboBox(this.voiceQualityField, distinctValues.voiceQuality)
+        this.UpdateComboBox(this.voiceToneField, distinctValues.voiceTone)
+        this.UpdateComboBox(this.topGarmentField, distinctValues.topGarment)
+        this.UpdateComboBox(this.bottomGarmentField, distinctValues.bottomGarment)
+        this.UpdateComboBox(this.outerLayerField, distinctValues.outerLayer)
+        this.UpdateComboBox(this.uniformTypeField, distinctValues.uniformType)
+        this.UpdateComboBox(this.relationshipTypeField, distinctValues.relationshipType)
+        this.UpdateComboBox(this.relationshipPeriodField, distinctValues.relationshipPeriod)
+        this.UpdateComboBox(this.professionalRoleField, distinctValues.professionalRole)
+        this.UpdateComboBox(this.familyRelationField, distinctValues.familyRelation)
+        this.UpdateComboBox(this.personalityField, distinctValues.personality)
+        this.UpdateComboBox(this.behavioralNotesField, distinctValues.behavioralNotes)
+    }
+    
+    UpdateComboBox(control, values) {
+        currentText := control.Text
+        control.Delete()
+        
+        if (values.Length > 0) {
+            control.Add(values)
+        }
+        
+        if (currentText != "") {
+            control.Text := currentText
+        }
+    }
+    ObjectToJSON(obj) {
+        jsonStr := "{"
+        first := true
+        
+        for key, value in obj.OwnProps() {
+            if (!first) {
+                jsonStr .= ","
+            }
+            first := false
+            
+            
+            value := StrReplace(String(value), '"', '\"')
+            jsonStr .= '"' . key . '":"' . value . '"'
+        }
+        
+        jsonStr .= "}"
+        return jsonStr
+    }
+    
+    ConfirmClose() {
+        
+        if (this.panelleftid != "") {
+            currentData := this.CollectFormData()
+            
+            if (this.HasDataChanged(currentData)) {
+                result := MsgBox("Close ? Un‑sꜹed hanges will be loﬆ.", "Confirm Close", "YesNo")
+                if (result == "No") {
+                    return
+                }
+            }
+        }
+        
+        
+        this.mainGui.Destroy()
+        this.isDestroyed := true
+    }
+}
+
+
+global SIPManager := SIPPersonManager()
