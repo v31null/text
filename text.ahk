@@ -1,6 +1,11 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 
+
+
+global autocompleteActive := false
+global logicAutocompleteActive := false
+global siAutocompleteActive := false
 global QuoteLevel := 1
 global QuoteMax   := 4
 global ism := true 
@@ -8,6 +13,7 @@ global ism := true
 global pitch := 660
 global dot := 60       
 global dash := 180      
+;----------------------------------------------- QUOTES 
 mb(msg) {
     global pitch, dot, dash
     local last := ""
@@ -108,6 +114,8 @@ QuoteRight := [
     return
 }
 
+
+;----------------------------------------------- TYPO‑GRAPHICAL 1
 :?:'s::’s
 :?:'m::’m
 :?:'ll::’ll
@@ -216,7 +224,6 @@ QuoteRight := [
 :C*?:_nd::ⁿᵈ
 :C*?:_rd::ʳᵈ
 :C*?:_th::ᵗʰ
-::summonme::I prithee , You shan't hesitate to summon Me at Thine Earlieﬆ convenience.
 :C*?:paragraph ::{
 	Send "§{U+00A0}"
         NudgeCursor()
@@ -225,6 +232,9 @@ QuoteRight := [
 	Send "§§{U+00A0}"
         NudgeCursor()
 }
+
+
+;----------------------------------------------- NUMERO 
 :C*?:numero ::
 {
     Send "{U+2116}{U+00A0}"
@@ -258,6 +268,12 @@ QuoteRight := [
 :C*?:numerum ::
 {
     Send "№ᵘᵐ{U+00A0}"
+        NudgeCursor()
+    return
+}
+
+:C*?:trr::{
+    SendInput("{U+0028}{U+00A0}{U+2026}{U+00A0}{U+0029}")
         NudgeCursor()
     return
 }
@@ -311,22 +327,413 @@ ShowNumeroHelp()
     
     helpGui.Show("w640 h480")
 }
-::ineedtogo::I am afraid I muﬆ now take My leave.
-::illbeback::I shall return sꝏn , do — please — remain here a moment.
-::idk::Mine heart confeßes that I , surely , am at a loſs.
+;----------------------------------------------- SLANG
+
+::prte::
+{
+    static MyPreambleTransitions := [
+        "That being noted , I find It pertinent to mention that :—",
+        "Verily , Your point is Well‑taken , How‑ever ; ",
+        "Againﬆ the Current trajectory of Our discourse ,",
+        "Let Us ﬆray from the path ℀ allow Me to sꜽ that :—",
+        "Un-like the light of what ‘as been discuſsed ,",
+        "And so We arrive at the juncture where :— ",
+        "With that being said :—",
+        "Let Me Right now pivot Our focus Else‑where :—",
+        "I ought to mention that :—",
+        "By the wꜽ :—",
+        "To turn Our attention to Another affair entirely :—",
+        "If I mꜽ be ʆo bold as to change the subject in It’s entirity :—",
+        "By the wꜽ :—",
+    ]
+    
+    Send(MyPreambleTransitions[Random(1, MyPreambleTransitions.Length)] . "{U+00A0}")
+    NudgeCursor()
+    return
+}
+
+
+::itg::
+{
+    static MyDepartures := [
+        "I am afraid I muﬆ now take My leave.",
+        "Alas ;  I find I muﬆ take My leave.",
+        "The Preßing matters of the ‘our demand Mine attention Else-where.",
+        "I prithee , do , please , eꭗcuse Mine Imminent departure.",
+        "I bid Thee⧸Ye a Fare well — I ought to be gone.",
+        "With All Duͤ‑respect :— I muﬆ ‘ence‑forth absent My‑self."
+    ]
+    
+    Send(MyDepartures[Random(1, MyDepartures.Length)])
+    NudgeCursor() ; Good practice to keep the cursor consistent
+    return
+}
+::ibb::
+{
+    static MyReturns := [
+        "I shall Re‑turn sꝏn , do — please — remain ‘ere a moment.",
+        "Mine absence shall be but a Fleeting moment , I shall Re‑turn before long.",
+        "Await My Re‑turn — ‘tshall not be a Lengthy delꜽ.",
+        "Pray ; wait a moment , for Mine awaiting Re‑turn is imminent.",
+        "I shall be back , ‘twill be of Utmoﬆ respect by You to wait Me , leﬆ We lose the Impromptu‑agreement of genteelneß betwiꭗt Us."
+    ]
+    
+    Send(MyReturns[Random(1, MyReturns.Length)])
+    NudgeCursor()
+    return
+}
+::idk::
+{
+    static MyUncertainties := [
+        "Mine heart confeßes that I , surely , am at a loſs.",
+        "ʆuch knowledge Presently is Over‑ﬆꝏd by Me.",
+        "On This matter ,  My mind is a Clouded tableꜷ — I can’t say for certain.",
+        "Alas ; I am be‑set by a Profound perplexity on This subject.",
+        "I shall note that :— I know nꜷght."
+    ]
+    
+    Send(MyUncertainties[Random(1, MyUncertainties.Length)])
+    NudgeCursor()
+    return
+}
 ::gmfriend::Gꝏd morning , My Dear friend — Hꜹe a Peaceful dꜽ. Hugs.
 ::gmenemy::Gꝏd morning , Mine Eﬆeemed enemy : I wish unto You a Pleasant dꜽ.
 ::gmenemybad::Gꝏd morning , My Despicable enemy : I wish unto You a Disaﬆrous dꜽ.
+::summonme::I prithee , You shan't hesitate to summon Me at Thine Earlieﬆ convenience.
+::frq::
+{
+    static MyQueries := [
+        "Is It truly so ?",
+        "Prꜽ , tell Me this is not some Fanciful jeﬆ ?",
+        "Can such a thing be in All truthfulneſs ?",
+        "Verily ? You speak of things that ﬆrain credulity.",
+        "Speak plainly :— does the truth of the matter align with Your words ?"
+    ]
+    
+    Send(MyQueries[Random(1, MyQueries.Length)])
+    NudgeCursor()
+    return
+}
+::tbh::
+{
+    static MyTruths := [
+        "If I am to be truthful :—",
+        "I — also — ought to mention that :—",
+        "Let Me lꜽ aside All pretense and‑consequently ﬆate the matter as thus :—",
+        "In All frankneß the situation appears to Me as such :—",
+        "If You would permit Me a moment of Plain speaking :—"
+    ]
+    
+    Send(MyTruths[Random(1, MyTruths.Length)])
+    NudgeCursor()
+    return
+}
+::ok::
+{
+    static MyOKs := [
+        "You shall consider It settled.",
+        "I ‘ꜹe Under‑ﬆꝏd.",
+        "Verily ; one mꜽ consider that ‘tis agreed up‑on.",
+        "Your⧸Yer words ‘ꜹe been heard and duly noted.",
+        "Let the matter be considered Re‑solved.",
+        "So shall It be.",
+        "All correct.",
+        "The matter — which ‘as been presented before Me — shall be considered by All : males , females , other , & All‑other members of the Man‑kind eﬀective ‘ence‑forth — shall No‑one utter a word as presented ‘ere‑in‑after as : eꭗactly or in ʆimilar nature to : « They⧸ʆhe⧸‘e ‘ꜹe⧸‘as not ‘eard It at all ! » , Immediate ‘ence‑fore.",
+        "Oll korrect.",
+        "All korrect.",
+        "All right.",
+        "All ﬁne.",
+        "All Under‑ﬆꝏd.",
+        "Duly noted.",
+        "Under‑ﬆꝏd.",
+        "I grant Mine aſsent , It mꜽ : proceed or be considered Under‑ﬆꝏd.",
+        "‘tis Under‑ﬆꝏd.",
+        "Thus I acknowledge the matter.",
+        "It ﬆands eﬆablished.",
+        "I record Mine agreement without Any‑kind of reserve.",
+        "So It shall be.",
+        "The point is Firmly received.",
+        "It is taken as granted.",
+        "The fact ‘ꜹe been recorded in My remembrance.",
+        "I incline Mine head in affirmation.",
+        "So marked , so noted.",
+        "To My Beﬆ‑knowledge , the thing is Under‑ﬆꝏd.",
+        "Nꜷght further need be said , ‘tis clear.",
+        "As sure as dꜽ breaks , It ﬆands conﬁrmed.",
+        "It shall be as ﬆated.",
+        "By All means , I am in accord.",
+        "Nꜷght ‘inders Me , I grant aßent.",
+        "Thus :— the covenant is sealed.",
+        "All is agreed.",
+        "The matter is : respected & taken in.",
+        "Thine⧸Your utterance is engraven on My thought.",
+        "Indeed , the matter ‘as found Mine Under‑ﬆanding.",
+        "It’s Re‑solved beyond doubt."
+    ]
+    
+    randomIndex := Random(1, MyOKs.Length)
+    
+    Send(MyOKs[randomIndex])
+    NudgeCursor()
+    return
+}
+:O:fw::
+{
+    static MyForthwiths := [
+        "Forth‑with",
+        "at once",
+        "immediately",
+        "without delꜽ",
+        "Poﬆ‑‘aﬆe",
+        "incontinently",
+        "This Very‑inﬆant",
+        "without a moment’s ‘esitation",
+        "In a ʆhort amount of time",
+        "At the Earlieﬆ convenience",
+        "ﬅraight‑away",
+        "directly",
+        "Right now"
+    ]
+    
+    Send(MyForthwiths[Random(1, MyForthwiths.Length)])
+    NudgeCursor()
+    return
+}
+::omw::My conveyance is in motion , expect Mine arrival in Duͤ course.
+
+:O:hnt::‘ither‑&‑thither
+:O:eiab::‘ere‑in‑above
+:O:eib::‘ere‑in‑before
+:O:eiaf::‘ere‑in‑after
+:O:eiu::‘ere‑in‑under
+:O:hsit::‘e⧸ʆhe⧸It⧸They
+:O:teyr::Thee⧸Yer
+:O:tiyr::Thine⧸Your
+
+:OC:due::duͤ 
+:OC:Due::Duͤ
+:O:tiyr::Thine⧸Your
 
 
 
-Loop 10 {
-    outerNum := A_Index - 1 
-    Loop 10 {
-        innerNum := A_Index - 1  
-        Hotstring(":C*?:" . outerNum . "/" . innerNum, outerNum . "⁄" . innerNum)
+
+
+:?:s-h::ʆome‑how  
+:?:h-e::How‑ever ;
+:O*?:s-t ::
+{
+	Send "ʆome‑thing "
+}
+:?:s-ti::ʆome‑times
+:?:s-e::ʆome‑one
+:?:s-w::ʆome‑where
+:?:n-o::No‑one
+:O*?:a-t ::
+{
+	Send "Any‑thing "
+}
+:?:a-ti::Any‑time
+:?:a-e::Any‑one
+:?:a-m::Any‑more
+:?:a-n::Any‑thing
+:?:a-w::Any‑where
+:?:e-t::Every‑thing
+:?:e-o::Every‑one
+:?:e-w::Every‑where
+:?:w-e::What‑ever 
+
+:?:s-p::ʆome‑place
+:?:a-p::Any‑place
+:?:e-p::Every‑place
+:?:n-p::No‑place
+:O?:u-s::Under‑ﬆand
+:O?:u-sb::Under‑ﬆandable
+:O?:u-so::Under‑ﬆꝏd
+:O?:o-s::Over‑ﬆand
+:O?:o-sb::Over‑ﬆandable
+:O?:o-so::Over‑ﬆꝏd
+:O?:e-d::Every‑dꜽ
+:O?:e-w::Every‑week
+:O?:e-m::Every‑month
+:O?:e-y::Every‑year
+:O?:e-de::Every‑decade
+:O?:e-c::Every‑century
+:O?:e-mi::Every‑millennium
+
+
+:O?:t-d::
+{
+    SendRandomTimePrefix("dꜽ")
+}
+:O?:t-w::
+{
+    SendRandomTimePrefix("week")
+}
+:O?:t-m::
+{
+    SendRandomTimePrefix("month")
+}
+:O?:t-y::
+{
+    SendRandomTimePrefix("year")
+}
+:O?:t-de::
+{
+    SendRandomTimePrefix("decade")
+}
+:O?:t-c::
+{
+    SendRandomTimePrefix("century")
+}
+:O?:t-mi::
+{
+    SendRandomTimePrefix("millennium")
+}
+:O?:t-k::
+{
+    SendRandomTimePrefix("kind")
+}
+:O?:s-k::ʆome‑kind
+:O?:n-k::None‑kind
+:O?:e-k::Every‑kind
+:O?:a-c::
+{
+    local ac := (Random(0, 1) = 0) ? "and‑consequently" : "℀"
+    Send(ac)
+}
+:O?:th-c::thus‑consequently
+:O?:b-ca::be-came
+:O?:b-co::be‑come
+:O?:h-fr::‘ence‑fore
+:O?:h-ft::‘ence‑forth
+:O?:t-fr::Thence‑fore
+:O?:t-ft::Thence‑forth
+:O?:we-ft::Whence‑forth
+:O?:w-fr::Where‑fore
+:O?:wc-fr::Whence‑fore
+:O?:af-m::Afore‑mentioned
+:O?:ic‑n::Inter‑connected network
+:O:html::H.‑t.M.‑u.l.
+:O:ip::Inter‑connected‑network protocol
+
+exceptions := ["a/c", "a/s", "a-e", "a-m", "a-n", "a-t", "a-ti", "a-w", 
+               "e-c", "e-d", "e-de", "e-m", "e-mi", "e-o", "e-t", "e-w", "e-y", 
+               "h-e","th-c",
+               "n-o", "a-c", "e-k", "s-k", "t-k", "n-k", "t-c",
+               "h-fr", "h-ft","t-fr","t-ft","wc-fr","wc-ft","w-fr","af-m",
+               "o-s", "o-sb", "o-so", "ic-n",
+               "s-e", "s-h", "s-t", "s-ti", "s-w", 
+               "t-c", "t-d", "t-de", "t-m", "t-mi", "t-w", "t-y", 
+               "u-s", "u-sb", "u-so", "s-p", "a-p", "e-p", "n-p",
+               "w-e"]
+
+Loop 52 {
+    outerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
+    Loop 52 {
+        innerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
+        combination := outerLetter . "-" . innerLetter
+        
+        isException := false
+        for exception in exceptions {
+            if (combination = exception) {
+                isException := true
+                break
+            }
+        }
+        
+        if (!isException) {
+            Hotstring(":C?:" . combination, outerLetter . "‑" . innerLetter)
+        }
     }
 }
+Loop 52 {
+    outerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
+    Loop 52 {
+        innerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
+        combination := outerLetter . "/" . innerLetter
+        
+        isException := false
+        for exception in exceptions {
+            if (combination = exception) {
+                isException := true
+                break
+            }
+        }
+        
+        if (!isException) {
+            Hotstring(":C*?:" . combination, outerLetter . "⧸" . innerLetter)
+        }
+    }
+}
+exceptionsa := Map()
+Loop 10 {
+    outerNumber := Chr(48 + A_Index-1)
+    Loop 10 {
+        innerNumber := Chr(48 + A_Index-1)
+        combination := outerNumber . "-" . innerNumber
+            Hotstring(":C*?:" . combination, outerNumber . "‒" . innerNumber)
+    }
+}
+
+SendRandomContraction(contraction, fullForm)
+{
+    local choice := Random(0, 1)
+    Send(choice = 0 ? contraction : fullForm)
+    Send(" ")
+    NudgeCursor()
+}
+
+contractions := Map(
+    "arent", ["aren’t", "are not"],
+    "cant", ["can’t", "can not"],
+    "isnt", ["isn’t", "is not"],
+    "doesnt", ["doesn’t", "does not"],
+    "didnt", ["didn’t", "did not"],
+    "wont", ["won’t", "will not"],
+    "wouldnt", ["wouldn’t", "would not"],
+    "shouldnt", ["shouldn’t", "should not"],
+    "couldnt", ["couldn’t", "could not"],
+    "wasnt", ["wasn’t", "was not"],
+    "werent", ["weren’t", "were not"],
+    "dont", ["don’t", "do not"],
+    "ive", ["I’ve", "I ‘ꜹe"],
+    "youve", ["You’ve", "You ‘ꜹe"],
+    "weve", ["We’ve", "We ‘ꜹe"],
+    "theyve", ["They’ve", "They ‘ꜹe"],
+    "id", ["I’d", "I would"],
+    "youd", ["You’d", "You would"],
+    "wed", ["We’d", "We would"],
+    "theyd", ["They’d", "They would"],
+    "ill", ["I’ll", "I will"],
+    "youll", ["You’ll", "You will"],
+    "hell", ["He’ll", "He will"],
+    "shell", ["ʆhe’ll", "ʆhe will"],
+    "theyll", ["They’ll", "They will"],
+    "im", ["I’m", "I am"],
+    "youre", ["You’re", "You are"],
+    "hes", ["He’s", "He is"],
+    "shes", ["ʆhe’s", "ʆhe is"],
+    "theyre", ["They’re", "They are"],
+    "whats", ["what’s", "what is"],
+    "thats", ["that’s", "that is"],
+    "whos", ["who’s", "who is"],
+    "wheres", ["Where’s", "Where is"],
+    "theres", ["There’s", "There is"],
+    "lets", ["let’s", "let Us"],
+    "mustnt", ["mustn’t", "must not"],
+    "shant", ["shan’t", "shall not"],
+    "oughtnt", ["oughtn’t", "ought not"],
+    "mightnt", ["mightn’t", "might not"],
+    "neednt", ["needn’t", "need not"]
+)
+
+for trigger, forms in contractions {
+    Hotstring(":C: " . trigger, ((f) => (*) => SendRandomContraction(f[1], f[2]))(forms))
+}
+
+;----------------------------------------------- MISC.
+
+
 NudgeCursor() {
     DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0) ; Left Press
     DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0) ; Left Release
@@ -334,75 +741,8 @@ NudgeCursor() {
     DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0) ; Right Release
 }
 
+;----------------------------------------------- LOGIC MENU 
 
-
-:*?:0 ::{
-    SendInput("0{U+00A0}")
-    NudgeCursor()
-}
-
-:*?:1 ::{
-    SendInput("1{U+00A0}")
-    NudgeCursor()
-}
-
-:*?:2 ::{
-    SendInput("2{U+00A0}")
-    NudgeCursor()
-}
-
-:*?:3 ::{
-    SendInput("3{U+00A0}")
-    NudgeCursor()
-}
-
-:*?:4 ::{
-    SendInput("4{U+00A0}")
-    NudgeCursor()
-}
-
-:*?:5 ::{
-    SendInput("5{U+00A0}")
-    NudgeCursor()
-}
-
-:*?:6 ::{
-    SendInput("6{U+00A0}")
-    NudgeCursor()
-}
-
-:*?:7 ::{
-    SendInput("7{U+00A0}")
-    NudgeCursor()
-}
-
-:*?:8 ::{
-    SendInput("8{U+00A0}")
-    NudgeCursor()
-}
-
-:*?:9 ::{
-    SendInput("9{U+00A0}")
-    NudgeCursor()
-}
-:*?:-*::‑
-:*?: `:-::  
-{
-    SendInput("{U+00A0}{U+003A}{U+2014}")
-    NudgeCursor()
-    return
-}
-:*?:.-::.‑
-:*?:-&-::
-{
-    SendInput("{U+2011}{U+0026}{U+2011}")
-    NudgeCursor()
-    return
-}
-:*?:&-::&‑
-:*?:<.>::↔
-:*?:->::→
-:*?:<-::←
 
 arrowOptions := Map(
     "up", "↑",
@@ -799,6 +1139,87 @@ for key, symbol in logicOptions {
     Hotstring(":C*O?:loggic" . key, symbol)
 }
 
+;----------------------------------------------- TYPO‑GRAPHICAL 2
+
+Loop 10 {
+    outerNum := A_Index - 1 
+    Loop 10 {
+        innerNum := A_Index - 1  
+        Hotstring(":C*?:" . outerNum . "/" . innerNum, outerNum . "⁄" . innerNum)
+    }
+}
+
+
+
+:*?:0 ::{
+    SendInput("0{U+00A0}")
+    NudgeCursor()
+}
+
+:*?:1 ::{
+    SendInput("1{U+00A0}")
+    NudgeCursor()
+}
+
+:*?:2 ::{
+    SendInput("2{U+00A0}")
+    NudgeCursor()
+}
+
+:*?:3 ::{
+    SendInput("3{U+00A0}")
+    NudgeCursor()
+}
+
+:*?:4 ::{
+    SendInput("4{U+00A0}")
+    NudgeCursor()
+}
+
+:*?:5 ::{
+    SendInput("5{U+00A0}")
+    NudgeCursor()
+}
+
+:*?:6 ::{
+    SendInput("6{U+00A0}")
+    NudgeCursor()
+}
+
+:*?:7 ::{
+    SendInput("7{U+00A0}")
+    NudgeCursor()
+}
+
+:*?:8 ::{
+    SendInput("8{U+00A0}")
+    NudgeCursor()
+}
+
+:*?:9 ::{
+    SendInput("9{U+00A0}")
+    NudgeCursor()
+}
+:*?:-*::‑
+:*?: `:-::  
+{
+    SendInput("{U+00A0}{U+003A}{U+2014}")
+    NudgeCursor()
+    return
+}
+:*?:.-::.‑
+:*?:-&-::
+{
+    SendInput("{U+2011}{U+0026}{U+2011}")
+    NudgeCursor()
+    return
+}
+:*?:&-::&‑
+:*?:<.>::↔
+:*?:->::→
+:*?:<-::←
+
+
 
 :CO*?: v. ::
 {
@@ -806,6 +1227,9 @@ for key, symbol in logicOptions {
     NudgeCursor()
     return
 }
+
+
+;----------------------------------------------- GREEK LETTERS
 :?O:gra::α
 :?O:grb::β
 :?O:grg::γ
@@ -818,7 +1242,7 @@ for key, symbol in logicOptions {
 :?O:grl::λ
 :?O:grm::μ
 :?O:grn::ν
-:?O:grx::ξ
+:?O:grchi::ξ
 :?O:gro::ο
 :?O:grp::π
 :?O:grr::ρ
@@ -829,6 +1253,7 @@ for key, symbol in logicOptions {
 :?O:grch::χ
 :?O:grps::ψ
 :?O:gromega::ω
+;----------------------------------------------- LIGATURES
 :*O?:letterth::þ
 :*O?:letterdh::ð
 :C*?:ij::ĳ
@@ -1156,6 +1581,7 @@ Loop 26 {
     NudgeCursor()
     return
 }
+
 :C*?:VY::
 {
     if !ism
@@ -1178,6 +1604,7 @@ Loop 26 {
     NudgeCursor()
     return
 }
+;----------------------------------------------- LATIN PHRASES
 
 :?OC: eg::{
     Send "e.g./ "
@@ -1191,6 +1618,11 @@ Loop 26 {
     Send "a.i./ "
     return
 }
+:?OC:ehgo::{
+    Send " & ‘oc genus omne "
+    return
+}
+;----------------------------------------------- LIGATURES CONTINUED 
 
 :C*?:az ::
 {
@@ -1318,6 +1750,7 @@ Loop 26 {
 {
 	Send "ʒʒ "
 }
+;----------------------------------------------- SPECIAL CHARACTERS
 :?O:~~::〜
 :*C?O:a_e::aͤ
 :*C?O:a_ue::ꜷͤ
@@ -1326,6 +1759,7 @@ Loop 26 {
 :*C?O:y_e::yͤ
 ::oz::℥
 ::ounce::℥
+;----------------------------------------------- NUMERI
 :C*?O:_00::⁰
 :C*?O:_01::¹
 :C*?O:_02::²
@@ -1527,6 +1961,7 @@ Loop 26 {
 :C*?O:sub98::₉₈
 :C*?O:sub99::₉₉
 :*?O:_-::⁻
+;----------------------------------------------- EDITORAL SYMBOLS & MISC.
 :O:caret::‸
 :O*?:1dagger::†
 :O*?:2dagger::‡
@@ -1569,80 +2004,96 @@ Loop 26 {
 :*O?:jptext::馊銚ﾉﾔﾌﾀ
 :C:perthousand::‰
 :C:perman::‱
-:?:s-h::ʆome‑how  
-:?:h-e::How‑ever ;
-:O*?:s-t ::
-{
-	Send "ʆome‑thing "
-}
-:?:s-ti::ʆome‑times
-:?:s-e::ʆome‑one
-:?:s-w::ʆome‑where
-:?:n-o::No‑one
-:O*?:a-t ::
-{
-	Send "Any‑thing "
-}
-:?:a-e::Any‑one
-:?:a-ti::Any‑time
-:?:a-m::Any‑more
-:?:a-n::Any‑thing
-:?:a-w::Any‑where
-:?:e-t::Every‑thing
-:?:e-o::Every‑one
-:?:e-w::Every‑where
-:?:w-e::What‑ever
-:O?:u-s::Under‑ﬆand
-exceptions := ["s-h", "h-e", "u-s", "s-t", "s-ti", "s-e", "s-w", "n-o", "a-t", "a-e", "a-ti", "a-n", "a-m", "a/s", "a/c", "a-w", "e-t", "e-o", "e-w", "w-e"]
+;----------------------------------------------- ROMAN NUMERI.
 
-Loop 52 {
-    outerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
-    Loop 52 {
-        innerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
-        combination := outerLetter . "-" . innerLetter
-        
-        isException := false
-        for exception in exceptions {
-            if (combination = exception) {
-                isException := true
-                break
+global romanUpper := Map(
+    100000, "ↈ", 90000, "ↂↈ", 50000, "ↇ", 40000, "ↂↇ", 10000, "ↂ",
+    9000, "ↂↁ", 5000, "ↁ", 4000, "Ⅿↁ", 1000, "Ⅿ",
+    900, "ⅭⅯ", 500, "Ⅾ", 400, "ⅭⅮ", 100, "Ⅽ",
+    90, "ⅩⅭ", 50, "Ⅼ", 40, "ⅩⅬ",
+    12, "Ⅻ", 11, "Ⅺ", 10, "Ⅹ", 9, "Ⅸ", 8, "Ⅷ",
+    7, "Ⅶ", 6, "Ⅵ", 5, "Ⅴ", 4, "Ⅳ", 3, "Ⅲ", 2, "Ⅱ", 1, "Ⅰ"
+)
+
+global romanLower := Map(
+    1000, "ⅿ", 900, "ⅽⅿ", 500, "ⅾ", 400, "ⅽⅾ", 100, "ⅽ",
+    90, "ⅹⅽ", 50, "ⅼ", 40, "ⅹⅼ",
+    12, "ⅻ", 11, "ⅺ", 10, "ⅹ", 9, "ⅸ", 8, "ⅷ",
+    7, "ⅶ", 6, "ⅵ", 5, "ⅴ", 4, "ⅳ", 3, "ⅲ", 2, "ⅱ", 1, "ⅰ"
+)
+
+ConvertToRomanUnicode(num, useSmall := false) {
+    if (num <= 0)
+        return String(num)
+    
+    symbols := useSmall ? romanLower : romanUpper
+    result := ""
+    
+    ; Get sorted values in descending order
+    values := []
+    for value in symbols {
+        values.Push(value)
+    }
+    
+    ; Sort descending
+    loop values.Length - 1 {
+        swapped := false
+        loop values.Length - A_Index {
+            if (values[A_Index] < values[A_Index + 1]) {
+                temp := values[A_Index]
+                values[A_Index] := values[A_Index + 1]
+                values[A_Index + 1] := temp
+                swapped := true
             }
         }
-        
-        if (!isException) {
-            Hotstring(":C*?:" . combination, outerLetter . "‑" . innerLetter)
+        if (!swapped)
+            break
+    }
+    
+    ; Build the Roman numeral
+    for value in values {
+        while (num >= value && symbols.Has(value)) {
+            result .= symbols[value]
+            num -= value
+        }
+    }
+    
+    return result
+}
+
+:B0*CX:roman::
+{
+    static romanRegex := "^\d+$"
+    
+    ih := InputHook("V", "{Space}{Tab}{Enter}{Esc}{,}{.}{!}{?}{:}{;}")
+    ih.Start()
+    ih.Wait()
+    
+    if (RegExMatch(ih.Input, romanRegex)) {
+        num := Integer(ih.Input)
+        Send("{BS " . (6 + StrLen(ih.Input)) . "}")
+        Send(ConvertToRomanUnicode(num))
+        if (ih.EndReason = "EndKey" && ih.EndKey != "Escape") {
+            Send("{" . ih.EndKey . "}")
+        }
+    } else {
+        Send("roman" . ih.Input)
+        if (ih.EndReason = "EndKey" && ih.EndKey != "Escape") {
+            Send("{" . ih.EndKey . "}")
         }
     }
 }
 
-Loop 52 {
-    outerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
-    Loop 52 {
-        innerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
-        combination := outerLetter . "/" . innerLetter
-        
-        isException := false
-        for exception in exceptions {
-            if (combination = exception) {
-                isException := true
-                break
-            }
-        }
-        
-        if (!isException) {
-            Hotstring(":C*?:" . combination, outerLetter . "⧸" . innerLetter)
-        }
-    }
+SendRandomTimePrefix(suffix)
+{
+    local prefix := (Random(0, 1) = 0) ? "To‑" : "This‑"
+    Send(prefix . suffix)
 }
-exceptionsa := Map()
-Loop 10 {
-    outerNumber := Chr(48 + A_Index-1)
-    Loop 10 {
-        innerNumber := Chr(48 + A_Index-1)
-        combination := outerNumber . "-" . innerNumber
-            Hotstring(":C*?:" . combination, outerNumber . "‒" . innerNumber)
-    }
-}
+
+
+
+;----------------------------------------------- SYMBOLS MENU
+
 
 
 metersLinear := Map(
@@ -2142,6 +2593,8 @@ for key, symbol in pressureUnits {
 for key, symbol in frequencyUnits {
     Hotstring(":O:si" . key, symbol)
 }
+
+;----------------------------------------------- DIMMER
 class a {
     static b := ""
     static c() {
@@ -2182,7 +2635,7 @@ class a {
     }
 }
 a.c()
-; ----------------------------------------
+;----------------------------------------------- DREAM
 
 class UnifiedDreamEncoder {
     static mainGui := ""
@@ -5460,7 +5913,7 @@ class SIPPersonManager {
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "ʆkin colour :")
         this.skinColorField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w310 h120", ["", "pale ( orange )", "mid ( orange )", "dark ( orange )"])
-        this.skinColorField.Choose(2)
+        this.skinColorField.Choose(1)
         yPos += 25
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "'air colour :")
@@ -6147,7 +6600,7 @@ class SIPPersonManager {
         this.weightEndField.Text := ""
         this.bmiField.Text := ""
         
-        this.skinColorField.Choose(2) 
+        this.skinColorField.Choose(1) 
         this.facialHairField.Choose(1) 
         this.uniformColorField.Text := ""
         
@@ -6361,7 +6814,7 @@ class SIPPersonManager {
         this.designationIdField.Text := newDesignationId
         this.speciesField.Text := "member of the Human race"
         this.facialHairField.Choose(1) 
-        this.skinColorField.Choose(3) 
+        this.skinColorField.Choose(1) 
         this.accessoriesField.Text := ""
         this.uniformTypeField.Text := "not uniform"
         this.familyRelationField.Text := "na"
@@ -7348,6 +7801,77 @@ class DreamManager {
     }
 
 
+
+    CreateLeftPanel() {
+        this.leftPanel := this.mainGui.Add("GroupBox", "x10 y10 w208 h932", "")
+        
+        this.filterField := this.mainGui.Add("Edit", "x20 y30 w188 h20 +Border")
+        this.filterField.OnEvent("Change", (*) => this.OnFilterChange())
+        
+        this.dreamsList := this.mainGui.Add("ListView", "x20 y64 w188 h803 -Multi -HScroll", ["№", "D", "W"])
+        this.dreamsList.ModifyCol(1, "45 Integer")
+        this.dreamsList.ModifyCol(2, 60)
+        this.dreamsList.ModifyCol(3, 80)
+        this.dreamsList.OnEvent("ItemSelect", (*) => this.OnItemSelect())
+        
+        this.viewTimelineBtn := this.mainGui.Add("Button", "x20 y877 w188 h21", "VIEW TIME‑LINE")
+        this.viewTimelineBtn.OnEvent("Click", (*) => this.ViewTimeline())
+
+        this.showTimelineBtn := this.mainGui.Add("Button", "x20 y898 w188 h21", "SHOW TIME‑LINE")
+        this.showTimelineBtn.OnEvent("Click", (*) => this.ShowTimeline())
+        
+        ; Add date filter buttons - each 1/4 width (47px each)
+        this.filter3DBtn := this.mainGui.Add("Button", "x20 y919 w47 h21", "3D")
+        this.filter3DBtn.OnEvent("Click", (*) => this.SetDateFilter("3D"))
+        
+        this.filter1WBtn := this.mainGui.Add("Button", "x67 y919 w47 h21", "1W")
+        this.filter1WBtn.OnEvent("Click", (*) => this.SetDateFilter("1W"))
+        
+        this.filter1MBtn := this.mainGui.Add("Button", "x114 y919 w47 h21", "1M")
+        this.filter1MBtn.OnEvent("Click", (*) => this.SetDateFilter("1M"))
+        
+        this.filterTDBtn := this.mainGui.Add("Button", "x161 y919 w47 h21", "TD")
+        this.filterTDBtn.OnEvent("Click", (*) => this.SetDateFilter("TD"))
+    }
+
+    CreateRightPanel() {
+        this.statePanel := this.mainGui.Add("GroupBox", "x1421 y119 w342 h110", "")
+        
+        this.soberRadio := this.mainGui.Add("Radio", "x1431 y139 w100 h20 Checked", "ʆober")
+        this.ethanolRadio := this.mainGui.Add("Radio", "x1431 y159 w150 h20", "Ethanol Intoxication")
+        this.otherRadio := this.mainGui.Add("Radio", "x1431 y179 w150 h20", "Intoxication ( Other )")
+        this.otherRadio.OnEvent("Click", (*) => this.ToggleOtherField())
+        this.soberRadio.OnEvent("Click", (*) => this.ToggleOtherField())
+        this.ethanolRadio.OnEvent("Click", (*) => this.ToggleOtherField())
+        
+        this.otherField := this.mainGui.Add("Edit", "x1431 y199 w322 h20")
+        this.otherField.Enabled := false
+        this.otherField.OnEvent("Change", (*) => this.OnFieldChange())
+        
+        this.mentalLockPanel := this.mainGui.Add("GroupBox", "x1421 y239 w342 h379", "")
+        
+        this.mentalLockInput := this.mainGui.Add("Edit", "x1431 y259 w322 h20")
+        
+        this.removeBtn := this.mainGui.Add("Button", "x1431 y289 w120 h25", "REMOVE")
+        this.removeBtn.OnEvent("Click", (*) => this.RemoveMentalLock())
+        this.removeBtn.Enabled := false
+        
+        this.addBtn := this.mainGui.Add("Button", "x1633 y289 w120 h25", "ADD")
+        this.addBtn.OnEvent("Click", (*) => this.AddMentalLock())
+        
+        this.mentalLockList := this.mainGui.Add("ListView", "x1431 y324 w322 h284 -Multi", ["№", "Mental‑lock"])
+        this.mentalLockList.ModifyCol(1, 50)
+        this.mentalLockList.ModifyCol(2, 260)
+        this.mentalLockList.OnEvent("ItemSelect", (*) => this.OnMentalLockSelect())
+        
+        this.evaluationCheck := this.mainGui.Add("CheckBox", "x1421 y628 w20 h20")
+        this.evaluationCheck.OnEvent("Click", (*) => this.ToggleEvaluation())
+        this.mainGui.Add("Text", "x1446 y628 w100 h20 Center", "EVALUATION")
+        
+        this.evaluationField := this.mainGui.Add("Edit", "x1421 y658 w342 h283 VScroll +Multi")
+        this.evaluationField.Enabled := false
+        this.evaluationField.OnEvent("Change", (*) => this.OnFieldChange())
+    }
     ScanForGreekFormula() {
         text := this.dreamTextArea.Text
         pattern := "\[\x{00A0}([^\[\]]+)\x{00A0}([αβγδεζθικλμνξοπρστυφχψω]+)\x{00A0}\]"        
@@ -7384,39 +7908,6 @@ class DreamManager {
         this.dreamTextArea.Focus()
         Send("{End}")
         Send(insertText)
-    }
-
-
-    CreateLeftPanel() {
-        this.leftPanel := this.mainGui.Add("GroupBox", "x10 y10 w208 h932", "")
-        
-        this.filterField := this.mainGui.Add("Edit", "x20 y30 w188 h20 +Border")
-        this.filterField.OnEvent("Change", (*) => this.OnFilterChange())
-        
-        this.dreamsList := this.mainGui.Add("ListView", "x20 y64 w188 h803 -Multi -HScroll", ["№", "D", "W"])
-        this.dreamsList.ModifyCol(1, "45 Integer")
-        this.dreamsList.ModifyCol(2, 60)
-        this.dreamsList.ModifyCol(3, 80)
-        this.dreamsList.OnEvent("ItemSelect", (*) => this.OnItemSelect())
-        
-        this.viewTimelineBtn := this.mainGui.Add("Button", "x20 y877 w188 h21", "VIEW TIME‑LINE")
-        this.viewTimelineBtn.OnEvent("Click", (*) => this.ViewTimeline())
-
-        this.showTimelineBtn := this.mainGui.Add("Button", "x20 y898 w188 h21", "SHOW TIME‑LINE")
-        this.showTimelineBtn.OnEvent("Click", (*) => this.ShowTimeline())
-        
-        ; Add date filter buttons - each 1/4 width (47px each)
-        this.filter3DBtn := this.mainGui.Add("Button", "x20 y919 w47 h21", "3D")
-        this.filter3DBtn.OnEvent("Click", (*) => this.SetDateFilter("3D"))
-        
-        this.filter1WBtn := this.mainGui.Add("Button", "x67 y919 w47 h21", "1W")
-        this.filter1WBtn.OnEvent("Click", (*) => this.SetDateFilter("1W"))
-        
-        this.filter1MBtn := this.mainGui.Add("Button", "x114 y919 w47 h21", "1M")
-        this.filter1MBtn.OnEvent("Click", (*) => this.SetDateFilter("1M"))
-        
-        this.filterTDBtn := this.mainGui.Add("Button", "x161 y919 w47 h21", "TD")
-        this.filterTDBtn.OnEvent("Click", (*) => this.SetDateFilter("TD"))
     }
 
     ; Add new method for date filter buttons
@@ -7664,107 +8155,23 @@ class DreamManager {
         }
     }
 
-    CreateRightPanel() {
-        this.statePanel := this.mainGui.Add("GroupBox", "x1421 y119 w342 h110", "")
-        
-        this.soberRadio := this.mainGui.Add("Radio", "x1431 y139 w100 h20 Checked", "ʆober")
-        this.ethanolRadio := this.mainGui.Add("Radio", "x1431 y159 w150 h20", "Ethanol Intoxication")
-        this.otherRadio := this.mainGui.Add("Radio", "x1431 y179 w150 h20", "Intoxication ( Other )")
-        this.otherRadio.OnEvent("Click", (*) => this.ToggleOtherField())
-        this.soberRadio.OnEvent("Click", (*) => this.ToggleOtherField())
-        this.ethanolRadio.OnEvent("Click", (*) => this.ToggleOtherField())
-        
-        this.otherField := this.mainGui.Add("Edit", "x1431 y199 w322 h20")
-        this.otherField.Enabled := false
-        this.otherField.OnEvent("Change", (*) => this.OnFieldChange())
-        
-        this.mentalLockPanel := this.mainGui.Add("GroupBox", "x1421 y239 w342 h379", "")
-        
-        this.mentalLockInput := this.mainGui.Add("Edit", "x1431 y259 w322 h20")
-        
-        this.removeBtn := this.mainGui.Add("Button", "x1431 y289 w120 h25", "REMOVE")
-        this.removeBtn.OnEvent("Click", (*) => this.RemoveMentalLock())
-        this.removeBtn.Enabled := false
-        
-        this.addBtn := this.mainGui.Add("Button", "x1633 y289 w120 h25", "ADD")
-        this.addBtn.OnEvent("Click", (*) => this.AddMentalLock())
-        
-        this.mentalLockList := this.mainGui.Add("ListView", "x1431 y324 w322 h284 -Multi", ["№", "Mental‑lock"])
-        this.mentalLockList.ModifyCol(1, 50)
-        this.mentalLockList.ModifyCol(2, 260)
-        this.mentalLockList.OnEvent("ItemSelect", (*) => this.OnMentalLockSelect())
-        
-        this.evaluationCheck := this.mainGui.Add("CheckBox", "x1421 y628 w20 h20")
-        this.evaluationCheck.OnEvent("Click", (*) => this.ToggleEvaluation())
-        this.mainGui.Add("Text", "x1446 y628 w100 h20 Center", "EVALUATION")
-        
-        this.evaluationField := this.mainGui.Add("Edit", "x1421 y658 w342 h283 VScroll +Multi")
-        this.evaluationField.Enabled := false
-        this.evaluationField.OnEvent("Change", (*) => this.OnFieldChange())
-    }
-    ShowTimeline() {
-        try {
-            scriptPath := "E:\wwwwww\dosyâlar\dreams\b.py"
-            
-            if (!FileExist(scriptPath)) {
-                MsgBox("b.py not found at: " . scriptPath)
-                return
-            }
-            
-            pythonPaths := ["c:\Users\aretha\AppData\Local\Programs\Python\Python312\python.exe", "py", "python3", "python"]
-            
-            success := false
-            result := ""
-            
-            for pythonPath in pythonPaths {
-                try {
-                    ; Create temporary file for output
-                    tempFile := A_Temp . "\timeline_output.txt"
-                    
-                    ; Run command and redirect output to file
-                    command := pythonPath . ' "' . scriptPath . '" > "' . tempFile . '"'
-                    exitCode := RunWait(A_ComSpec . ' /c ' . command, "E:\wwwwww\dosyâlar\dreams", "Hide")
-                    
-                    if (exitCode = 0 && FileExist(tempFile)) {
-                        ; Read file with UTF-8 encoding
-                        result := FileRead(tempFile, "UTF-8")
-                        FileDelete(tempFile)
-                        success := true
-                        break
-                    }
-                } catch {
-                    continue
-                }
-            }
-            
-            if (!success || result = "") {
-                MsgBox("Could not run Python script or no output received")
-                return
-            }
-            
-            this.CreateTimelineGui(result)
-            
-        } catch Error as err {
-            MsgBox("Error running timeline: " . err.Message)
-        }
-    }
     CreateTimelineGui(content) {
-    if (this.timelineGui && WinExist(this.timelineGui.Hwnd)) {
-        this.timelineGui.Close()
-    }
-    
-    this.timelineGui := Gui("+Resize", "Timeline Data")
-    this.timelineGui.OnEvent("Close", (*) => this.CloseTimelineGui())
-    this.timelineGui.Move(, , 1075, 620)
-    
-    this.timelineTextArea := this.timelineGui.Add("Edit", "x10 y10 w1055 h589 VScroll +Multi +ReadOnly")
-    this.timelineTextArea.Text := content
-    this.timelineTextArea.SetFont("s10", "Iosevka Fixed")
+        if (this.timelineGui && WinExist(this.timelineGui.Hwnd)) {
+            this.timelineGui.Close()
+        }
+        
+        this.timelineGui := Gui("+Resize", "Timeline Data")
+        this.timelineGui.OnEvent("Close", (*) => this.CloseTimelineGui())
+        this.timelineGui.Move(, , 1075, 620)
+        
+        this.timelineTextArea := this.timelineGui.Add("Edit", "x10 y10 w1055 h589 VScroll +Multi +ReadOnly")
+        this.timelineTextArea.Text := content
+        this.timelineTextArea.SetFont("s10", "Iosevka Fixed")
 
-    this.timelineCloseBtn := this.timelineGui.Add("Button", "x10 y599 w1055 h21", "CLOSE")
-    this.timelineCloseBtn.OnEvent("Click", (*) => this.CloseTimelineGui())
-    
-    this.timelineGui.Show()
+        this.timelineCloseBtn := this.timelineGui.Add("Button", "x10 y599 w1055 h21", "CLOSE")
+        this.timelineCloseBtn.OnEvent("Click", (*) => this.CloseTimelineGui())
+        
+        this.timelineGui.Show()
     }
 
     CloseTimelineGui() {
@@ -7836,6 +8243,57 @@ class DreamManager {
         this.mentalLockList.Delete(selectedRow)
         this.removeBtn.Enabled := false
         this.OnFieldChange()
+    }
+    
+    ShowTimeline() {
+        try {
+            scriptPath := "E:\wwwwww\dosyâlar\dreams\b.py"
+            
+            if (!FileExist(scriptPath)) {
+                MsgBox("b.py not found at: " . scriptPath)
+                return
+            }
+            
+            filterText := this.filterField.Text  ; Get filter text
+            pythonPaths := ["c:\Users\aretha\AppData\Local\Programs\Python\Python312\python.exe", "py", "python3", "python"]
+            
+            success := false
+            result := ""
+            
+            for pythonPath in pythonPaths {
+                try {
+                    tempFile := A_Temp . "\timeline_output.txt"
+                    
+                    command := pythonPath . ' "' . scriptPath . '"'
+                    if (filterText != "") {
+                        command .= ' --filter "' . filterText . '"'
+                    }
+                    command .= ' > "' . tempFile . '"'
+                    
+                    exitCode := RunWait(A_ComSpec . ' /c ' . command, "E:\wwwwww\dosyâlar\dreams", "Hide")
+                    
+                    if (exitCode = 0 && FileExist(tempFile)) {
+                        ; Read file with UTF-8 encoding
+                        result := FileRead(tempFile, "UTF-8")
+                        FileDelete(tempFile)
+                        success := true
+                        break
+                    }
+                } catch {
+                    continue
+                }
+            }
+            
+            if (!success || result = "") {
+                MsgBox("Could not run Python script or no output received")
+                return
+            }
+            
+            this.CreateTimelineGui(result)
+            
+        } catch Error as err {
+            MsgBox("Error running timeline: " . err.Message)
+        }
     }
     ViewTimeline() {
         try {
