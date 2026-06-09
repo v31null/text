@@ -114,6 +114,7 @@ QuoteRight := [
 :?:'ve::’ve
 :?:'re::’re
 :C*?:'t::‘t
+:C*?:'h::‘
 :*?: ,::
 {
     SendInput("{U+00A0},")
@@ -130,35 +131,65 @@ QuoteRight := [
     SendInput("{U+00A0}{U+003A}")
     return
 }
-:*?: !::  
-{
-    SendInput("{U+00A0}{U+0021}")
-    return
-}
-:*?: ?::  
-{
-    SendInput("{U+00A0}?")
-    return
-}
 
+:CO?*: !?::
+{
+    SendInput("{U+00A0}⁉")
+    return
+}
+:CO?*: ?!::
+{
+    SendInput("{U+00A0}⁈")
+    return
+}
+:*?: ! ::  
+{
+    SendInput("{U+00A0}{U+0021} ")
+    return
+}
+:*?: ? ::  
+{
+    SendInput("{U+00A0}? ")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
+    return
+}
 :*?: / ::  
 {
     SendInput("{U+00A0}/{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 :*?: - ::  
 {
     SendInput("{U+00A0}—{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 :*?: -- ::  
 {
     SendInput("{U+00A0}{U+2E3A}{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 :*?: --- ::  
 {
     SendInput("{U+00A0}{U+2E3B}{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
@@ -173,7 +204,7 @@ QuoteRight := [
 :C*?:_nd::ⁿᵈ
 :C*?:_rd::ʳᵈ
 :C*?:_th::ᵗʰ
-::summonme::I prithee , You shan't hesitate to summon Me at Thine Earlieﬆ convenience.
+::summonme::I prithee , You shan't hesitate to summon Me at Thine Earlieﬆ convenience.
 :C*?:paragraph ::{
 	Send "§{U+00A0}"
 }
@@ -261,8 +292,8 @@ ShowNumeroHelp()
     helpGui.Show("w640 h480")
 }
 ::ineedtogo::I am afraid I muﬆ now take My leave.
-::illbeback::I shall return sꝏn , do — please — remain here a moment.
-::idk::Mine heart confeßes that I , surely , am at a loſs.
+::illbeback::I shall return sꝏn , do — please — remain here a moment.
+::idk::Mine heart confeßes that I , surely , am at a loſs.
 ::gmfriend::Gꝏd morning , My Dear friend — Hꜹe a Peaceful dꜽ. Hugs.
 ::gmenemy::Gꝏd morning , Mine Eﬆeemed enemy : I wish unto You a Pleasant dꜽ.
 ::gmenemybad::Gꝏd morning , My Despicable enemy : I wish unto You a Disaﬆrous dꜽ.
@@ -279,60 +310,100 @@ Loop 10 {
 :*?:0 ::
 {
     SendInput("0{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
 :*?:1 ::
 {
     SendInput("1{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
 :*?:2 ::
 {
     SendInput("2{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
 :*?:3 ::
 {
     SendInput("3{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
 :*?:4 ::
 {
     SendInput("4{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
 :*?:5 ::
 {
     SendInput("5{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
 :*?:6 ::
 {
     SendInput("6{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
 :*?:7 ::
 {
     SendInput("7{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
 :*?:8 ::
 {
     SendInput("8{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
 :*?:9 ::
 {
     SendInput("9{U+00A0}")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
@@ -427,12 +498,12 @@ ShowMainMenu() {
     global
     
     currentOptions := []
-    suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+    suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
     
     for key, symbol in arrowOptions {
         currentOptions.Push({key: key, symbol: symbol, type: "arrow"})
         prefix := (currentOptions.Length == selectedIndex + 1) ? "☞ " : "  "
-        suggestions .= prefix . key . " , " . symbol . "`n"
+        suggestions .= prefix . key . " , " . symbol . "`n"
     }
     for categoryName, categoryKey in categoriesarrow {
         currentOptions.Push({key: categoryName, symbol: "", type: "menu", menuKey: categoryKey})
@@ -468,12 +539,12 @@ ShowSubmenu(menuType) {
             menuTitle := "Turned Arrows"
     }
     
-    suggestions := menuTitle . "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , & „ → „ for ſub-menus.`n"
+    suggestions := menuTitle . "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , & „ → „ for ſub-menus.`n"
     
     for key, symbol in menuOptions {
         currentOptions.Push({key: key, symbol: symbol, type: "arrow"})
         prefix := (currentOptions.Length == selectedIndex + 1) ? "☞ " : "  "
-        suggestions .= prefix . key . " , " . symbol . "`n"
+        suggestions .= prefix . key . " , " . symbol . "`n"
     }
     
     ToolTip(suggestions, , , 1)
@@ -658,12 +729,12 @@ ShowLogicMenu() {
     global
     
     logicCurrentOptions := []
-    suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select.`n"
+    suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select.`n"
     
     for key, symbol in logicOptions {
         logicCurrentOptions.Push({key: key, symbol: symbol, type: "logic"})
         prefix := (logicCurrentOptions.Length == logicSelectedIndex + 1) ? "☞ " : "  "
-        suggestions .= prefix . key . " , " . symbol . "`n"
+        suggestions .= prefix . key . " , " . symbol . "`n"
     }
     
     ToolTip(suggestions, , , 1)
@@ -740,6 +811,10 @@ for key, symbol in logicOptions {
 :CO*?: v. ::
 {
     Send "{U+00A0}{U+1D463}{U+2024}{U+00A0}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 :?O:gra::α
@@ -801,31 +876,30 @@ for key, symbol in logicOptions {
 :C*?:ff ::
 {
     Send "{U+FB00}{U+0020}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 :C*?: terticolon::
 {
     Send "{U+00A0}{U+F56C}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 :C*?: quarticolon::
 {
     Send "{U+00A0}{U+F56B}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
-
-
-:C*?: st::
-{
-    if !ism
-    {
-        Send "{U+0073}{U+0074}"
-        return
-    }
-	Send " {U+FB06}"
-	return
-}
-
 
 
 Loop 26 {
@@ -833,10 +907,22 @@ Loop 26 {
     
     if (letter = "z") {
         Hotstring(":C*?:S" . letter, "ſʒ")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     }if (letter = "t") {
         Hotstring(":C*?:S" . letter, "ﬅ")
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     } else {
         Hotstring(":C*?:S" . letter, "ʃ" . letter)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     }
 }
 :C*?:st::
@@ -847,6 +933,10 @@ Loop 26 {
         return 
     }
 	Send "{U+FB06}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
 }
 :C*?:ss::
 {
@@ -860,8 +950,16 @@ Loop 26 {
     
     if (rand = 0) {
         Send "ſs"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     } else {
         Send "ß"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     }
 	return
 }
@@ -873,6 +971,10 @@ Loop 26 {
         return
     }
 	Send "ſʒ"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
 }
 
 :C*?:AO::
@@ -883,6 +985,10 @@ Loop 26 {
         return
     }
     Send "{U+A734}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 :C*?:ao::
@@ -893,6 +999,10 @@ Loop 26 {
         return
     }
     Send "{U+A735}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
@@ -904,6 +1014,10 @@ Loop 26 {
         return
     }
     Send "{U+A736}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 :C*?:au::
@@ -914,6 +1028,10 @@ Loop 26 {
         return
     }
     Send "{U+A737}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
@@ -925,6 +1043,10 @@ Loop 26 {
         return
     }
     Send "{U+A738}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 :C*?:lz::
@@ -935,6 +1057,10 @@ Loop 26 {
         return
     }
     Send "{U+026E}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
@@ -946,6 +1072,10 @@ Loop 26 {
         return
     }
     Send "{U+01C9}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
@@ -957,6 +1087,10 @@ Loop 26 {
         return
     }
     Send "{U+01C7}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
@@ -968,6 +1102,10 @@ Loop 26 {
         return
     }
     Send "{U+01C8}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
@@ -979,6 +1117,10 @@ Loop 26 {
         return
     }
     Send "{U+01CA}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
@@ -990,6 +1132,10 @@ Loop 26 {
         return
     }
     Send "{U+01CB}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
@@ -1001,6 +1147,10 @@ Loop 26 {
         return
     }
     Send "{U+01CC}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 
@@ -1012,6 +1162,10 @@ Loop 26 {
         return
     }
     Send "{U+A739}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 :C*?:AY::
@@ -1022,19 +1176,26 @@ Loop 26 {
         return
     }
     Send "{U+A73C}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
     return
 }
 :C*?:ay::
 {
-    if !ism
-    {
-        Send "{U+0061}{U+0079}"
-        return
-    }
-    Send "{U+A73D}"
-    return
+   if !ism
+   {
+       Send "{U+0061}{U+0079}"
+       return
+   }
+   Send "{U+A73D}"
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x25, "UChar", 0, "UInt", 2, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 0, "Ptr", 0)
+   DllCall("keybd_event", "UChar", 0x27, "UChar", 0, "UInt", 2, "Ptr", 0)
+   return
 }
-
 
 :C*?:Hv::
 {
@@ -1465,25 +1626,18 @@ Loop 26 {
 :O?:a/c::℀
 :CO?*:X|::╳
 :CO?*:/|::⧸
-:CO?*:!?::⁉
-:CO?*:?!::⁈
 :O:dele::₰
 :O:ioriten::〽
 :O:coronis::⸎
 :O:manicule::☞
-:?*O:do.::
-{
-    Send "{U+3003}"
-    return
-}
 :?O:'::
 {
     Send "{U+2019}"
     return
 }
-:CO*?:’::〃
 :CO*?:breakhere::⸿
 :CO*?:1prime::′
+:CO*?:2do::〃
 :CO*?:2prime::″
 :CO*?:3prime::‴
 :CO*?:4prime::⁗
@@ -1518,45 +1672,43 @@ Loop 26 {
 :?:e-w::Every‑where
 :?:w-e::What‑ever
 :O?:u-s::Under‑ﬆand
+exceptions := ["s-h", "h-e", "u-s", "s-t", "s-ti", "s-e", "s-w", "n-o", "a-t", "a-e", "a-ti", "a-n", "a-m", "a/s", "a/c", "a-w", "e-t", "e-o", "e-w", "w-e"]
 
-exceptions := Map()
-exceptions["s-h"] := true
-exceptions["h-e"] := true
-exceptions["u-s"] := true
-exceptions["s-t"] := true
-exceptions["s-ti"] := true
-exceptions["s-e"] := true
-exceptions["s-w"] := true
-exceptions["n-o"] := true
-exceptions["a-t"] := true
-exceptions["a-e"] := true
-exceptions["a-ti"] := true
-exceptions["a-n"] := true
-exceptions["a-m"] := true
-exceptions["a-w"] := true
-exceptions["e-t"] := true
-exceptions["e-o"] := true
-exceptions["e-w"] := true
-exceptions["w-e"] := true
-
-Loop 26 {
-    outerLetter := Chr(96 + A_Index) 
-    Loop 26 {
-        innerLetter := Chr(96 + A_Index)  
+Loop 52 {
+    outerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
+    Loop 52 {
+        innerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
         combination := outerLetter . "-" . innerLetter
         
-        if (!exceptions.Has(combination)) {
+        isException := false
+        for exception in exceptions {
+            if (combination = exception) {
+                isException := true
+                break
+            }
+        }
+        
+        if (!isException) {
             Hotstring(":C*?:" . combination, outerLetter . "‑" . innerLetter)
         }
     }
 }
-Loop 26 {
-    outerLetter := Chr(96 + A_Index) 
-    Loop 26 {
-        innerLetter := Chr(96 + A_Index)  
+
+Loop 52 {
+    outerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
+    Loop 52 {
+        innerLetter := A_Index <= 26 ? Chr(96 + A_Index) : Chr(38 + A_Index)
         combination := outerLetter . "/" . innerLetter
         
-        if (!exceptions.Has(combination)) {
+        isException := false
+        for exception in exceptions {
+            if (combination = exception) {
+                isException := true
+                break
+            }
+        }
+        
+        if (!isException) {
             Hotstring(":C*?:" . combination, outerLetter . "⧸" . innerLetter)
         }
     }
@@ -1781,13 +1933,13 @@ ShowSIMainMenu() {
     global
     
     siCurrentOptions := []
-    suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn."
+    suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn."
     suggestions .= "`nCommon :`n"
 
     for key, symbol in SIMainOptions {
         siCurrentOptions.Push({key: key, symbol: symbol, type: "unit"})
         prefix := (siCurrentOptions.Length == siSelectedIndex + 1) ? "☞ " : "  "
-        suggestions .= prefix . key . " , " . symbol . "`n"
+        suggestions .= prefix . key . " , " . symbol . "`n"
     }
     
     suggestions .= "`nCategories :`n"
@@ -1809,7 +1961,7 @@ ShowSISubmenu(menuType) {
     
     switch menuType {
         case "meters":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             for subName, subKey in meterSubcategories {
                 siCurrentOptions.Push({key: subName, symbol: "", type: "subcategory", menuKey: subKey, parentMenu: "meters"})
                 prefix := (siCurrentOptions.Length == siSelectedIndex + 1) ? "☞ " : "  "
@@ -1817,7 +1969,7 @@ ShowSISubmenu(menuType) {
             }
             
         case "amperes":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             for subName, subKey in ampereSubcategories {
                 siCurrentOptions.Push({key: subName, symbol: "", type: "subcategory", menuKey: subKey, parentMenu: "amperes"})
                 prefix := (siCurrentOptions.Length == siSelectedIndex + 1) ? "☞ " : "  "
@@ -1825,27 +1977,27 @@ ShowSISubmenu(menuType) {
             }
             
         case "grams":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(gramsUnits, suggestions)
             
         case "liters":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(litersUnits, suggestions)
                         
         case "temperature":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(temperatureUnits, suggestions)
             
         case "energy":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(energyUnits, suggestions)
             
         case "pressure":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(pressureUnits, suggestions)
             
         case "frequency":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(frequencyUnits, suggestions)
     }
     
@@ -1860,31 +2012,31 @@ ShowSISubSubmenu(menuType) {
     
     switch menuType {
         case "linear":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(metersLinear, suggestions)
             
         case "area":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(metersArea, suggestions)
             
         case "cube":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(metersCube, suggestions)
             
         case "current":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(amperesCurrent, suggestions)
             
         case "voltage":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(amperesVoltage, suggestions)
             
         case "resistance":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(amperesResistance, suggestions)
             
         case "power":
-            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
+            suggestions := "Preß : „ ↑↓ „ to navigate , „ Enter „ to select , „ → „ or „ Enter „ for ſub-menus , & „ ← „ to Re-turn.`n"
             suggestions := ShowUnitsFromMap(amperesPower, suggestions)
     }
     
@@ -1896,7 +2048,7 @@ ShowUnitsFromMap(unitsMap, suggestions) {
     for key, symbol in unitsMap {
         siCurrentOptions.Push({key: key, symbol: symbol, type: "unit"})
         prefix := (siCurrentOptions.Length == siSelectedIndex + 1) ? "☞ " : "  "
-        suggestions .= prefix . key . " , " . symbol . "`n"
+        suggestions .= prefix . key . " , " . symbol . "`n"
     }
     return suggestions
 }
@@ -2069,6 +2221,47 @@ for key, symbol in pressureUnits {
 for key, symbol in frequencyUnits {
     Hotstring(":O:si" . key, symbol)
 }
+class a {
+    static b := ""
+    static c() {
+        Hotstring(":*O?:\sd", (*) => a.d())
+    }
+    static d() {
+        e := Gui("+AlwaysOnTop +ToolWindow -MaximizeBox -MinimizeBox", "")
+        e.MarginX := 2
+        e.MarginY := 2
+        f := [0,1,2,3,4,5,6,7,8,9]
+        for g, h in f {
+            i := e.Add("Button", "x" . (g*22+2) . " y2 w20 h20", h)
+            i.OnEvent("Click", ((j) => (*) => a.k(j*10, e))(h))
+        }
+        e.Show("w222 h24")
+    }
+    static k(l, m) {
+        a.n()
+        if (l > 0) {
+            a.o(l)
+        }
+        m.Destroy()
+    }
+    static o(p) {
+        a.b := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20", "")
+        a.b.BackColor := "0x000000"
+        a.b.Show("x0 y0 w" . A_ScreenWidth . " h" . A_ScreenHeight . " NoActivate")
+        q := Integer(p * 255 / 100)
+        WinSetTransparent(q, a.b.Hwnd)
+    }
+    static n() {
+        if (a.b) {
+            try {
+                a.b.Destroy()
+            }
+            a.b := ""
+        }
+    }
+}
+a.c()
+; ----------------------------------------
 
 class UnifiedDreamEncoder {
     static mainGui := ""
@@ -2337,7 +2530,7 @@ class UnifiedDreamEncoder {
     
     static FilterDn() {
         text := this.controls["Dn"].Text
-        filtered := RegExReplace(text, "[^1-9]", "")
+        filtered := RegExReplace(text, "[^0-9]", "")
         
         if (text != filtered) {
             this.controls["Dn"].Text := filtered
@@ -3086,13 +3279,11 @@ class UnifiedDreamEncoder {
             }
             if (row1 != "") {
                 Send("+{Enter}")
-                Send(" ")
                 Send(row1)
             }
             if (row2 != "") {
                 Sleep(100)
                 Send("+{Enter}")
-                Send(" ")
                 Send(row2)
             }
             
@@ -3433,8 +3624,7 @@ class ColorPickerClass {
         ColorBlocks := "██████"
         Components := this.GetRGBComponents(RGB)
         
-        FormattedText := "[COLOR=rgb(" . Components.R . "," . Components.G . "," . Components.B . ")]HEX " . HexColor . " " . ColorBlocks . " [/COLOR]"
-        
+        FormattedText := "<span style='color:rgb(" . Components.R . "," . Components.G . "," . Components.B . ");font-weight: bolder;'>HEX " . HexColor . " " . ColorBlocks . "</span>"
         this.Hide()
         Sleep(50)
         SendText(FormattedText)
@@ -3476,12 +3666,14 @@ class x7f9a2 {
         this.b4e8c.Move(, , 1723, 617)
         this.k8h2n()
         this.v3x1p()
-        this.t5m4j := this.b4e8c.Add("Tab3", "x10 y10 w1703 h597", ["INPUT", "PRINT FORM"])
+        this.t5m4j := this.b4e8c.Add("Tab3", "x10 y10 w1703 h597", ["INPUT", "PRINT FORM", "VIEW"])
         this.t5m4j.OnEvent("Change", this.r2q8v.Bind(this))
         this.t5m4j.UseTab(1)
         this.w6y7u()
         this.t5m4j.UseTab(2)
         this.z1n5e()
+        this.t5m4j.UseTab(3)
+        this.v7k3m()
         this.l4s9k()
         Hotstring(":O?*:\prdoar", (*) => this.q8p2m())
     }
@@ -3491,6 +3683,479 @@ class x7f9a2 {
             this.b4e8c.Destroy()
             this.h7n8r := true
         }
+    }
+    v7k3m() {
+        this.q2w8x := this.b4e8c.Add("ListView", "x20 y40 w300 h557 Grid", ["№", "Form №"])
+        this.q2w8x.OnEvent("ItemSelect", (*) => this.f5t9h())
+        
+        try {
+            this.r8j2s := this.b4e8c.Add("ActiveX", "x330 y40 w1373 h557", "Shell.Explorer")
+            this.m6k4p := true
+            
+            wb := this.r8j2s.Value
+            wb.Navigate("about:blank")
+            Sleep(500)
+            
+        } catch Error as err {
+            this.m6k4p := false
+            this.r8j2s := this.b4e8c.Add("Edit", "x330 y40 w1373 h557 VScroll ReadOnly")
+        }
+        
+        this.d9l1v()
+    }
+    d9l1v() {
+        this.q2w8x.Delete()
+        
+        try {
+            o6y2k := "E:\wwwwww\dosyâlar\dreams\doar.txt"
+            
+            if (!FileExist(o6y2k)) {
+                return
+            }
+            
+            z1r5v := FileRead(o6y2k, "UTF-8")
+            d4m9n := StrSplit(z1r5v, "`n")
+            
+            r8k3m := []
+            
+            for line in d4m9n {
+                line := Trim(line)
+                if (line == "") {
+                    continue
+                }
+                
+                y4w9k := this.c6k4w(line)
+                if (y4w9k != "") {
+                    r8k3m.Push({form_id: y4w9k, line: line})
+                }
+            }
+            
+            h3x7c := r8k3m.Length
+            loop r8k3m.Length {
+                item := r8k3m[r8k3m.Length - A_Index + 1]
+                this.q2w8x.Add(, h3x7c, item.form_id)
+                h3x7c--
+            }
+            
+        } catch Error as err {
+        }
+    }
+    
+    f5t9h() {
+        if (this.q2w8x.GetNext() == 0) {
+            return
+        }
+        
+        s8n2t := this.q2w8x.GetNext()
+        u7p3k := this.q2w8x.GetText(s8n2t, 2)
+        
+        try {
+            o6y2k := "E:\wwwwww\dosyâlar\dreams\doar.txt"
+            
+            if (!FileExist(o6y2k)) {
+                return
+            }
+            
+            z1r5v := FileRead(o6y2k, "UTF-8")
+            d4m9n := StrSplit(z1r5v, "`n")
+            
+            for lineData in d4m9n {
+                line := Trim(lineData)
+                if (line == "") {
+                    continue
+                }
+                
+                if (this.c6k4w(line) == u7p3k) {
+                    v2g6x := this.k4z8m(line)
+                    this.n8v5w(v2g6x)
+                    break
+                }
+            }
+            
+        } catch Error as err {
+        }
+    }
+    n8v5w(p5w9d) {
+        html := '<!DOCTYPE html>'
+        html .= '<html><head><meta charset="UTF-8"><title>D.O.A.R. Form</title></head>'
+        html .= '<body><style>#ga tr,td,table{padding:0;margin:0;font-family: Times New Roman, Times, serif;}table{width:100%;border-collapse:collapse;}</style>'
+        html .= '<table id="ga">'
+        html .= '<tr><td colspan="2" style="text-align:center;font-weight:bolder;font-size:16pt">DEAD on ARRIVAL REPORT</td></tr>'
+        html .= '<tr><td style="text-align:left;">№ : ' . (p5w9d.HasOwnProp("doar_form_number") ? p5w9d.doar_form_number : "") . '</td><td style="text-align:right;">Creation : ' . (p5w9d.HasOwnProp("creation_date") ? p5w9d.creation_date : "") . '</td></tr>'
+        html .= '<tr><td style="text-align:left;width:50%;">Eﬆ. On-set time : ' . (p5w9d.HasOwnProp("estimated_onset") ? p5w9d.estimated_onset : "") . '</td><td style="text-align:right;">Eﬆ. Wake time : ' . (p5w9d.HasOwnProp("estimated_wake") ? p5w9d.estimated_wake : "") . '</td></tr>'
+        html .= '</table>'
+        
+        html .= '<table><tr><td>"response_wrapper": { "state": ' . (p5w9d.HasOwnProp("state") ? p5w9d.state : "") . ', "message": "' . (p5w9d.HasOwnProp("message") ? p5w9d.message : "") . '", "result_completeness": "' . (p5w9d.HasOwnProp("completeness") ? p5w9d.completeness : "") . '"}</td></tr></table>'
+        
+        html .= '<table id="ga" style="border:1px solid black;">'
+        html .= '<tr style="height:50%;"><td style="width:50%;vertical-align:top;">'
+        
+        html .= '<table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">A - DREAM INFORMATION</td></tr>'
+        html .= '<tr><td style="width:50%;">Dated : ' . (p5w9d.HasOwnProp("dated") ? p5w9d.dated : "") . '</td><td style="width:50%;">Wake time : ' . (p5w9d.HasOwnProp("wake_time") ? p5w9d.wake_time : "") . '</td></tr>'
+        html .= '<tr><td style="width:50%;">Eﬆ. On‑set start : ' . (p5w9d.HasOwnProp("onset_start") ? p5w9d.onset_start : "") . '</td><td style="width:50%;">Eﬆ. On‑set end : ' . (p5w9d.HasOwnProp("onset_end") ? p5w9d.onset_end : "") . '</td></tr>'
+        html .= '<tr><td style="width:50%;">ʃcraps exist ? ' . (p5w9d.HasOwnProp("scraps_exist") ? p5w9d.scraps_exist : "") . '</td><td style="width:50%;">Comfort dr. sleep : ' . (p5w9d.HasOwnProp("comfort") ? p5w9d.comfort : "") . '</td></tr>'
+        html .= '<tr><td style="width:50%;">Fruﬆration : ' . (p5w9d.HasOwnProp("frustration") ? p5w9d.frustration : "") . '</td><td style="width:50%;">Almoﬆ remembered ? ' . (p5w9d.HasOwnProp("almost_had_it") ? p5w9d.almost_had_it : "") . '</td></tr>'
+        html .= '<tr><td style="width:50%;">Was It tangible ? ' . (p5w9d.HasOwnProp("could_feel_losing") ? p5w9d.could_feel_losing : "") . '</td><td style="width:50%;">ʃhowed eﬀort to maintain ? ' . (p5w9d.HasOwnProp("effort_to_maintain") ? p5w9d.effort_to_maintain : "") . '</td></tr>'
+        html .= '</table>'
+        
+        html .= '<table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">D - A extended</td></tr>'
+        html .= '<tr><td style="width:50%;">ʃleep location : ' . (p5w9d.HasOwnProp("sleep_location") ? p5w9d.sleep_location : "") . '</td><td style="width:50%;">Noise claſsiﬁcation : ' . (p5w9d.HasOwnProp("noise_level") ? p5w9d.noise_level : "") . '</td></tr>'
+        html .= '<tr><td style="width:50%;">Environmental zone : ' . (p5w9d.HasOwnProp("environment_type") ? p5w9d.environment_type : "") . '</td><td style="width:50%;">Acceß type : ' . (p5w9d.HasOwnProp("access_type") ? p5w9d.access_type : "") . '</td></tr>'
+        html .= '</table>'
+        
+        html .= '<table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">B - FILER INFORMATION</td></tr>'
+        html .= '<tr><td style="width:50%;">Filer name : ' . (p5w9d.HasOwnProp("system") ? p5w9d.system : "") . '</td><td style="width:50%;">Filing date : ' . (p5w9d.HasOwnProp("filing_date") ? p5w9d.filing_date : "") . '</td></tr>'
+        html .= '<tr><td style="width:100%;text-align:center;" colspan="2">' . (p5w9d.HasOwnProp("checksum") ? p5w9d.checksum : "") . '</td></tr>'
+        html .= '</table>'
+        
+        html .= '</td><td style="width:50%;vertical-align:top;height:100%;position:relative;">'
+        
+        html .= '<table style="border:1px solid black;position:absolute;top:0;height:50%;width:100%;"><tr><td colspan="2" style="font-weight:bolder;">V - TYPE OF DEATH</td></tr>'
+        html .= '<tr><td style="width:50%;">With reasons ' . (p5w9d.HasOwnProp("with_reasons") ? p5w9d.with_reasons : "") . '</td><td style="width:50%;">With reasons ( inveﬆigation req. ) ' . (p5w9d.HasOwnProp("with_reasons_investment") ? p5w9d.with_reasons_investment : "") . ' - G</td></tr>'
+        html .= '<tr><td style="width:50%;">Without reasons ' . (p5w9d.HasOwnProp("without_reasons") ? p5w9d.without_reasons : "") . '</td><td style="width:50%;">Without reasons ( inveﬆigation req. ) ' . (p5w9d.HasOwnProp("without_reasons_investment") ? p5w9d.without_reasons_investment : "") . ' - G</td></tr>'
+        html .= '</table>'
+        
+        html .= '<table style="border:1px solid black;position:absolute;top:50%;height:50%;width:100%;"><tr><td colspan="2" style="font-weight:bolder;">G - Investigation</td></tr>'
+        html .= '<tr><td style="width:100%;">1. Was It inveﬆigated ? ' . (p5w9d.HasOwnProp("was_investigated") ? p5w9d.was_investigated : "") . '</td></tr>'
+        html .= '<tr><td style="width:100%;">2. Is an inveﬆigation required ? ' . (p5w9d.HasOwnProp("investigation_required") ? p5w9d.investigation_required : "") . '</td></tr>'
+        html .= '<tr><td style="width:100%;">3. ʃcene integrity ? ' . (p5w9d.HasOwnProp("scene_integrity") ? p5w9d.scene_integrity : "") . '</td></tr>'
+        html .= '<tr><td style="width:100%;">4. Witneß ꜹailable ? ' . (p5w9d.HasOwnProp("witness_available") ? p5w9d.witness_available : "") . '</td></tr>'
+        html .= '</table>'
+        
+        html .= '</td></tr>'
+        
+        html .= '<tr><td colspan="2"><table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">E - Reason( s ) for death</td></tr>'
+        html .= '<tr><td style="width:50%;"><table><tr><td>' . (p5w9d.HasOwnProp("primary_cause") ? p5w9d.primary_cause : "") . (p5w9d.HasOwnProp("primary_other") && p5w9d.primary_other ? " ( " . p5w9d.primary_other . " )" : "") . '</td></tr><tr><td>⮴ secondary to ' . (p5w9d.HasOwnProp("secondary_cause") ? p5w9d.secondary_cause : "") . (p5w9d.HasOwnProp("secondary_other") && p5w9d.secondary_other ? " ( " . p5w9d.secondary_other . " )" : "") . '</td></tr><tr><td>⮴ tertiary to ' . (p5w9d.HasOwnProp("tertiary_cause") ? p5w9d.tertiary_cause : "") . (p5w9d.HasOwnProp("tertiary_other") && p5w9d.tertiary_other ? " ( " . p5w9d.tertiary_other . " )" : "") . '</td></tr><tr><td>⮴ quaternary to ' . (p5w9d.HasOwnProp("quaternary_cause") ? p5w9d.quaternary_cause : "") . (p5w9d.HasOwnProp("quaternary_other") && p5w9d.quaternary_other ? " ( " . p5w9d.quaternary_other . " )" : "") . '</td></tr></table></td>'
+        html .= '<td><table style="width:100%;"><tr><td><table style="width:100%;"><tr style="text-align:center;"><td>' . (p5w9d.HasOwnProp("primary_time") ? p5w9d.primary_time : "") . '</td></tr><tr style="text-align:center;"><td>' . (p5w9d.HasOwnProp("secondary_time") ? p5w9d.secondary_time : "") . '</td></tr><tr style="text-align:center;"><td>' . (p5w9d.HasOwnProp("tertiary_time") ? p5w9d.tertiary_time : "") . '</td></tr><tr style="text-align:center;"><td>' . (p5w9d.HasOwnProp("quaternary_time") ? p5w9d.quaternary_time : "") . '</td></tr></table></td></tr></table></td></tr>'
+        html .= '</table></td></tr>'
+        
+        if (p5w9d.HasOwnProp("investigation_required") && p5w9d.investigation_required == "y") {
+            html .= '<tr><table style="border:1px solid black;">'
+            
+            html .= '<tr>'
+            html .= '<td colspan="1" style="font-weight:bolder;">Z - Inv. ext. ( when G 2 y )</td>'
+            html .= '<td style="width: 25%;">Im. analysis :' . (p5w9d.HasOwnProp("investigation_flag") && p5w9d.investigation_flag == "y" ? "☑" : "☐") . '</td>'
+            html .= '<td style="width: 25%;">Pr. level : ' . (p5w9d.HasOwnProp("priority_level") ? p5w9d.priority_level : "") . '</td>'
+            html .= '<td style="width: 25%;">Monitoring ' . (p5w9d.HasOwnProp("monitoring_required") && p5w9d.monitoring_required == "y" ? "☑" : "☐") . '</td>'
+            html .= '</tr>'
+            
+            html .= '<tr>'
+            html .= '<td style="vertical-align:top;width:25%">ʃcene documentation :<br>Immediate : ' . (p5w9d.HasOwnProp("immediate_notes") ? p5w9d.immediate_notes : "") . '<br>Environmental : ' . (p5w9d.HasOwnProp("environmental_changes") ? p5w9d.environmental_changes : "") . '<br>Equipment : ' . (p5w9d.HasOwnProp("equipment_status") ? p5w9d.equipment_status : "") . '<br>Evidence : ' . (p5w9d.HasOwnProp("physical_evidence") ? p5w9d.physical_evidence : "") . '</td>'
+            html .= '<td style="vertical-align:top;width:25%">Time‑line Re-conﬆruction :<br>Pre-failure : ' . (p5w9d.HasOwnProp("pre_failure_sequence") ? p5w9d.pre_failure_sequence : "") . '<br>Failure moment : ' . (p5w9d.HasOwnProp("failure_moment") ? p5w9d.failure_moment : "") . '<br>Post-failure : ' . (p5w9d.HasOwnProp("post_failure_actions") ? p5w9d.post_failure_actions : "") . '<br>Time‑line : ' . (p5w9d.HasOwnProp("estimated_timeline") ? p5w9d.estimated_timeline : "") . '</td>'
+            html .= '<td style="width:25%;vertical-align:top;">Witneſs information :<br><table><tr><td>reliability : ' . (p5w9d.HasOwnProp("reliability") ? p5w9d.reliability : "") . '</td><td>relationship : ' . (p5w9d.HasOwnProp("relationship") ? p5w9d.relationship : "") . '</td></tr><tr><td colspan="2">ﬆatement : ' . (p5w9d.HasOwnProp("statement") ? p5w9d.statement : "") . (p5w9d.HasOwnProp("timeline") && p5w9d.timeline ? " , " . p5w9d.timeline . " ago" : "") . '</td></tr></table></td>'
+            html .= '<td style="width:25%;vertical-align:top;">Pattern analysis :<br>Match : ' . (p5w9d.HasOwnProp("pattern_match") ? p5w9d.pattern_match : "") . '<br>Re-ocurring : ' . (p5w9d.HasOwnProp("recurring_elements") ? p5w9d.recurring_elements : "") . '<br>Anomaly : ' . (p5w9d.HasOwnProp("anomaly_detection") ? p5w9d.anomaly_detection : "") . '<br>Co‑relation : ' . (p5w9d.HasOwnProp("case_correlation") ? p5w9d.case_correlation : "") . '</td>'
+            html .= '</tr>'
+            
+            html .= '<tr><table style="border:1px solid black;">'
+            html .= '<tr><td style="width: 25%;">Photo : ' . (p5w9d.HasOwnProp("photo_documentation") && p5w9d.photo_documentation == "y" ? "☑" : "☐") . '</td><td style="width: 25%;">Audio : ' . (p5w9d.HasOwnProp("audio_evidence") && p5w9d.audio_evidence == "y" ? "☑" : "☐") . '</td><td colspan="2">Markers : ' . (p5w9d.HasOwnProp("markers") ? p5w9d.markers : "") . '</td></tr>'
+            html .= '<tr><td style="width: 25%;">Immediate ' . (p5w9d.HasOwnProp("immediate_actions") && p5w9d.immediate_actions ? "☑" : "☐") . '</td><td style="width: 25%;">Prevention ' . (p5w9d.HasOwnProp("prevention_measures") && p5w9d.prevention_measures ? "☑" : "☐") . '</td><td style="width: 50%;">Actions : ' . (p5w9d.HasOwnProp("immediate_actions") ? p5w9d.immediate_actions : "") . " | Tasks : " . (p5w9d.HasOwnProp("investigation_tasks") ? p5w9d.investigation_tasks : "") . " | " . (p5w9d.HasOwnProp("prevention_measures") ? p5w9d.prevention_measures : "") . '</td></tr>'
+            html .= '</table></tr>'
+            
+            html .= '</table></tr>'
+        }            
+        html .= '</table>'
+        
+        html .= '<table style="width:100%;"><tr><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;">/s/ ʃunt Vĳelie</td></tr><tr> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"><img src="https://files.catbox.moe/k6q0p2.png" width="206px"></td> </tr></table>'
+        html .= '</body></html>'
+        
+        if (this.m6k4p) {
+            try {
+                wb := this.r8j2s.Value
+                
+                wb.Navigate("about:blank")
+                
+                t2x5k := 0
+                while (t2x5k < 100) {
+                    try {
+                        if (wb.ReadyState == 4) {
+                            break
+                        }
+                    } catch {
+                    }
+                    Sleep(50)
+                    t2x5k++
+                }
+                
+                doc := wb.Document
+                if (!doc) {
+                    throw Error("Document not available")
+                }
+                
+                doc.Open()
+                doc.Write(html)
+                doc.Close()
+                
+            } catch Error as err {
+                this.m6k4p := false
+                this.r8j2s.Opt("+Hidden")
+                this.r8j2s := this.b4e8c.Add("Edit", "x330 y40 w1373 h557 VScroll ReadOnly")
+                this.r8j2s.Text := "ActiveX failed: " . err.Message . "`n`nHTML Content:`n`n" . html
+            }
+        } else {
+            if (HasProp(this, "r8j2s")) {
+                this.r8j2s.Text := html
+            }
+        }
+    }
+    k4z8m(jsonStr) {
+        data := {}
+        
+        if (RegExMatch(jsonStr, '"doar_form_number":"([^"]+)"', &match)) {
+            data.doar_form_number := match[1]
+        }
+        if (RegExMatch(jsonStr, '"creation_date":"([^"]+)"', &match)) {
+            data.creation_date := match[1]
+        }
+        if (RegExMatch(jsonStr, '"filing_date":"([^"]+)"', &match)) {
+            data.filing_date := match[1]
+        }
+        if (RegExMatch(jsonStr, '"checksum":"([^"]+)"', &match)) {
+            data.checksum := match[1]
+        }
+        if (RegExMatch(jsonStr, '"state":"([^"]+)"', &match)) {
+            data.state := match[1]
+        }
+        if (RegExMatch(jsonStr, '"message":"([^"]+)"', &match)) {
+            data.message := match[1]
+        }
+        if (RegExMatch(jsonStr, '"completeness":"([^"]+)"', &match)) {
+            data.completeness := match[1]
+        }
+        
+        if (RegExMatch(jsonStr, '"estimated_onset":"([^"]+)"', &match)) {
+            data.estimated_onset := match[1]
+        }
+        if (RegExMatch(jsonStr, '"estimated_wake":"([^"]+)"', &match)) {
+            data.estimated_wake := match[1]
+        }
+        
+        if (RegExMatch(jsonStr, '"dated":"([^"]+)"', &match)) {
+            data.dated := match[1]
+        }
+        if (RegExMatch(jsonStr, '"wake_time":"([^"]+)"', &match)) {
+            data.wake_time := match[1]
+        }
+        if (RegExMatch(jsonStr, '"onset_start":"([^"]+)"', &match)) {
+            data.onset_start := match[1]
+        }
+        if (RegExMatch(jsonStr, '"onset_end":"([^"]+)"', &match)) {
+            data.onset_end := match[1]
+        }
+        if (RegExMatch(jsonStr, '"scraps_exist":"([^"]+)"', &match)) {
+            data.scraps_exist := match[1]
+        }
+        if (RegExMatch(jsonStr, '"comfort":"([^"]+)"', &match)) {
+            data.comfort := match[1]
+        }
+        if (RegExMatch(jsonStr, '"frustration":"([^"]+)"', &match)) {
+            data.frustration := match[1]
+        }
+        if (RegExMatch(jsonStr, '"almost_had_it":"([^"]+)"', &match)) {
+            data.almost_had_it := match[1]
+        }
+        if (RegExMatch(jsonStr, '"could_feel_losing":"([^"]+)"', &match)) {
+            data.could_feel_losing := match[1]
+        }
+        if (RegExMatch(jsonStr, '"effort_to_maintain":"([^"]+)"', &match)) {
+            data.effort_to_maintain := match[1]
+        }
+        
+        if (RegExMatch(jsonStr, '"sleep_location":"([^"]+)"', &match)) {
+            data.sleep_location := match[1]
+        }
+        if (RegExMatch(jsonStr, '"noise_level":"([^"]+)"', &match)) {
+            data.noise_level := match[1]
+        }
+        if (RegExMatch(jsonStr, '"environment_type":"([^"]+)"', &match)) {
+            data.environment_type := match[1]
+        }
+        if (RegExMatch(jsonStr, '"access_type":"([^"]+)"', &match)) {
+            data.access_type := match[1]
+        }
+        
+        if (RegExMatch(jsonStr, '"system":"([^"]+)"', &match)) {
+            data.system := match[1]
+        }
+        
+        if (RegExMatch(jsonStr, '"with_reasons":"([^"]+)"', &match)) {
+            data.with_reasons := match[1]
+        }
+        if (RegExMatch(jsonStr, '"with_reasons_investigation":"([^"]+)"', &match)) {
+            data.with_reasons_investment := match[1]
+        }
+        if (RegExMatch(jsonStr, '"without_reasons":"([^"]+)"', &match)) {
+            data.without_reasons := match[1]
+        }
+        if (RegExMatch(jsonStr, '"without_reasons_investigation":"([^"]+)"', &match)) {
+            data.without_reasons_investment := match[1]
+        }
+        
+        if (RegExMatch(jsonStr, '"was_investigated":"([^"]+)"', &match)) {
+            data.was_investigated := match[1]
+        }
+        if (RegExMatch(jsonStr, '"investigation_required":"([^"]+)"', &match)) {
+            data.investigation_required := match[1]
+        }
+        if (RegExMatch(jsonStr, '"scene_integrity":"([^"]+)"', &match)) {
+            data.scene_integrity := match[1]
+        }
+        if (RegExMatch(jsonStr, '"witness_available":"([^"]+)"', &match)) {
+            data.witness_available := match[1]
+        }
+        
+        if (RegExMatch(jsonStr, '"causes":\[([^\]]*)\]', &causesMatch)) {
+            causesStr := causesMatch[1]
+            
+            data.primary_cause := ""
+            data.secondary_cause := ""
+            data.tertiary_cause := ""
+            data.quaternary_cause := ""
+            data.primary_time := ""
+            data.secondary_time := ""
+            data.tertiary_time := ""
+            data.quaternary_time := ""
+            data.primary_other := ""
+            data.secondary_other := ""
+            data.tertiary_other := ""
+            data.quaternary_other := ""
+            
+            primaryMatch := ""
+            secondaryMatch := ""
+            tertiaryMatch := ""
+            quaternaryMatch := ""
+            
+            if (RegExMatch(causesStr, '\{[^}]*"level":"primary"[^}]*\}', &primaryMatch)) {
+                primaryObj := primaryMatch[0]
+                if (RegExMatch(primaryObj, '"cause":"([^"]*)"', &match)) {
+                    data.primary_cause := match[1]
+                }
+                if (RegExMatch(primaryObj, '"time":"([^"]*)"', &match)) {
+                    data.primary_time := match[1]
+                }
+                if (RegExMatch(primaryObj, '"other_details":"([^"]*)"', &match)) {
+                    data.primary_other := match[1]
+                }
+            }
+            
+            if (RegExMatch(causesStr, '\{[^}]*"level":"secondary"[^}]*\}', &secondaryMatch)) {
+                secondaryObj := secondaryMatch[0]
+                if (RegExMatch(secondaryObj, '"cause":"([^"]*)"', &match)) {
+                    data.secondary_cause := match[1]
+                }
+                if (RegExMatch(secondaryObj, '"time":"([^"]*)"', &match)) {
+                    data.secondary_time := match[1]
+                }
+                if (RegExMatch(secondaryObj, '"other_details":"([^"]*)"', &match)) {
+                    data.secondary_other := match[1]
+                }
+            }
+            
+            if (RegExMatch(causesStr, '\{[^}]*"level":"tertiary"[^}]*\}', &tertiaryMatch)) {
+                tertiaryObj := tertiaryMatch[0]
+                if (RegExMatch(tertiaryObj, '"cause":"([^"]*)"', &match)) {
+                    data.tertiary_cause := match[1]
+                }
+                if (RegExMatch(tertiaryObj, '"time":"([^"]*)"', &match)) {
+                    data.tertiary_time := match[1]
+                }
+                if (RegExMatch(tertiaryObj, '"other_details":"([^"]*)"', &match)) {
+                    data.tertiary_other := match[1]
+                }
+            }
+            
+            if (RegExMatch(causesStr, '\{[^}]*"level":"quaternary"[^}]*\}', &quaternaryMatch)) {
+                quaternaryObj := quaternaryMatch[0]
+                if (RegExMatch(quaternaryObj, '"cause":"([^"]*)"', &match)) {
+                    data.quaternary_cause := match[1]
+                }
+                if (RegExMatch(quaternaryObj, '"time":"([^"]*)"', &match)) {
+                    data.quaternary_time := match[1]
+                }
+                if (RegExMatch(quaternaryObj, '"other_details":"([^"]*)"', &match)) {
+                    data.quaternary_other := match[1]
+                }
+            }
+        }
+        
+        if (RegExMatch(jsonStr, '"investigation_extended":', &match)) {
+            if (RegExMatch(jsonStr, '"investigation_flag":"([^"]+)"', &match)) {
+                data.investigation_flag := match[1]
+            }
+            if (RegExMatch(jsonStr, '"priority_level":"([^"]+)"', &match)) {
+                data.priority_level := match[1]
+            }
+            if (RegExMatch(jsonStr, '"monitoring_required":"([^"]+)"', &match)) {
+                data.monitoring_required := match[1]
+            }
+            if (RegExMatch(jsonStr, '"immediate_notes":"([^"]*)"', &match)) {
+                data.immediate_notes := match[1]
+            }
+            if (RegExMatch(jsonStr, '"environmental_changes":"([^"]*)"', &match)) {
+                data.environmental_changes := match[1]
+            }
+            if (RegExMatch(jsonStr, '"equipment_status":"([^"]*)"', &match)) {
+                data.equipment_status := match[1]
+            }
+            if (RegExMatch(jsonStr, '"physical_evidence":"([^"]*)"', &match)) {
+                data.physical_evidence := match[1]
+            }
+            if (RegExMatch(jsonStr, '"pre_failure_sequence":"([^"]*)"', &match)) {
+                data.pre_failure_sequence := match[1]
+            }
+            if (RegExMatch(jsonStr, '"failure_moment":"([^"]*)"', &match)) {
+                data.failure_moment := match[1]
+            }
+            if (RegExMatch(jsonStr, '"post_failure_actions":"([^"]*)"', &match)) {
+                data.post_failure_actions := match[1]
+            }
+            if (RegExMatch(jsonStr, '"estimated_timeline":"([^"]*)"', &match)) {
+                data.estimated_timeline := match[1]
+            }
+            if (RegExMatch(jsonStr, '"relationship":"([^"]*)"', &match)) {
+                data.relationship := match[1]
+            }
+            if (RegExMatch(jsonStr, '"reliability":"([^"]*)"', &match)) {
+                data.reliability := match[1]
+            }
+            if (RegExMatch(jsonStr, '"statement":"([^"]*)"', &match)) {
+                data.statement := match[1]
+            }
+            if (RegExMatch(jsonStr, '"timeline":"([^"]*)"', &match)) {
+                data.timeline := match[1]
+            }
+            if (RegExMatch(jsonStr, '"markers":"([^"]*)"', &match)) {
+                data.markers := match[1]
+            }
+            if (RegExMatch(jsonStr, '"photo_documentation":"([^"]+)"', &match)) {
+                data.photo_documentation := match[1]
+            }
+            if (RegExMatch(jsonStr, '"audio_evidence":"([^"]+)"', &match)) {
+                data.audio_evidence := match[1]
+            }
+            if (RegExMatch(jsonStr, '"pattern_match":"([^"]*)"', &match)) {
+                data.pattern_match := match[1]
+            }
+            if (RegExMatch(jsonStr, '"recurring_elements":"([^"]*)"', &match)) {
+                data.recurring_elements := match[1]
+            }
+            if (RegExMatch(jsonStr, '"anomaly_detection":"([^"]*)"', &match)) {
+                data.anomaly_detection := match[1]
+            }
+            if (RegExMatch(jsonStr, '"case_correlation":"([^"]*)"', &match)) {
+                data.case_correlation := match[1]
+            }
+            if (RegExMatch(jsonStr, '"immediate_actions":"([^"]*)"', &match)) {
+                data.immediate_actions := match[1]
+            }
+            if (RegExMatch(jsonStr, '"investigation_tasks":"([^"]*)"', &match)) {
+                data.investigation_tasks := match[1]
+            }
+            if (RegExMatch(jsonStr, '"prevention_measures":"([^"]*)"', &match)) {
+                data.prevention_measures := match[1]
+            }
+        }
+        
+        return data
     }
     k8h2n() {
         this.f2d9w := [
@@ -3606,7 +4271,7 @@ class x7f9a2 {
         this.u2b5r.OnEvent("Click", (*) => this.e7m9f())
         this.k6l4n := this.b4e8c.Add("Radio", "x890 y270 w200 h20", "Without Reasons")
         this.k6l4n.OnEvent("Click", (*) => this.e7m9f())
-        this.t3s8w := this.b4e8c.Add("Radio", "x890 y295 w250 h20", "Without Reasons ( inv. req. )")
+        this.t3s8w := this.b4e8c.Add("Radio", "x890 y295 w250 h20", "Without Reasons ( inv. req. )")
         this.t3s8w.OnEvent("Click", (*) => this.e7m9f())
         this.x1v7c := this.b4e8c.Add("GroupBox", "x880 y350 w813 h140 Disabled", "G - INVESTIGATION BASIC")
         this.f9g2j := this.b4e8c.Add("Checkbox", "x890 y370 w200 h20 Disabled", "1. Was It inveﬆigated ?")
@@ -3651,7 +4316,7 @@ class x7f9a2 {
         this.c8k1w := this.b4e8c.Add("Text", "x1300 y525 w200 h20 Hidden", "ʃecondary Other details :")
         this.h6v9r := this.b4e8c.Add("Text", "x1520 y500 w200 h20 Hidden", "Tertiary Other details :")
         this.o2l3q := this.b4e8c.Add("Text", "x1520 y525 w200 h20 Hidden", "Quaternary Other details :")
-        this.u7n4s := this.b4e8c.Add("GroupBox", "x20 y590 w1683 h340 Hidden", "Z - INVESTIGATION EXTENDED ( Fill when G 2 is y )")
+        this.u7n4s := this.b4e8c.Add("GroupBox", "x20 y590 w1683 h340 Hidden", "Z - INVESTIGATION EXTENDED ( Fill when G 2 is y )")
         a9m5t := this.b4e8c.Add("GroupBox", "x30 y610 w820 h50", "Initial aſseßment")
         this.b4e8c.Add("Text", "x40 y630 w100 h20", "Investigation ﬂag :")
         this.e4p8v := this.b4e8c.Add("Checkbox", "x145 y630 w200 h20 Disabled", "Req. Immediate ʃcene‑analysis")
@@ -4322,7 +4987,7 @@ class x7f9a2 {
             }
         }
         x9w2k(data) {
-            html := '<style>#ga tr,td,table{padding:0;margin:0;}table{width:100%;border-collapse:collapse;}</style>'
+            html := '<style>#ga tr,td,table{padding:0;margin:0;font-family: Times New Roman, Times, serif;}table{width:100%;border-collapse:collapse;}</style>'
             html .= '<table id="ga">'
             html .= '<tr><td colspan="2" style="text-align:center;font-weight:bolder;font-size:16pt">DEAD on ARRIVAL REPORT</td></tr>'
             html .= '<tr><td style="text-align:left;">№ : ' . data.doar_form_number . '</td><td style="text-align:right;">Creation : ' . data.creation_date . '</td></tr>'
@@ -4355,8 +5020,8 @@ class x7f9a2 {
             html .= '</td><td style="width:50%;vertical-align:top;height:100%;position:relative;">'
             
             html .= '<table style="border:1px solid black;position:absolute;top:0;height:50%;width:100%;"><tr><td colspan="2" style="font-weight:bolder;">V - TYPE OF DEATH</td></tr>'
-            html .= '<tr><td style="width:50%;">With reasons ' . data.with_reasons . '</td><td style="width:50%;">With reasons ( inveﬆigation req. ) ' . data.with_reasons_invest . ' - G</td></tr>'
-            html .= '<tr><td style="width:50%;">Without reasons ' . data.without_reasons . '</td><td style="width:50%;">Without reasons ( inveﬆigation req. ) ' . data.without_reasons_invest . ' - G</td></tr>'
+            html .= '<tr><td style="width:50%;">With reasons ' . data.with_reasons . '</td><td style="width:50%;">With reasons ( inveﬆigation req. ) ' . data.with_reasons_invest . ' - G</td></tr>'
+            html .= '<tr><td style="width:50%;">Without reasons ' . data.without_reasons . '</td><td style="width:50%;">Without reasons ( inveﬆigation req. ) ' . data.without_reasons_invest . ' - G</td></tr>'
             html .= '</table>'
             
             html .= '<table style="border:1px solid black;position:absolute;top:50%;height:50%;width:100%;"><tr><td colspan="2" style="font-weight:bolder;">G - Investigation</td></tr>'
@@ -4368,8 +5033,8 @@ class x7f9a2 {
             
             html .= '</td></tr>'
             
-            html .= '<tr><td colspan="2"><table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">E - Reason( s ) for death</td></tr>'
-            html .= '<tr><td style="width:50%;"><table><tr><td>' . data.primary_cause . (data.primary_other ? " ( " . data.primary_other . " )" : "") . '</td></tr><tr><td>⮴ secondary to ' . data.secondary_to . (data.secondary_other ? " ( " . data.secondary_other . " )" : "") . '</td></tr><tr><td>⮴ tertiary to ' . data.tertiary_to . (data.tertiary_other ? " ( " . data.tertiary_other . " )" : "") . '</td></tr><tr><td>⮴ quaternary to ' . data.quaternary_to . (data.quaternary_other ? " ( " . data.quaternary_other . " )" : "") . '</td></tr></table></td>'
+            html .= '<tr><td colspan="2"><table style="border:1px solid black;"><tr><td colspan="2" style="font-weight:bolder;">E - Reason( s ) for death</td></tr>'
+            html .= '<tr><td style="width:50%;"><table><tr><td>' . data.primary_cause . (data.primary_other ? " ( " . data.primary_other . " )" : "") . '</td></tr><tr><td>⮴ secondary to ' . data.secondary_to . (data.secondary_other ? " ( " . data.secondary_other . " )" : "") . '</td></tr><tr><td>⮴ tertiary to ' . data.tertiary_to . (data.tertiary_other ? " ( " . data.tertiary_other . " )" : "") . '</td></tr><tr><td>⮴ quaternary to ' . data.quaternary_to . (data.quaternary_other ? " ( " . data.quaternary_other . " )" : "") . '</td></tr></table></td>'
             html .= '<td><table style="width:100%;"><tr><td><table style="width:100%;"><tr style="text-align:center;"><td>' . data.primary_time . '</td></tr><tr style="text-align:center;"><td>' . data.secondary_time . '</td></tr><tr style="text-align:center;"><td>' . data.tertiary_time . '</td></tr><tr style="text-align:center;"><td>' . data.quaternary_time . '</td></tr></table></td></tr></table></td></tr>'
             html .= '</table></td></tr>'
             
@@ -4377,7 +5042,7 @@ class x7f9a2 {
                 html .= '<tr><table style="border:1px solid black;">'
                 
                 html .= '<tr>'
-                html .= '<td colspan="1" style="font-weight:bolder;">Z - Inv. ext. ( when G 2 y )</td>'
+                html .= '<td colspan="1" style="font-weight:bolder;">Z - Inv. ext. ( when G 2 y )</td>'
                 html .= '<td style="width: 25%;">Im. analysis :' . (data.investigation_flag == "y" ? "☑" : "☐") . '</td>'
                 html .= '<td style="width: 25%;">Pr. level : ' . data.priority_level . '</td>'
                 html .= '<td style="width: 25%;">Monitoring ' . (data.monitoring_required == "y" ? "☑" : "☐") . '</td>'
@@ -4386,7 +5051,7 @@ class x7f9a2 {
                 html .= '<tr>'
                 html .= '<td style="vertical-align:top;width:25%">ʃcene documentation :<br>Immediate : ' . data.immediate_scene_notes . '<br>Environmental : ' . data.environmental_changes . '<br>Equipment : ' . data.equipment_status . '<br>Evidence : ' . data.physical_evidence . '</td>'
                 html .= '<td style="vertical-align:top;width:25%">Time‑line Re-conﬆruction :<br>Pre-failure : ' . data.pre_failure_sequence . '<br>Failure moment : ' . data.failure_moment . '<br>Post-failure : ' . data.post_failure_actions . '<br>Time‑line : ' . data.estimated_timeline . '</td>'
-                html .= '<td style="width:25%;vertical-align:top;">Witneſs information :<br><table><tr><td>reliability : ' . data.witness_reliability . '</td><td>relationship : ' . data.witness_relationship . '</td></tr><tr><td colspan="2">ﬆatement : ' . data.witness_statement . (data.witness_timeline ? " , " . data.witness_timeline . " ago" : "") . '</td></tr></table></td>'
+                html .= '<td style="width:25%;vertical-align:top;">Witneſs information :<br><table><tr><td>reliability : ' . data.witness_reliability . '</td><td>relationship : ' . data.witness_relationship . '</td></tr><tr><td colspan="2">ﬆatement : ' . data.witness_statement . (data.witness_timeline ? " , " . data.witness_timeline . " ago" : "") . '</td></tr></table></td>'
                 html .= '<td style="width:25%;vertical-align:top;">Pattern analysis :<br>Match : ' . data.pattern_match . '<br>Re-ocurring : ' . data.recurring_elements . '<br>Anomaly : ' . data.anomaly_detection . '<br>Co‑relation : ' . data.case_correlation . '</td>'
                 html .= '</tr>'
                 
@@ -4399,7 +5064,8 @@ class x7f9a2 {
             }            
             html .= '</table>'
             
-            html .= '<table style="width:100%;"><tr><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;">/s/ ʃunt Vĳelie</td></tr></table>'
+            html .= '<table style="width:100%;"><tr><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;">/s/ ʃunt Vĳelie</td></tr><tr> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"><img src="https://files.catbox.moe/k6q0p2.png" width="206px"></td> </tr></table>'
+            
             
             return html
         }
@@ -4728,8 +5394,6 @@ class x7f9a2 {
 
 }
 global v4n8z := x7f9a2()
-
-
 class SIPPersonManager {
     __New() {
         this.mainGui := Gui("+Resize", "sip")
@@ -4742,6 +5406,7 @@ class SIPPersonManager {
         this.originalData := {}
         this.panelleftid := "" 
         this.isDestroyed := false
+        this.dreamCounter := 1
         
         this.CreateLayout()
         this.LoadDataToLeftPanel()
@@ -4765,21 +5430,16 @@ class SIPPersonManager {
     }
     
     SetDefaultNameStatus() {
-        this.nameStatusField.Text := "[ Can’t be shared duͤ to This information being a Personally‑identiﬁable information ]"
+        this.nameStatusField.Text := "[ Can't be shared duͤ to This information being a Personally‑identiﬁable information ]"
     }
     
-
-    
     OnDesignationChange() {
-        
         if (this.designationField.Text != "" && this.panelleftid != "") {
-            
             newDesignationId := this.GetNextDesignationId(this.designationField.Text)
             this.designationIdField.Text := newDesignationId
         }
     }
 
-    
     CreateLayout() {
         
         this.leftPanel := this.mainGui.Add("GroupBox", "x10 y10 w340 h824", "Records")
@@ -4788,9 +5448,7 @@ class SIPPersonManager {
         this.recordsList.OnEvent("ItemSelect", (*) => this.LoadRecord())
         
         
-        
         this.buttonPanel := this.mainGui.Add("GroupBox", "x360 y10 w1373 h47", "Actions")
-        
         
         this.insaBBtn := this.mainGui.Add("Button", "x1621 y20 w101 h28", "INSB")
         this.insaBBtn.OnEvent("Click", (*) => this.InsertRecordB())
@@ -4811,49 +5469,43 @@ class SIPPersonManager {
         this.saveBtn.OnEvent("Click", (*) => this.SaveRecord())
         this.saveBtn.Enabled := false 
         
-        
         this.CreateFormFields()
-        
-        
         this.CreateEngravePanel()
     }
 
-    
     CreateFormFields() {
-        yPos := 70
         
+        this.coreIdentityGroup := this.mainGui.Add("GroupBox", "x370 y70 w410 h180", "Identity")
+        yPos := 95
         
-        this.coreIdentityGroup := this.mainGui.Add("GroupBox", "x370 y" . yPos . " w410 h180", "Identity")
-        yPos += 25
-        
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "№ :")
-        this.idField := this.mainGui.Add("Edit", "x460 y" . yPos . " w100 h20 ReadOnly")
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "№ :")
+        this.idField := this.mainGui.Add("Edit", "x460 y" . yPos . " w310 h20 ReadOnly")
         yPos += 25
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Designation :")
-        this.designationField := this.mainGui.Add("Edit", "x460 y" . yPos . " w200 h20")
+        this.designationField := this.mainGui.Add("Edit", "x460 y" . yPos . " w310 h20")
         this.designationField.OnEvent("Change", (*) => this.OnDesignationChange())
         yPos += 25
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "L :")
-        this.designationIdField := this.mainGui.Add("Edit", "x460 y" . yPos . " w100 h20 ReadOnly")
+        this.designationIdField := this.mainGui.Add("Edit", "x460 y" . yPos . " w310 h20 ReadOnly")
         yPos += 25
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Gender :")
-        this.genderField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w150 h120", ["Male", "Female", "Androgynous"])
+        this.genderField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w310 h120", ["Male", "Female", "Androgynous"])
         yPos += 25
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "ʃpecies :")
-        this.speciesField := this.mainGui.Add("Edit", "x460 y" . yPos . " w300 h20", "member of the Human race")
+        this.speciesField := this.mainGui.Add("Edit", "x460 y" . yPos . " w310 h20", "member of the Human race")
         yPos += 25
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Name ﬆatus :")
-        this.nameStatusField := this.mainGui.Add("Edit", "x460 y" . yPos . " w270 h20")
-        this.nameStatusAutoBtn := this.mainGui.Add("Button", "x735 y" . yPos . " w20 h20", "A")
+        this.nameStatusField := this.mainGui.Add("Edit", "x460 y" . yPos . " w290 h20")
+        this.nameStatusAutoBtn := this.mainGui.Add("Button", "x755 y" . yPos . " w20 h20", "A")
         this.nameStatusAutoBtn.OnEvent("Click", (*) => this.SetDefaultNameStatus())
-        yPos += 45 
+
         
-        
+        yPos := 255
         this.physicalGroup := this.mainGui.Add("GroupBox", "x370 y" . yPos . " w410 h350", "Physical metrics")
         yPos += 25
         
@@ -4863,13 +5515,13 @@ class SIPPersonManager {
         this.ageEndField := this.mainGui.Add("Edit", "x590 y" . yPos . " w60 h20 Number")
         yPos += 25
         
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Height ( C.‑m. ) :")
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Height ( C.‑m. ) :")
         this.heightStartField := this.mainGui.Add("Edit", "x460 y" . yPos . " w60 h20 Number")
         this.mainGui.Add("Text", "x530 y" . yPos . " w10 h20", "-")
         this.heightEndField := this.mainGui.Add("Edit", "x550 y" . yPos . " w60 h20 Number")
         yPos += 25
         
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Weight ( K.‑gr. ):")
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Weight ( K.‑gr. ):")
         this.weightStartField := this.mainGui.Add("Edit", "x460 y" . yPos . " w60 h20 Number")
         this.mainGui.Add("Text", "x530 y" . yPos . " w10 h20", "-")
         this.weightEndField := this.mainGui.Add("Edit", "x550 y" . yPos . " w60 h20 Number")
@@ -4880,122 +5532,221 @@ class SIPPersonManager {
         yPos += 25
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "B.-m.i. range:")
-        this.bmiField := this.mainGui.Add("Edit", "x460 y" . yPos . " w120 h20 ReadOnly")
+        this.bmiField := this.mainGui.Add("Edit", "x460 y" . yPos . " w310 h20 ReadOnly")
         yPos += 25
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "ʃkin colour :")
-        this.skinColorField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w120 h120", ["", "pale ( orange )", "mid ( orange )", "dark ( orange )"])
+        this.skinColorField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w310 h120", ["", "pale ( orange )", "mid ( orange )", "dark ( orange )"])
         this.skinColorField.Choose(3)
         yPos += 25
         
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "‘air colour :")
-        this.hairColorField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w120 h120")
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "'air colour :")
+        this.hairColorField := this.CreateColorAwareComboBox(460, yPos, 310, "hairColor")
+
         yPos += 25
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Hair length :")
-        this.hairLengthField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w150 h120")
+        this.hairLengthField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w310 h120")
         yPos += 25
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Hair ﬆyle :")
-        this.hairStyleField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w150 h120")
+        this.hairStyleField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w310 h120")
         yPos += 25
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Eye colour :")
-        this.eyeColorField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w120 h120")
+        this.eyeColorField := this.CreateColorAwareComboBox(460, yPos, 310, "eyeColor")
+
         yPos += 25
         
-        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Facial ‘air :")
-        this.facialHairField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w150 h120", ["no/no", "no/mustache", "beard/no", "beard/mustache"])
+        this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Facial 'air :")
+        this.facialHairField := this.mainGui.Add("DropDownList", "x460 y" . yPos . " w310 h120", ["no/no", "no/mustache", "beard/no", "beard/mustache"])
         this.facialHairField.Choose(1)
         yPos += 25
         
         this.mainGui.Add("Text", "x380 y" . yPos . " w80 h20", "Acceßories :")
-        this.accessoriesField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w200 h120")
-        this.accessoriesField.Text := "without glasses"
+        this.accessoriesField := this.mainGui.Add("ComboBox", "x460 y" . yPos . " w310 h120")
+
         
-        
-        yPos2 := 115
+        yPos2 := 70
         this.voiceGroup := this.mainGui.Add("GroupBox", "x810 y" . yPos2 . " w380 h130", "Voice")
         yPos2 += 25
         
         this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "pitch :")
-        this.voicePitchField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        this.voicePitchField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
         yPos2 += 25
         
         this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "quality :")
-        this.voiceQualityField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        this.voiceQualityField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
         yPos2 += 25
         
         this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "tone :")
-        this.voiceToneField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
-        yPos2 += 55
+        this.voiceToneField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
+
         
-        
-        yPos2 := 295 
+        yPos2 := 255
         this.clothingGroup := this.mainGui.Add("GroupBox", "x810 y" . yPos2 . " w380 h155", "Clothing")
         yPos2 += 25
         
         this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Top :")
-        this.topGarmentField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        this.topGarmentField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
         yPos2 += 25
         
         this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Bottom :")
-        this.bottomGarmentField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        this.bottomGarmentField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
         yPos2 += 25
         
         this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Outer:")
-        this.outerLayerField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        this.outerLayerField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
         yPos2 += 25
         
         this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Uniform type :")
-        this.uniformTypeField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w150 h120")
+        this.uniformTypeField := this.mainGui.Add("ComboBox", "x900 y" . yPos2 . " w270 h120")
         this.uniformTypeField.Text := "not uniform"
         yPos2 += 25
         
         this.mainGui.Add("Text", "x820 y" . yPos2 . " w80 h20", "Uniform colour :")
-        this.uniformColorField := this.mainGui.Add("Edit", "x900 y" . yPos2 . " w150 h20")
-        yPos2 += 55
+        this.uniformColorField := this.CreateColorAwareComboBox(900, yPos2, 270, "uniformColor")
+
         
-        
-        yPos3 := 115
+        yPos3 := 70
         this.relationshipGroup := this.mainGui.Add("GroupBox", "x1210 y" . yPos3 . " w380 h155", "Relationship")
         yPos3 += 25
         
         this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Relationship type :")
-        this.relationshipTypeField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w150 h120")
+        this.relationshipTypeField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w245 h120")
         yPos3 += 25
         
         this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Relationship duration :")
-        this.relationshipPeriodField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w150 h120")
+        this.relationshipPeriodField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w245 h120")
         yPos3 += 25
         
         this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Profeßional role :")
-        this.professionalRoleField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w150 h120")
+        this.professionalRoleField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w245 h120")
         yPos3 += 25
         
         this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Family relation :")
-        this.familyRelationField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w150 h120")
+        this.familyRelationField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w245 h120")
         this.familyRelationField.Text := "na"
-        yPos3 += 55
+
         
-        
-        yPos3 := 295 
+        yPos3 := 255
         this.behavioralGroup := this.mainGui.Add("GroupBox", "x1210 y" . yPos3 . " w380 h105", "Behꜹior")
         yPos3 += 25
         
         this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Personality :")
-        this.personalityField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w150 h120")
+        this.personalityField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w245 h120")
         yPos3 += 25
         
         this.mainGui.Add("Text", "x1220 y" . yPos3 . " w100 h20", "Behꜹiors :")
-        this.behavioralNotesField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w150 h120")
+        this.behavioralNotesField := this.mainGui.Add("ComboBox", "x1325 y" . yPos3 . " w245 h120")
+
+        
+        this.CreateDreamArea()
     }
 
-    
+    CreateColorAwareComboBox(x, y, width, field) {
+        ; Create the ComboBox
+        combo := this.mainGui.Add("ComboBox", "x" . x . " y" . y . " w" . (width - 30) . " h120")
+        
+        ; Create color preview rectangle next to it
+        colorPreview := this.mainGui.Add("Progress", "x" . (x + width - 25) . " y" . y . " w20 h20 Background0xFF0000")
+        
+        ; Store references
+        combo.colorPreview := colorPreview
+        
+        ; Add event handler for text changes
+        combo.OnEvent("Change", (*) => this.UpdateColorPreview(combo))
+        
+        return combo
+    }
+    UpdateColorPreview(comboControl) {
+        text := comboControl.Text
+        
+        ; Regex to match: <span style="color: rgb(255,0,0)">HEX #XXXXXX ██████ </span>
+        if (RegExMatch(text, '<span style="color: rgb\((\d+),(\d+),(\d+)\)">HEX #([0-9A-Fa-f]{6}) ██████</span>', &match)) {
+            ; Extract RGB values from the style attribute
+            r := Integer(match[1])
+            g := Integer(match[2]) 
+            b := Integer(match[3])
+            hexColor := match[4]
+            
+            ; Convert to hex color for background
+            bgColor := "0x" . Format("{:02X}{:02X}{:02X}", r, g, b)
+            
+            ; Update color preview
+            try {
+                comboControl.colorPreview.Opt("Background" . bgColor)
+            } catch {
+                ; Handle case where color preview might not exist
+            }
+            
+            ; Store clean text (without formatting) for actual use
+            cleanText := "HEX #" . hexColor
+            comboControl.cleanText := cleanText
+            
+        } else {
+            ; No color formatting found, reset to default
+            try {
+                comboControl.colorPreview.Opt("Background0xF0F0F0")
+            } catch {
+                ; Handle case where color preview might not exist
+            }
+            comboControl.cleanText := text
+        }
+    }
+    CreateDreamArea() {
+        
+        dreamY := 610
+        this.dreamGroup := this.mainGui.Add("GroupBox", "x370 y" . dreamY . " w410 h224", "Dreams")
+        dreamY += 25
+        
+        
+        this.mainGui.Add("Text", "x380 y" . dreamY . " w80 h20", "ʃeen in dream :")
+        this.dreamNumberField := this.mainGui.Add("Edit", "x460 y" . dreamY . " w310 h20 Number")
+        dreamY += 30
+        
+        
+        this.removeDreamBtn := this.mainGui.Add("Button", "x380 y" . dreamY . " w80 h25", "RE‑MOVE")
+        this.removeDreamBtn.OnEvent("Click", (*) => this.RemoveDream())
+        
+        this.addDreamBtn := this.mainGui.Add("Button", "x690 y" . dreamY . " w80 h25", "ADD")
+        this.addDreamBtn.OnEvent("Click", (*) => this.AddDream())
+        dreamY += 35
+        
+        
+        this.dreamsList := this.mainGui.Add("ListView", "x380 y" . dreamY . " w390 h130 -Multi", ["№", "Dream №"])
+        this.dreamsList.ModifyCol(1, 100)
+        this.dreamsList.ModifyCol(2, 280)
+    }
+
+    AddDream() {
+        dreamNumber := this.dreamNumberField.Text
+        if (dreamNumber == "") {
+            MsgBox("Enter a dream number first.")
+            return
+        }
+        
+        
+        this.dreamsList.Add("", this.dreamCounter, dreamNumber)
+        this.dreamCounter++
+        
+        
+        this.dreamNumberField.Text := ""
+    }
+
+    RemoveDream() {
+        selectedRow := this.dreamsList.GetNext()
+        if (!selectedRow) {
+            MsgBox("ʃelect a dream from the liﬆ.")
+            return
+        }
+        
+        this.dreamsList.Delete(selectedRow)
+    }
+
     CreateEngravePanel() {
         
         this.engravePanel := this.mainGui.Add("GroupBox", "x1209 y402 w524 h432", "Appendix")
-        
         
         buttonY := 425
         buttonWidth := 135
@@ -5009,7 +5760,6 @@ class SIPPersonManager {
         
         this.engraveBtn := this.mainGui.Add("Button", "x" . (1219 + 2 * (buttonWidth + spacing)) . " y" . buttonY . " w" . buttonWidth . " h28", "EN-GRꜸE")
         this.engraveBtn.OnEvent("Click", (*) => this.AddToEngrave())
-        
         
         this.engraveList := this.mainGui.Add("ListView", "x1219 y460 w504 h364 -Multi", ["Designation", "L"])
         this.engraveList.ModifyCol(1, 300)
@@ -5027,7 +5777,6 @@ class SIPPersonManager {
         designation := this.recordsList.GetText(selectedRow, 1)
         designationId := this.recordsList.GetText(selectedRow, 2)
         
-        
         loop this.engraveList.GetCount() {
             if (this.engraveList.GetText(A_Index, 1) == designation && 
                 this.engraveList.GetText(A_Index, 2) == designationId) {
@@ -5036,11 +5785,9 @@ class SIPPersonManager {
             }
         }
         
-        
         this.engraveList.Add("", designation, designationId)
     }
 
-    
     DeleteFromEngrave() {
         selectedRow := this.engraveList.GetNext()
         if (!selectedRow) {
@@ -5051,9 +5798,7 @@ class SIPPersonManager {
         this.engraveList.Delete(selectedRow)
     }
 
-    
     GetPersonInfo(designation, designationId) {
-        
         try {
             if (!FileExist(this.dataFile)) {
                 return "information not ꜹailable"
@@ -5072,7 +5817,6 @@ class SIPPersonManager {
                     data := this.ParseJSON(line)
                     if (data.HasOwnProp("designation") && data.HasOwnProp("designationId")) {
                         if (data.designation == designation && data.designationId == designationId) {
-                            
                             info := data.designation . " " . data.designationId . " is a "
                             
                             species := (data.HasOwnProp("species") && data.species != "member of the Human race") ? data.species : "Human"
@@ -5114,7 +5858,6 @@ class SIPPersonManager {
             content := FileRead(this.dataFile, "UTF-8")
             lines := StrSplit(content, "`n")
             
-            
             records := []
             
             for line in lines {
@@ -5137,9 +5880,7 @@ class SIPPersonManager {
                 }
             }
             
-            
             this.SortRecordsCustom(records)
-            
             
             for record in records {
                 this.recordsList.Add("", record.designation, record.designationId)
@@ -5150,16 +5891,13 @@ class SIPPersonManager {
         }
     }
 
-    
     SortRecordsCustom(records) {
-        
         n := records.Length
         
         loop n - 1 {
             swapped := false
             loop n - A_Index {
                 if (this.CompareRecords(records[A_Index], records[A_Index + 1]) > 0) {
-                    
                     temp := records[A_Index]
                     records[A_Index] := records[A_Index + 1]
                     records[A_Index + 1] := temp
@@ -5172,19 +5910,15 @@ class SIPPersonManager {
         }
     }
 
-    
     CompareRecords(record1, record2) {
-        
         desigCompare := StrCompare(record1.designation, record2.designation, false)
         if (desigCompare != 0) {
             return desigCompare
         }
         
-        
         return this.CompareGreekIds(record1.designationId, record2.designationId)
     }
 
-    
     CompareGreekIds(id1, id2) {
         order1 := this.GetGreekOrder(id1)
         order2 := this.GetGreekOrder(id2)
@@ -5192,7 +5926,6 @@ class SIPPersonManager {
         return order1 - order2
     }
 
-    
     GetGreekOrder(greekId) {
         if (greekId == "") {
             return 999999 
@@ -5200,11 +5933,9 @@ class SIPPersonManager {
         
         totalOrder := 0
         
-        
         loop parse, greekId {
             char := A_LoopField
             charOrder := 0
-            
             
             for i, letter in this.greekLetters {
                 if (letter == char) {
@@ -5217,40 +5948,34 @@ class SIPPersonManager {
                 charOrder := 999 
             }
             
-            
             totalOrder := totalOrder * 100 + charOrder
         }
         
         return totalOrder
     }
+
     LoadRecord() {
         selectedRow := this.recordsList.GetNext()
         if (!selectedRow) {
             return
         }
         
-        
         this.ClearFieldsOnly()
-        
-        
         this.saveBtn.Enabled := false
         
         designation := this.recordsList.GetText(selectedRow, 1)
         designationId := this.recordsList.GetText(selectedRow, 2)
         
-        
         this.panelleftid := ""
-        
         
         try {
             if (!FileExist(this.dataFile)) {
-                MsgBox("File exiﬆsn’t.")
+                MsgBox("File exiﬆsn't.")
                 return
             }
             
             content := FileRead(this.dataFile, "UTF-8")
             lines := StrSplit(content, "`n")
-            
             
             for lineIndex, line in lines {
                 line := Trim(line)
@@ -5264,9 +5989,7 @@ class SIPPersonManager {
                         fileDesignation := String(data.designation)
                         fileId := String(data.designationId)
                         
-                        
                         if (fileDesignation == designation && fileId == designationId) {
-                            
                             try {
                                 this.PopulateFields(data)
                                 this.originalData := data.Clone()
@@ -5288,12 +6011,10 @@ class SIPPersonManager {
         }
     }
 
-    
     ParseJSON(jsonStr) {
         obj := {}
         
         try {
-            
             jsonStr := Trim(jsonStr)
             if (SubStr(jsonStr, 1, 1) == "{") {
                 jsonStr := SubStr(jsonStr, 2)
@@ -5302,11 +6023,9 @@ class SIPPersonManager {
                 jsonStr := SubStr(jsonStr, 1, -1)
             }
             
-            
             if (Trim(jsonStr) == "") {
                 return obj
             }
-            
             
             pairs := []
             current := ""
@@ -5344,7 +6063,6 @@ class SIPPersonManager {
                 }
             }
             
-            
             if (Trim(current) != "") {
                 pairs.Push(Trim(current))
             }
@@ -5354,7 +6072,6 @@ class SIPPersonManager {
                 if (pair == "") {
                     continue
                 }
-                
                 
                 colonPos := 0
                 inQuotes := false
@@ -5391,9 +6108,8 @@ class SIPPersonManager {
                 key := Trim(SubStr(pair, 1, colonPos - 1))
                 value := Trim(SubStr(pair, colonPos + 1))
                 
-                
-                key := StrReplace(StrReplace(key, '"', ''), '\"', '"')
-                value := StrReplace(StrReplace(value, '"', ''), '\"', '"')
+                key := this.UnescapeJSONString(key)
+                value := this.UnescapeJSONString(value)
                 
                 if (key != "") {
                     obj.%key% := value
@@ -5401,14 +6117,27 @@ class SIPPersonManager {
             }
         } catch Error as parseErr {
             
-            
         }
         
         return obj
     }
-    
-    ClearFieldsOnly() {
+
+    UnescapeJSONString(str) {
+        if (str == "") {
+            return ""
+        }
         
+        if (SubStr(str, 1, 1) == '"' && SubStr(str, -1) == '"') {
+            str := SubStr(str, 2, -1)
+        }
+        
+        str := StrReplace(str, '\"', '"')
+        str := StrReplace(str, '\\', '\')
+        
+        return str
+    }
+        
+    ClearFieldsOnly() {
         this.idField.Text := ""
         this.designationField.Text := ""
         this.designationIdField.Text := ""
@@ -5424,11 +6153,9 @@ class SIPPersonManager {
         this.weightEndField.Text := ""
         this.bmiField.Text := ""
         
-        
         this.skinColorField.Choose(3) 
         this.facialHairField.Choose(1) 
         this.uniformColorField.Text := ""
-        
         
         comboFields := [this.hairColorField, this.hairLengthField, this.hairStyleField, 
                     this.eyeColorField, this.voicePitchField, this.voiceQualityField, 
@@ -5441,15 +6168,18 @@ class SIPPersonManager {
             field.Text := ""
         }
         
-        this.accessoriesField.Text := "without glasses"
+        this.accessoriesField.Text := ""
         this.uniformTypeField.Text := "not uniform"
         this.familyRelationField.Text := "na"
-    }
-    
-
-    
-    PopulateFields(data) {
         
+        
+        this.dreamsList.Delete()
+        this.dreamNumberField.Text := ""
+        this.dreamCounter := 1
+    }
+
+    ; FIXED PopulateFields method - use SetComboBoxValue for uniformColorField
+    PopulateFields(data) {
         this.idField.Text := data.HasOwnProp("id") ? String(data.id) : ""
         this.designationField.Text := data.HasOwnProp("designation") ? data.designation : ""
         this.designationIdField.Text := data.HasOwnProp("designationId") ? data.designationId : ""
@@ -5469,27 +6199,22 @@ class SIPPersonManager {
         this.speciesField.Text := data.HasOwnProp("species") ? data.species : "member of the Human race"
         this.nameStatusField.Text := data.HasOwnProp("nameStatus") ? data.nameStatus : ""
         
-        
         if (data.HasOwnProp("ageStart")) this.ageStartField.Text := data.ageStart
         if (data.HasOwnProp("ageEnd")) this.ageEndField.Text := data.ageEnd
         
-        
         if (data.HasOwnProp("heightStart")) this.heightStartField.Text := data.heightStart
         if (data.HasOwnProp("heightEnd")) this.heightEndField.Text := data.heightEnd
-        
         
         if (data.HasOwnProp("weightStart")) this.weightStartField.Text := data.weightStart
         if (data.HasOwnProp("weightEnd")) this.weightEndField.Text := data.weightEnd
         
         this.CalculateBMI()
         
-        
         if (data.HasOwnProp("skinColor")) {
             try {
-                skinOptions := ["", "pale ( orange )", "mid ( orange )", "dark ( orange )"]
+                skinOptions := ["", "pale ( orange )", "mid ( orange )", "dark ( orange )"]
                 found := false
                 for i, option in skinOptions {
-                    
                     if (Trim(option) == Trim(data.skinColor)) {
                         this.skinColorField.Choose(i)
                         found := true
@@ -5508,12 +6233,10 @@ class SIPPersonManager {
             }
         }
         
-        
         this.SetComboBoxValue(this.hairColorField, data.HasOwnProp("hairColor") ? data.hairColor : "")
         this.SetComboBoxValue(this.hairLengthField, data.HasOwnProp("hairLength") ? data.hairLength : "")
         this.SetComboBoxValue(this.hairStyleField, data.HasOwnProp("hairStyle") ? data.hairStyle : "")
         this.SetComboBoxValue(this.eyeColorField, data.HasOwnProp("eyeColor") ? data.eyeColor : "")
-        
         
         if (data.HasOwnProp("facialHair")) {
             facialHairOptions := ["no/no", "no/mustache", "beard/no", "beard/mustache"]
@@ -5527,49 +6250,73 @@ class SIPPersonManager {
         
         this.SetComboBoxValue(this.accessoriesField, data.HasOwnProp("accessories") ? data.accessories : "")
         
-        
         this.SetComboBoxValue(this.voicePitchField, data.HasOwnProp("voicePitch") ? data.voicePitch : "")
         this.SetComboBoxValue(this.voiceQualityField, data.HasOwnProp("voiceQuality") ? data.voiceQuality : "")
         this.SetComboBoxValue(this.voiceToneField, data.HasOwnProp("voiceTone") ? data.voiceTone : "")
-        
         
         this.SetComboBoxValue(this.topGarmentField, data.HasOwnProp("topGarment") ? data.topGarment : "")
         this.SetComboBoxValue(this.bottomGarmentField, data.HasOwnProp("bottomGarment") ? data.bottomGarment : "")
         this.SetComboBoxValue(this.outerLayerField, data.HasOwnProp("outerLayer") ? data.outerLayer : "")
         this.SetComboBoxValue(this.uniformTypeField, data.HasOwnProp("uniformType") ? data.uniformType : "")
-        this.uniformColorField.Text := data.HasOwnProp("uniformColor") ? data.uniformColor : ""
         
+        ; FIX: Use SetComboBoxValue for uniformColorField to trigger color preview
+        this.SetComboBoxValue(this.uniformColorField, data.HasOwnProp("uniformColor") ? data.uniformColor : "")
         
         this.SetComboBoxValue(this.relationshipTypeField, data.HasOwnProp("relationshipType") ? data.relationshipType : "")
         this.SetComboBoxValue(this.relationshipPeriodField, data.HasOwnProp("relationshipPeriod") ? data.relationshipPeriod : "")
         this.SetComboBoxValue(this.professionalRoleField, data.HasOwnProp("professionalRole") ? data.professionalRole : "")
         this.SetComboBoxValue(this.familyRelationField, data.HasOwnProp("familyRelation") ? data.familyRelation : "")
         
-        
         this.SetComboBoxValue(this.personalityField, data.HasOwnProp("personality") ? data.personality : "")
         this.SetComboBoxValue(this.behavioralNotesField, data.HasOwnProp("behavioralNotes") ? data.behavioralNotes : "")
+        
+        ; Dreams
+        this.dreamsList.Delete()
+        this.dreamCounter := 1
+        if (data.HasOwnProp("dreams") && data.dreams != "" && data.dreams != "undefined") {
+            dreams := this.StringToArray(data.dreams)
+            for dreamNumber in dreams {
+                if (dreamNumber != "" && dreamNumber != "undefined") {
+                    this.dreamsList.Add("", this.dreamCounter, dreamNumber)
+                    this.dreamCounter++
+                }
+            }
+            
+            this.dreamsList.Opt("-Redraw")
+            this.dreamsList.ModifyCol(2, "SortDesc Integer AutoHdr Left")
+            this.dreamsList.ModifyCol(3, "Left")
+            this.dreamsList.Opt("+Redraw")
+        }
     }
+    
     
     SetComboBoxValue(control, value) {
         if (value == "") {
             control.Text := ""
+            ; Reset color preview for color-aware controls
+            if (control.HasOwnProp("colorPreview")) {
+                try {
+                    control.colorPreview.Opt("Background0xF0F0F0")
+                } catch {
+                }
+            }
             return
         }
         
-        
         control.Text := value
         
+        ; Trigger color preview update for color-aware controls
+        if (control.HasOwnProp("colorPreview")) {
+            this.UpdateColorPreview(control)
+        }
         
         try {
             found := false
-            
-            
             index := 1
             loop {
                 try {
                     itemText := control.GetText(index)
                     if (itemText == "") {
-                        
                         break
                     }
                     if (itemText == value) {
@@ -5577,17 +6324,11 @@ class SIPPersonManager {
                         found := true
                         break
                     }
-                    index++
                 } catch {
-                    
                     break
                 }
             }
-            
-            
-            
         } catch {
-            
             
         }
     }
@@ -5615,13 +6356,10 @@ class SIPPersonManager {
             return
         }
         
-        
         newDesignationId := this.GetNextDesignationId(designation)
         nextRecordId := this.GetNextRecordId()
         
-        
         this.ClearFields()
-        
         
         this.idField.Text := String(nextRecordId)
         this.designationField.Text := designation
@@ -5629,33 +6367,25 @@ class SIPPersonManager {
         this.speciesField.Text := "member of the Human race"
         this.facialHairField.Choose(1) 
         this.skinColorField.Choose(3) 
-        this.accessoriesField.Text := "without glasses"
+        this.accessoriesField.Text := ""
         this.uniformTypeField.Text := "not uniform"
         this.familyRelationField.Text := "na"
         
-        
         this.panelleftid := String(nextRecordId)
-        
-        
         this.saveBtn.Enabled := true
-        
-        
         this.originalData := {}
     }
 
     GetNextDesignationId(designation := "") {
-        
         if (designation == "") {
             designation := this.designationField.Text
         }
-        
         
         if (designation == "") {
             return "α" 
         }
         
         usedIds := []
-        
         
         try {
             if (FileExist(this.dataFile)) {
@@ -5684,26 +6414,16 @@ class SIPPersonManager {
             
         }
         
-        
-        
-        
-        
         nextId := this.GenerateNextGreekId(usedIds)
-        
-        
-        
-        
         return nextId
     }
 
     GenerateNextGreekId(usedIds) {
-        
         for letter in this.greekLetters {
             if (!this.ArrayContains(usedIds, letter)) {
                 return letter
             }
         }
-        
         
         for firstLetter in this.greekLetters {
             for secondLetter in this.greekLetters {
@@ -5713,7 +6433,6 @@ class SIPPersonManager {
                 }
             }
         }
-        
         
         for firstLetter in this.greekLetters {
             for secondLetter in this.greekLetters {
@@ -5729,7 +6448,6 @@ class SIPPersonManager {
         return "α" 
     }
 
-    
     StrJoin(arr, delimiter := ", ") {
         result := ""
         for i, item in arr {
@@ -5748,6 +6466,51 @@ class SIPPersonManager {
             }
         }
         return false
+    }
+    
+    
+    ArrayToString(arr) {
+        if (arr.Length == 0) {
+            return ""
+        }
+        
+        validItems := []
+        for item in arr {
+            itemStr := String(item)
+            if (itemStr != "" && itemStr != "undefined") {
+                validItems.Push(itemStr)
+            }
+        }
+        
+        if (validItems.Length == 0) {
+            return ""
+        }
+        
+        result := ""
+        for i, item in validItems {
+            if (i > 1) {
+                result .= ","
+            }
+            result .= item
+        }
+        return result
+    }
+    
+    
+    StringToArray(str) {
+        arr := []
+        if (str == "" || str == "undefined") {
+            return arr
+        }
+        
+        parts := StrSplit(str, ",")
+        for part in parts {
+            trimmed := Trim(part)
+            if (trimmed != "" && trimmed != "undefined") {
+                arr.Push(trimmed)
+            }
+        }
+        return arr
     }
     
     GetNextRecordId() {
@@ -5787,24 +6550,20 @@ class SIPPersonManager {
     SaveRecord() {
         data := this.CollectFormData()
         
-        
         if (!data.designation || !data.designationId) {
             MsgBox("Designation & L is required.")
             return
         }
-        
         
         if (this.panelleftid != "") {
             data.id := String(this.panelleftid)
             this.idField.Text := data.id
         }
         
-        
         if (this.IdExistsInFile(data.id)) {
             MsgBox("& exiﬆs in the ﬁle.")
             return
         }
-        
         
         if (!data.id || data.id == "") {
             data.id := String(this.GetNextRecordId())
@@ -5813,9 +6572,7 @@ class SIPPersonManager {
         }
         
         try {
-            
             jsonLine := this.ObjectToJSON(data)
-            
             
             dir := RegExReplace(this.dataFile, "[^\\]*$", "")
             if (!DirExist(dir)) {
@@ -5824,17 +6581,12 @@ class SIPPersonManager {
             
             FileAppend(jsonLine . "`n", this.dataFile, "UTF-8")
             
-            
             this.originalData := data.Clone()
-            
-            
             this.saveBtn.Enabled := false
-            
             
             this.LoadDataToLeftPanel()
             this.PopulateDropdowns()
             
-            MsgBox("ʃaved.")
         } catch Error as err {
             MsgBox("Error saving record: " . err.Message)
         }
@@ -5870,9 +6622,9 @@ class SIPPersonManager {
             return false
         }
     }
-    
+
+
     UpdateRecord() {
-        
         if (!this.panelleftid || this.panelleftid == "" || Trim(this.panelleftid) == "") {
             MsgBox("panelleftid is : '" . this.panelleftid . "'")
             return
@@ -5880,10 +6632,8 @@ class SIPPersonManager {
         
         data := this.CollectFormData()
         
-        
         data.id := String(this.panelleftid)
         this.idField.Text := data.id
-        
         
         if (this.originalData.HasOwnProp("designation") && data.designation != this.originalData.designation) {
             result := MsgBox("Designation changed from '" . this.originalData.designation . "' to '" . data.designation . "'. Conﬁrm ?", "Confirmation", "YesNo")
@@ -5893,7 +6643,6 @@ class SIPPersonManager {
         }
         
         try {
-            
             if (!FileExist(this.dataFile)) {
                 MsgBox("Data ﬁle not found.")
                 return
@@ -5903,7 +6652,6 @@ class SIPPersonManager {
             lines := StrSplit(content, "`n")
             updatedLines := []
             found := false
-            
             
             totalRecords := 0
             
@@ -5923,20 +6671,15 @@ class SIPPersonManager {
                         targetId := String(this.panelleftid)
                         
                         if (currentId == targetId) {
-                            
                             updatedLines.Push(this.ObjectToJSON(data))
                             found := true
-                            
-                            
                         } else {
                             updatedLines.Push(line)
                         }
                     } else {
-                        
                         updatedLines.Push(line)
                     }
                 } catch {
-                    
                     updatedLines.Push(line)
                 }
             }
@@ -5946,7 +6689,6 @@ class SIPPersonManager {
                 return
             }
             
-            
             newContent := ""
             for line in updatedLines {
                 newContent .= line . "`n"
@@ -5955,21 +6697,16 @@ class SIPPersonManager {
             FileDelete(this.dataFile)
             FileAppend(newContent, this.dataFile, "UTF-8")
             
-            
             this.originalData := data.Clone()
-            
             
             this.LoadDataToLeftPanel()
             this.PopulateDropdowns()
             
-            MsgBox("Up‑dated.")
         } catch Error as err {
             MsgBox("Error Up‑date : " . err.Message)
         }
     }
-    
     CloseFields() {
-        
         if (this.panelleftid != "") {
             currentData := this.CollectFormData()
             
@@ -5987,21 +6724,21 @@ class SIPPersonManager {
     
     HasDataChanged(currentData) {
         if (!this.panelleftid || this.panelleftid == "") {
-            
             return currentData.designation != "" || currentData.designationId != "" || 
                    currentData.gender != "" || currentData.hairColor != "" || 
-                   currentData.ageStart != "" || currentData.ageEnd != ""
+                   currentData.ageStart != "" || currentData.ageEnd != "" ||
+                   currentData.dreams != ""
         }
         
         if (!this.originalData.HasOwnProp("id")) {
             return true 
         }
         
-        
         fields := ["designation", "designationId", "gender", "species", "ageStart", "ageEnd", 
                    "heightStart", "heightEnd", "weightStart", "weightEnd", "skinColor", 
                    "hairColor", "hairLength", "hairStyle", "eyeColor", "facialHair", 
-                   "voicePitch", "voiceQuality", "voiceTone", "relationshipType", "familyRelation"]
+                   "voicePitch", "voiceQuality", "voiceTone", "relationshipType", "familyRelation",
+                   "dreams"]
         
         for field in fields {
             currentVal := currentData.HasOwnProp(field) ? String(currentData.%field%) : ""
@@ -6018,15 +6755,10 @@ class SIPPersonManager {
     ClearFields() {
         this.panelleftid := ""
         
-        
         this.ClearFieldsOnly()
         
-        
         this.saveBtn.Enabled := false
-        
-        
         this.originalData := {}
-        
         
         try {
             this.recordsList.Modify(0, "-Select") 
@@ -6034,9 +6766,7 @@ class SIPPersonManager {
             
         }
     }
-    
 
-    
     GetPersonData(designation, designationId) {
         try {
             if (!FileExist(this.dataFile)) {
@@ -6070,7 +6800,6 @@ class SIPPersonManager {
         }
     }
 
-    
     InsertRecordA() {
         data := this.CollectFormData()
         
@@ -6079,32 +6808,25 @@ class SIPPersonManager {
             return
         }
         
-        
         detailedInfo := this.GeneratePersonInfo(data)
         
-        
         insertText := "— [ " . data.designation . " " . data.designationId . " ] : " . detailedInfo . " —"
-        
         
         this.mainGui.Hide()
         Sleep(100)
         SendText(insertText)
-        this.mainGui.Destroy()
-        this.isDestroyed := true
     }
+
     GeneratePersonInfo(data) {
         if (!data.designation || !data.designationId) {
             return "In‑complete data"
         }
         
-        
         infoText := data.designation . " " . data.designationId . " is a "
-        
         
         gender := data.gender ? data.gender : "不明"
         species := data.species
         infoText .= gender . " " . species
-        
         
         pronoun := ""
         if (StrLower(gender) == "male") {
@@ -6114,7 +6836,6 @@ class SIPPersonManager {
         } else {
             pronoun := "Their"
         }
-        
         
         if (data.ageStart && data.ageEnd) {
             infoText .= " with an age around " . data.ageStart . "‒" . data.ageEnd
@@ -6138,7 +6859,7 @@ class SIPPersonManager {
             infoText .= "has 不明 hair"
         }
         
-        infoText .= " , "
+        infoText .= " , "
         
         if (data.eyeColor && data.eyeColor != "") {
             infoText .= data.eyeColor . " Iris‑color"
@@ -6146,10 +6867,10 @@ class SIPPersonManager {
             infoText .= "不明 Iris‑color"
         }
         
-        infoText .= " , "
+        infoText .= " , "
         
         if (data.accessories && data.accessories != "" && data.accessories != "without glaſses") {
-            infoText .= "has " . data.accessories . " , "
+            infoText .= "has " . data.accessories . " , "
         }
         
         infoText .= pronoun . " height is "
@@ -6161,14 +6882,14 @@ class SIPPersonManager {
             infoText .= "不明 C.‑m."
         }
         
-        infoText .= " , " . pronoun . " Skin colour is "
+        infoText .= " , " . pronoun . " Skin colour is "
         if (data.skinColor && data.skinColor != "") {
             infoText .= data.skinColor
         } else {
             infoText .= "不明"
         }
         
-        infoText .= " , weight "
+        infoText .= " , weight "
         if (data.weightStart && data.weightEnd) {
             infoText .= data.weightStart . "‒" . data.weightEnd . " K.‑gr."
         } else if (data.weightStart) {
@@ -6177,19 +6898,19 @@ class SIPPersonManager {
             infoText .= "不明 K.‑gr."
         }
         
-        infoText .= " , name : "
+        infoText .= " , name : "
         if (data.nameStatus && data.nameStatus != "") {
             infoText .= data.nameStatus
         } else {
             infoText .= "不明"
         }
         
-        infoText .= " , & "
+        infoText .= " , & "
         if (data.facialHair && data.facialHair != "") {
             infoText .= StrReplace(data.facialHair, "/", "⧸")
         }
         
-        infoText .= " , " . pronoun . " relationship with Me : "
+        infoText .= " , " . pronoun . " relationship with Me : "
         if (data.relationshipType && data.relationshipType != "") {
             relationship := data.relationshipType
             
@@ -6197,7 +6918,6 @@ class SIPPersonManager {
                 relationship .= " of " . data.relationshipPeriod
             }
             infoText .= relationship
-            
             
             if (data.familyRelation && data.familyRelation != "" && data.familyRelation != "na") {
                 infoText .= " with " . pronoun . " Family ﬆatus being " . data.familyRelation
@@ -6207,15 +6927,15 @@ class SIPPersonManager {
         }
         
         if (data.professionalRole && data.professionalRole != "") {
-            infoText .= " , Professional role : " . data.professionalRole
+            infoText .= " , Professional role : " . data.professionalRole
         }
         
         if (data.personality && data.personality != "") {
-            infoText .= " , personality : " . data.personality
+            infoText .= " , personality : " . data.personality
         }
         
         if (data.behavioralNotes && data.behavioralNotes != "") {
-            infoText .= " , behꜹiors : " . data.behavioralNotes
+            infoText .= " , behꜹiors : " . data.behavioralNotes
         }
         
         clothing := []
@@ -6224,7 +6944,7 @@ class SIPPersonManager {
         if (data.outerLayer && data.outerLayer != "") clothing.Push(data.outerLayer)
         
         if (clothing.Length > 0) {
-            infoText .= " , clothing : "
+            infoText .= " , clothing : "
             for i, item in clothing {
                 if (i > 1) infoText .= ", "
                 infoText .= item
@@ -6232,15 +6952,15 @@ class SIPPersonManager {
         }
         
         if (data.uniformType && data.uniformType != "" && data.uniformType != "not uniform") {
-            infoText .= " , Uniform type : " . data.uniformType
+            infoText .= " , Uniform type : " . data.uniformType
             if (data.uniformColor && data.uniformColor != "") {
-                infoText .= " , Uniform colour : " . data.uniformColor
+                infoText .= " , Uniform colour : " . data.uniformColor
             }
         } else if (data.uniformType && data.uniformType != "") {
-            infoText .= " , Uniform type : " . data.uniformType
+            infoText .= " , Uniform type : " . data.uniformType
         }
         if ((data.voicePitch && data.voicePitch != "") || (data.voiceQuality && data.voiceQuality != "") || (data.voiceTone && data.voiceTone != "")) {
-            infoText .= " , & " . pronoun . " voice is : "
+            infoText .= " , & " . pronoun . " voice is : "
             
             firstVoice := true
             if (data.voicePitch && data.voicePitch != "") {
@@ -6248,51 +6968,75 @@ class SIPPersonManager {
                 firstVoice := false
             }
             if (data.voiceQuality && data.voiceQuality != "") {
-                if (!firstVoice) infoText .= " , "
+                if (!firstVoice) infoText .= " , "
                 infoText .= data.voiceQuality
                 firstVoice := false
             }
             if (data.voiceTone && data.voiceTone != "") {
-                if (!firstVoice) infoText .= " , "
+                if (!firstVoice) infoText .= " , "
                 infoText .= data.voiceTone
             }
         }
+        
+        if (data.HasOwnProp("dreams") && data.dreams != "" && data.dreams != "undefined") {
+            dreams := this.StringToArray(data.dreams)
+            validDreams := []
+            
+            
+            for dreamNumber in dreams {
+                if (dreamNumber != "" && dreamNumber != "undefined") {
+                    validDreams.Push(dreamNumber)
+                }
+            }
+            
+            if (validDreams.Length > 0) {
+                infoText .= " , appears in dreams : "
+                for i, dreamNumber in validDreams {
+                    infoText .= "№ " . dreamNumber
+                    if (i < validDreams.Length) { 
+                        infoText .= " , "
+                    }
+                }
+            }
+        }
+        
         return infoText
     }
+
     InsertEngrave() {
         if (this.engraveList.GetCount() == 0) {
             MsgBox("Engrave list is empty!")
             return
         }
         
-        insertText := "[CENTER][FONT=times new roman]`n"
-        insertText .= "++--++`n"
-        insertText .= "APPENDIX — PEOPLE :[/CENTER]"
-        
+        insertText := '<div style="text-align: justify;"><center>APPENDIX :</center>'
         
         loop this.engraveList.GetCount() {
             designation := this.engraveList.GetText(A_Index, 1)
             designationId := this.engraveList.GetText(A_Index, 2)
             
-            
             personData := this.GetPersonData(designation, designationId)
             
             if (personData.HasOwnProp("designation")) {
-                
                 detailedInfo := this.GeneratePersonInfo(personData)
-                insertText .= "[ " . designation . " " . designationId . " ] : " . detailedInfo . ".`n"
+                insertText .= "<p>[ " . designation . " " . designationId . " ] : " . detailedInfo . ".</p>"
             } else {
-                
-                insertText .= "[ " . designation . " " . designationId . " ] : information not available.`n"
+                insertText .= "<p>[ " . designation . " " . designationId . " ] : information not ꜹailable.`</p>"
             }
         }
         
-        insertText .= "[CENTER]++--++[/FONT][/CENTER]"
+        insertText .= "<center>++--++</center>"
+        currentDate := FormatTime(, "yyyyMMdd")
+        insertText .= '<table style="width:100%;"><tr><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;"></td><td style="text-align:center;width:25%;">/s/ ʃunt Vĳelie<br>Data correct as of : ' . currentDate . '</td></tr><tr> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"></td> <td style="text-align:center;width:25%;"><img src="https://files.catbox.moe/k6q0p2.png" width="206px"></td> </tr></table></div>'
+
         
         this.mainGui.Hide()
         Sleep(100)
         SendText(insertText)
+        this.mainGui.Destroy()
+        this.isDestroyed := true
     }
+
     InsertRecordB() {
         data := this.CollectFormData()
         
@@ -6301,7 +7045,7 @@ class SIPPersonManager {
             return
         }
         
-        insertText := " [ " . data.designation . " " . data.designationId . " ] "
+        insertText := "[ " . data.designation . " " . data.designationId . " ]"
         
         this.mainGui.Hide()
         Sleep(100)
@@ -6327,10 +7071,10 @@ class SIPPersonManager {
         data.bmiRange := this.bmiField.Text
         
         data.skinColor := this.skinColorField.Text
-        data.hairColor := this.hairColorField.Text
+        data.hairColor := this.hairColorField.Text  ; RAW TEXT - KEEPS FORMATTING
         data.hairLength := this.hairLengthField.Text
         data.hairStyle := this.hairStyleField.Text
-        data.eyeColor := this.eyeColorField.Text
+        data.eyeColor := this.eyeColorField.Text  ; RAW TEXT - KEEPS FORMATTING
         data.facialHair := this.facialHairField.Text
         data.accessories := this.accessoriesField.Text
         
@@ -6342,7 +7086,7 @@ class SIPPersonManager {
         data.bottomGarment := this.bottomGarmentField.Text
         data.outerLayer := this.outerLayerField.Text
         data.uniformType := this.uniformTypeField.Text
-        data.uniformColor := this.uniformColorField.Text
+        data.uniformColor := this.uniformColorField.Text  ; RAW TEXT - KEEPS FORMATTING
         
         data.relationshipType := this.relationshipTypeField.Text
         data.relationshipPeriod := this.relationshipPeriodField.Text
@@ -6352,11 +7096,21 @@ class SIPPersonManager {
         data.personality := this.personalityField.Text
         data.behavioralNotes := this.behavioralNotesField.Text
         
+        ; Dreams
+        dreams := []
+        loop this.dreamsList.GetCount() {
+            dreamNumber := this.dreamsList.GetText(A_Index, 2)
+            if (dreamNumber != "") {
+                dreams.Push(dreamNumber)
+            }
+        }
+        data.dreams := this.ArrayToString(dreams)
+        
         return data
     }
+
     
     PopulateDropdowns() {
-        
         distinctValues := {
             hairColor: [],
             hairLength: [],
@@ -6406,7 +7160,6 @@ class SIPPersonManager {
             
         }
         
-        
         this.UpdateComboBox(this.hairColorField, distinctValues.hairColor)
         this.UpdateComboBox(this.hairLengthField, distinctValues.hairLength)
         this.UpdateComboBox(this.hairStyleField, distinctValues.hairStyle)
@@ -6439,6 +7192,7 @@ class SIPPersonManager {
             control.Text := currentText
         }
     }
+
     ObjectToJSON(obj) {
         jsonStr := "{"
         first := true
@@ -6449,7 +7203,6 @@ class SIPPersonManager {
             }
             first := false
             
-            
             value := StrReplace(String(value), '"', '\"')
             jsonStr .= '"' . key . '":"' . value . '"'
         }
@@ -6459,23 +7212,1320 @@ class SIPPersonManager {
     }
     
     ConfirmClose() {
-        
         if (this.panelleftid != "") {
             currentData := this.CollectFormData()
             
             if (this.HasDataChanged(currentData)) {
-                result := MsgBox("Close ? Un‑sꜹed hanges will be loﬆ.", "Confirm Close", "YesNo")
+                result := MsgBox("Close ? Un‑sꜹed hanges will be loﬆ.", "Confirm Close", "YesNo")
                 if (result == "No") {
                     return
                 }
             }
         }
         
-        
         this.mainGui.Destroy()
         this.isDestroyed := true
     }
 }
-
-
 global SIPManager := SIPPersonManager()
+
+class DreamManager {
+    __New() {
+        this.mainGui := Gui("+Resize", "Dream Manager")
+        this.mainGui.OnEvent("Close", (*) => this.ConfirmClose())
+        this.mainGui.Move(, , 1765, 956)
+        
+        this.doarFile := "E:\wwwwww\dosyâlar\dreams\doar.txt"
+        this.dataFile := "E:\wwwwww\dosyâlar\dreams\dreams.txt"
+        this.currentRecord := {}
+        this.originalData := {}
+        this.dreamId := ""
+        this.isDestroyed := false
+        this.mentalLockCounter := 1
+        this.hasUnsavedChanges := false
+        
+        this.CreateLayout()
+        this.LoadDataToLeftPanel()
+        
+        Hotstring(":O?*:\dream", (*) => this.ShowApp())
+    }
+    
+    ShowApp() {
+        if (HasProp(this, "isDestroyed") && this.isDestroyed) {
+            this.__New()
+            this.isDestroyed := false
+        }
+        
+        try {
+            this.mainGui.Show()
+        } catch Error as err {
+            this.__New()
+            this.mainGui.Show()
+        }
+    }
+    
+    CreateLayout() {
+        this.leftPanel := this.mainGui.Add("GroupBox", "x10 y10 w208 h932", "")
+        this.dreamsList := this.mainGui.Add("ListView", "x20 y30 w188 h850 -Multi", ["№", "D", "W"])
+        this.dreamsList.ModifyCol(1, 60)
+        this.dreamsList.ModifyCol(2, 60)
+        this.dreamsList.ModifyCol(3, 60)
+        this.dreamsList.OnEvent("ItemSelect", (*) => this.OnItemSelect())
+        this.timelineBtn := this.mainGui.Add("Button", "x20 y890 w188 h42", "VIEW TIME‑LINE")
+        this.timelineBtn.OnEvent("Click", (*) => this.ViewTimeline())
+
+
+        this.buttonPanel := this.mainGui.Add("GroupBox", "x228 y10 w1535 h57", "")
+
+        this.encoderBtn := this.mainGui.Add("Button", "x238 y25 w141 h28", "EN‑CODER")
+        this.encoderBtn.OnEvent("Click", (*) => this.OpenEncoder())
+
+        this.somniumPeopleBtn := this.mainGui.Add("Button", "x389 y25 w141 h28", "ʃomnium people")
+        this.somniumPeopleBtn.OnEvent("Click", (*) => this.OpenSomniumPeople())
+
+        this.somniumHexBtn := this.mainGui.Add("Button", "x540 y25 w141 h28", "ʃomnium HEX")
+        this.somniumHexBtn.OnEvent("Click", (*) => this.OpenSomniumHex())
+
+        this.viewBtn := this.mainGui.Add("Button", "x1612 y25 w141 h28", "VIEW")
+        this.viewBtn.OnEvent("Click", (*) => this.ViewDream())
+
+        this.saveBtn := this.mainGui.Add("Button", "x1461 y25 w141 h28", "SꜸE")
+        this.saveBtn.OnEvent("Click", (*) => this.SaveRecord())
+        this.saveBtn.Enabled := false
+
+        this.newBtn := this.mainGui.Add("Button", "x1310 y25 w141 h28", "NEW")
+        this.newBtn.OnEvent("Click", (*) => this.CreateNewRecord())
+
+        this.updateBtn := this.mainGui.Add("Button", "x1159 y25 w141 h28", "UP‑DATE")
+        this.updateBtn.OnEvent("Click", (*) => this.UpdateRecord())
+        this.infoPanel := this.mainGui.Add("GroupBox", "x228 y77 w1523 h32", "")
+        
+        this.mainGui.Add("Text", "x238 y85 w80 h20 Center", "Dream № :")
+        this.dreamNumberField := this.mainGui.Add("Edit", "x318 y85 w200 h20 ReadOnly")
+        
+        this.mainGui.Add("Text", "x1321 y85 w80 h20 Center", "Wake time :")
+        this.wakeTimeField := this.mainGui.Add("Edit", "x1401 y85 w115 h20")
+        this.wakeTimeField.OnEvent("Change", (*) => this.OnFieldChange())
+        
+        this.mainGui.Add("Text", "x1541 y85 w100 h20 Center", "Eﬆ. Onset time :")
+        this.onsetTimeField := this.mainGui.Add("Edit", "x1641 y85 w115 h20")
+        this.onsetTimeField.OnEvent("Change", (*) => this.OnFieldChange())
+        
+        this.CreateMainArea()
+        this.CreateRightPanel()
+    }
+    CreateMainArea() {
+        this.ocrArea := this.mainGui.Add("GroupBox", "x228 y119 w1183 h109", "")
+        this.ocrTextArea := this.mainGui.Add("Edit", "x238 y139 w1163 h79 VScroll +Multi +Center")
+        this.ocrTextArea.SetFont("s12", "OCR-B")
+        this.ocrTextArea.OnEvent("Change", (*) => this.OnFieldChange())
+        
+        this.dreamContentArea := this.mainGui.Add("GroupBox", "x228 y237 w1183 h529", "")
+        this.dreamTextArea := this.mainGui.Add("Edit", "x238 y258 w1163 h499 VScroll +Multi +Center")
+        this.dreamTextArea.SetFont("s12", "Times New Roman")
+        this.dreamTextArea.OnEvent("Change", (*) => this.OnFieldChange())
+        
+        OnMessage(0x0100, this.OnWM_KEYDOWN.Bind(this))
+        
+        this.symbolArea := this.mainGui.Add("GroupBox", "x228 y774 w1183 h168", "")
+        yPos := 786
+        symbols := ["†", "‡", "※", "∗", "⁑", "⁂"]
+        this.symbolFields := []
+        
+        for i, symbol in symbols {
+            this.mainGui.Add("Text", "x238 y" . yPos . " w20 h20", symbol)
+            field := this.mainGui.Add("Edit", "x268 y" . yPos . " w1133 h20")
+            field.OnEvent("Change", (*) => this.OnFieldChange())
+            this.symbolFields.Push(field)
+            yPos += 25
+        }
+    }
+
+
+    OnWM_KEYDOWN(wParam, lParam, msg, hwnd) {
+        if (this.isDestroyed || !HasProp(this, "dreamTextArea"))
+            return
+            
+        try {
+            if (hwnd == this.dreamTextArea.Hwnd && wParam == 8 && GetKeyState("Ctrl", "P")) {
+                Send("{Shift down}{Ctrl down}{Left}{Ctrl up}{Shift up}{Backspace}")
+                return 0
+            }
+        } catch {
+            return
+        }
+    }
+
+    CreateRightPanel() {
+        this.statePanel := this.mainGui.Add("GroupBox", "x1421 y119 w342 h110", "")
+        
+        this.soberRadio := this.mainGui.Add("Radio", "x1431 y139 w100 h20 Checked", "Sober")
+        this.ethanolRadio := this.mainGui.Add("Radio", "x1431 y159 w150 h20", "Ethanol Intoxication")
+        this.otherRadio := this.mainGui.Add("Radio", "x1431 y179 w150 h20", "Intoxication ( Other )")
+        this.otherRadio.OnEvent("Click", (*) => this.ToggleOtherField())
+        this.soberRadio.OnEvent("Click", (*) => this.ToggleOtherField())
+        this.ethanolRadio.OnEvent("Click", (*) => this.ToggleOtherField())
+        
+        this.otherField := this.mainGui.Add("Edit", "x1431 y199 w322 h20")
+        this.otherField.Enabled := false
+        this.otherField.OnEvent("Change", (*) => this.OnFieldChange())
+        
+        this.mentalLockPanel := this.mainGui.Add("GroupBox", "x1421 y239 w342 h379", "")
+        
+        this.mentalLockInput := this.mainGui.Add("Edit", "x1431 y259 w322 h20")
+        
+        this.removeBtn := this.mainGui.Add("Button", "x1431 y289 w120 h25", "REMOVE")
+        this.removeBtn.OnEvent("Click", (*) => this.RemoveMentalLock())
+        this.removeBtn.Enabled := false
+        
+        this.addBtn := this.mainGui.Add("Button", "x1633 y289 w120 h25", "ADD")
+        this.addBtn.OnEvent("Click", (*) => this.AddMentalLock())
+        
+        this.mentalLockList := this.mainGui.Add("ListView", "x1431 y324 w322 h284 -Multi", ["№", "Mental‑lock"])
+        this.mentalLockList.ModifyCol(1, 50)
+        this.mentalLockList.ModifyCol(2, 260)
+        this.mentalLockList.OnEvent("ItemSelect", (*) => this.OnMentalLockSelect())
+        
+        this.evaluationCheck := this.mainGui.Add("CheckBox", "x1421 y628 w20 h20")
+        this.evaluationCheck.OnEvent("Click", (*) => this.ToggleEvaluation())
+        this.mainGui.Add("Text", "x1446 y628 w100 h20 Center", "EVALUATION")
+        
+        this.evaluationField := this.mainGui.Add("Edit", "x1421 y658 w342 h283 VScroll +Multi")
+        this.evaluationField.Enabled := false
+        this.evaluationField.OnEvent("Change", (*) => this.OnFieldChange())
+    }
+    
+    OnFieldChange() {
+        if (this.dreamId != "" && !this.hasUnsavedChanges) {
+            this.hasUnsavedChanges := false
+            this.newBtn.Enabled := true
+        }
+    }
+    
+    OnItemSelect() {
+        if (this.hasUnsavedChanges) {
+            result := MsgBox("Un‐sꜹed data.", "", "YesNo")
+            if (result == "No") {
+                return
+            }
+            this.hasUnsavedChanges := false
+            this.newBtn.Enabled := true
+        }
+        this.LoadRecord()
+    }
+    
+    ToggleOtherField() {
+        this.otherField.Enabled := this.otherRadio.Value
+        if (!this.otherRadio.Value) {
+            this.otherField.Text := ""
+        }
+        this.OnFieldChange()
+    }
+    
+    ToggleEvaluation() {
+        this.evaluationField.Enabled := this.evaluationCheck.Value
+        if (!this.evaluationCheck.Value) {
+            this.evaluationField.Text := ""
+        }
+        this.OnFieldChange()
+    }
+    
+    OnMentalLockSelect() {
+        this.removeBtn.Enabled := this.mentalLockList.GetNext() > 0
+    }
+    
+    AddMentalLock() {
+        lockText := this.mentalLockInput.Text
+        if (lockText == "") {
+            MsgBox("Enter mental‑lock text first.")
+            return
+        }
+        
+        this.mentalLockList.Add("", this.mentalLockCounter, lockText)
+        this.mentalLockCounter++
+        this.mentalLockInput.Text := ""
+        this.OnFieldChange()
+    }
+    
+    RemoveMentalLock() {
+        selectedRow := this.mentalLockList.GetNext()
+        if (!selectedRow) {
+            MsgBox("Select a mental‑lock from the list.")
+            return
+        }
+        
+        this.mentalLockList.Delete(selectedRow)
+        this.removeBtn.Enabled := false
+        this.OnFieldChange()
+    }
+    ViewTimeline() {
+        try {
+            scriptPath := "E:\wwwwww\dosyâlar\dreams\a.py"
+            
+            if (!FileExist(scriptPath)) {
+                MsgBox("a.py not found at: " . scriptPath)
+                return
+            }
+            
+            pythonPaths := ["python", "python3", "py", "c:\Users\aretha\AppData\Local\Programs\Python\Python312\python.exe"]
+            
+            success := false
+            for pythonPath in pythonPaths {
+                try {
+                    Run(pythonPath . " `"" . scriptPath . "`"", "E:\wwwwww\dosyâlar\dreams", "")
+                    success := true
+                    break
+                } catch {
+                    continue
+                }
+            }
+            
+            if (!success) {
+                MsgBox("Could not run Python script")
+            }
+            
+        } catch Error as err {
+            MsgBox("Error running timeline: " . err.Message)
+        }
+    }
+    ViewDream() {
+        selectedRow := this.dreamsList.GetNext()
+        if (!selectedRow) {
+            MsgBox("No dream selected.")
+            return
+        }
+        
+        dreamNumber := this.dreamsList.GetText(selectedRow, 1)
+        
+        try {
+            if (!FileExist(this.dataFile)) {
+                MsgBox("File doesn't exist.")
+                return
+            }
+            
+            content := FileRead(this.dataFile, "UTF-8")
+            lines := StrSplit(content, "`n")
+            
+            for line in lines {
+                line := Trim(line)
+                if (line == "") {
+                    continue
+                }
+                
+                try {
+                    data := this.ParseJSON(line)
+                    if (data.HasOwnProp("dreamNumber") && String(data.dreamNumber) == dreamNumber) {
+                        this.GenerateHTMLView(data)
+                        return
+                    }
+                } catch {
+                    continue
+                }
+            }
+            
+            MsgBox("Dream record not found.")
+            
+        } catch Error as err {
+            MsgBox("Error: " . err.Message)
+        }
+    }
+
+    GenerateHTMLView(data) {
+        dreamDate := data.HasOwnProp("date") ? data.date : ""
+        
+        wakeTime := data.HasOwnProp("wakeTime") ? data.wakeTime : "X"
+        onsetTime := data.HasOwnProp("onsetTime") ? data.onsetTime : "X"
+        dreamNum := data.HasOwnProp("dreamNumber") ? data.dreamNumber : "X"
+        
+
+        ocrRows := ["", "", ""]
+        if (data.HasOwnProp("ocrText")) {
+            ocrText := this.HTMLToPlainText(data.ocrText)
+            ocrText := StrReplace(ocrText, "`r`n", "`n")
+            ocrText := StrReplace(ocrText, "`r", "`n")
+            ocrText := Trim(ocrText)
+            
+            ocrLines := StrSplit(ocrText, "`n")
+            
+            validLines := []
+            for line in ocrLines {
+                trimmedLine := Trim(line)
+                if (trimmedLine != "") {
+                    validLines.Push(trimmedLine)
+                }
+            }
+            
+            loop 3 {
+                if (A_Index <= validLines.Length) {
+                    ocrRows[A_Index] := validLines[A_Index]
+                }
+            }
+        }
+        
+        dreamContent := ""
+        if (data.HasOwnProp("dreamText")) {
+            dreamContent := data.dreamText
+            dreamContent := StrReplace(dreamContent, "`r`n", "<br>")
+            dreamContent := StrReplace(dreamContent, "`n", "<br>")
+        }
+        
+        mentalStateX := ["", "", ""]
+        if (data.HasOwnProp("mentalState")) {
+            switch data.mentalState {
+                case "Sober":
+                    mentalStateX[1] := "X"
+                case "Ethanol Intoxication":
+                    mentalStateX[2] := "X"
+                case "Other":
+                    mentalStateX[3] := "X"
+            }
+        }
+        
+        mentalLocksHTML := ""
+        if (data.HasOwnProp("mentalLocks") && data.mentalLocks != "") {
+            locks := this.StringToArray(data.mentalLocks)
+            if (locks.Length > 0) {
+                mentalLocksHTML := "<p>Mental-locks recorded :</p>`n"
+                for i, lockText in locks {
+                    if (i == locks.Length) {
+                        mentalLocksHTML .= "<p>ʃomnium " . i . " : " . lockText . ".</p>`n"
+                    } else {
+                        mentalLocksHTML .= "<p>ʃomnium " . i . " : " . lockText . ",</p>`n"
+                    }
+                }
+            } else {
+                mentalLocksHTML := "<p>Mental-locks recorded : Moﬆ Un‑known</p>`n"
+            }
+        } else {
+            mentalLocksHTML := "<p>Mental-locks recorded : Moﬆ Un‑known</p>`n"
+        }
+        
+        symbolFields := []
+        symbolData := ["symbol1", "symbol2", "symbol3", "symbol4", "symbol5", "symbol6"]
+        symbols := ["†", "‡", "※", "∗", "⁑", "⁂"]
+        hasAnySymbol := false
+        
+        for i, symbolKey in symbolData {
+            fieldText := ""
+            if (data.HasOwnProp(symbolKey) && data.%symbolKey% != "") {
+                fieldText := data.%symbolKey%
+                hasAnySymbol := true
+            }
+            symbolFields.Push(fieldText)
+        }
+        
+        symbolHTML := ""
+        if (hasAnySymbol) {
+            symbolHTML := "<hr>`n"
+            for i, fieldText in symbolFields {
+                if (fieldText != "") {
+                    symbolHTML .= "<p>" . symbols[i] . fieldText . "</p>`n"
+                }
+            }
+        }
+        
+        evaluationHTML := ""
+        if (data.HasOwnProp("hasEvaluation") && data.hasEvaluation == "true") {
+            evaluationField := data.HasOwnProp("evaluation") ? data.evaluation : ""
+            evaluationHTML := "<center>EVALUATION</center>`n"
+            evaluationHTML .= "<p style='text-align: justify;'>It appears that " . evaluationField . "</p>`n"
+        }
+        
+        html := "<!DOCTYPE html>`n"
+        html .= "<html lang=`"en`">`n"
+        html .= "    <head>`n"
+        html .= "        <meta charset=`"UTF-8`">`n"
+        html .= "        <meta name=`"viewport`" content=`"width=device-width, initial-scale=1.0`">`n"
+        html .= "        <title>dream</title>`n"
+        html .= "        <style>`n"
+        html .= "        *{`n"
+        html .= "            margin: 0;`n"
+        html .= "            padding: 0;`n"
+        html .= "        }`n"
+        html .= "        @font-face {`n"
+        html .= "            font-family: OCR‑B;`n"
+        html .= "            src: url(E:\\wwwwww\\dosyâlar\\dreams\\OCR-B-regular-web.ttf);`n"
+        html .= "        }`n"
+        html .= "        @font-face {`n"
+        html .= "            font-family: nullpunktsenergiefont;`n"
+        html .= "            src: url(E:\\wwwwww\\dosyâlar\\dreams\nullpunktsenergiefont-Regular.ttf);`n"
+        html .= "        }`n"
+        html .= "        @font-face {`n"
+        html .= "            font-family: Junicode;`n"
+        html .= "            src: url(E:\\wwwwww\\dosyâlar\\dreams\\JunicodeVF-Roman.woff2);`n"
+        html .= "        }`n"
+        html .= "        .katex,`n"
+        html .= "        .katex * {`n"
+        html .= "            -webkit-font-smoothing: antialiased;`n"
+        html .= "            -moz-osx-font-smoothing: grayscale;`n"
+        html .= "            text-rendering: optimizeLegibility;`n"
+        html .= "            font-smooth: always;`n"
+        html .= "            letter-spacing: 0pt;`n"
+        html .= "            font-size: 1em;`n"
+        html .= "            text-indent: 0 !important;`n"
+        html .= "        }`nbody:not(.katex):not(.katex *) { font-family: 'Junicode', 'nullpunktsenergiefont'; letter-spacing: 0; text-rendering: auto; image-rendering: optimizeQuality !important; font-variant-ligatures:discretionary-ligatures contextual common-ligatures; font-feature-settings: 'ss17', 'cv01','cv02','cv22' 2,'cv48'; font-variant-numeric: lining-nums; }`n"
+        html .= "        </style>`n"
+        html .= "        <link rel=`"stylesheet`" href=`"https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css`" integrity=`"sha384-5TcZemv2l/9On385z///+d7MSYlvIEw9FuZTIdZ14vJLqWphw7e7ZPuOiCHJcFCP`" crossorigin=`"anonymous`">`n"
+        html .= "        <script defer src=`"https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js`" integrity=`"sha384-cMkvdD8LoxVzGF/RPUKAcvmm49FQ0oxwDF3BGKtDXcEc+T1b2N+teh/OJfpU0jr6`" crossorigin=`"anonymous`"></script>`n"
+        html .= "        <script defer src=`"https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js`" integrity=`"sha384-hCXGrW6PitJEwbkoStFjeJxv+fSOOQKOPbJxSfM6G5sWZjAyWhXiTIIAmQqnlLlh`" crossorigin=`"anonymous`"`n"
+        html .= "            onload=`"renderMathInElement(document.body);`"></script>`n"
+        html .= "    </head>`n"
+        html .= "    <body>`n"
+        html .= '    <p style="font-weight: bolder;text-align: center;font-size: xx-large;">Oneiric report</p>`n'
+        html .= "        <div style=`"width: 100%;`">`n"
+        html .= "            <table width=`"100%`">`n"
+        html .= "                <tr>`n"
+        html .= "                    <td style=`"font: normal 1.21em KaTeX_TypeWriter`">" . dreamDate . "</td>`n"
+        html .= "                    <td style=`"text-align: right;font: normal 1.21em KaTeX_TypeWriter`">Wake time : " . wakeTime . " | Est. On‑set time : " . onsetTime . "</td>`n"
+        html .= "                </tr>`n"
+        html .= "            </table>`n"
+        html .= "            <p style=`"border:1px solid black;padding: 2em;width: 25%; margin:0 auto;text-align: center;font-weight: bolder`">Place-holder Statement</p>`n"
+        html .= "            <div style=`"text-align: center;font-family: OCR‑B;`">`n"
+        html .= "                <p>" . ocrRows[1] . "</p>`n"
+        html .= "                <p>" . ocrRows[2] . "</p>`n"
+        html .= "                <p>" . ocrRows[3] . "</p>`n"
+        html .= "            </div>`n"
+        html .= "            <p style=`"text-align: center;`"><strong>Events & appendix :</strong></p>`n"
+        html .= "            <table width=`"100%`" cellspacing=`"0`" cellpadding=`"0`">`n"
+        html .= "                <tbody>`n"
+        html .= "                    <tr>`n"
+        html .= "                        <td>`n"
+        html .= "                            <p>🙤</p>`n"
+        html .= "                        </td>`n"
+        html .= "                        <td style=`"text-align: center;`">`n"
+        html .= "                            <p><span lang=`"ja-JP`">︽</span></p>`n"
+        html .= "                        </td>`n"
+        html .= "                        <td style=`"text-align: right;`">`n"
+        html .= "                            <p>🙦</p>`n"
+        html .= "                        </td>`n"
+        html .= "                    </tr>`n"
+        html .= "                </tbody>`n"
+        html .= "            </table>`n"
+        html .= "            <div style=`"text-align: center;`">`n"
+        html .= "                " . dreamContent . "`n"
+        html .= "            </div>`n"
+        html .= "            <table width=`"100%`" cellspacing=`"0`" cellpadding=`"0`">`n"
+        html .= "                <tbody>`n"
+        html .= "                    <tr>`n"
+        html .= "                        <td >`n"
+        html .= "                            <p>🙥</p>`n"
+        html .= "                        </td>`n"
+        html .= "                        <td style=`"text-align: center;`">`n"
+        html .= "                            <p><span lang=`"ja-JP`">︾</span></p>`n"
+        html .= "                        </td>`n"
+        html .= "                        <td style=`"text-align: right;`">`n"
+        html .= "                            <p>🙧</p>`n"
+        html .= "                        </td>`n"
+        html .= "                    </tr>`n"
+        html .= "                </tbody>`n"
+        html .= "            </table>`n"
+        html .= "            <p>Dream № : " . dreamNum . "</p>`n"
+        html .= "            <table width=`"100%`" cellspacing=`"0`" cellpadding=`"4`" style=`"text-align: center;`">`n"
+        html .= "                <tbody>`n"
+        html .= "                    <tr>`n"
+        html .= "                        <td width=`"11`">`n"
+        html .= "                            <p>" . mentalStateX[1] . "</p>`n"
+        html .= "                        </td>`n"
+        html .= "                        <td>`n"
+        html .= "                            <p>Sober</p>`n"
+        html .= "                        </td>`n"
+        html .= "                        <td width=`"11`">" . mentalStateX[2] . "</td>`n"
+        html .= "                        <td>`n"
+        html .= "                            <p>Ethanol Intoxication</p>`n"
+        html .= "                        </td>`n"
+        html .= "                        <td width=`"11`">" . mentalStateX[3] . "</td>`n"
+        html .= "                        <td>`n"
+        html .= "                            <p>Intoxication ( Other )</p>`n"
+        html .= "                        </td>`n"
+        html .= "                    </tr>`n"
+        html .= "                </tbody>`n"
+        html .= "            </table>`n"
+        html .= "            " . mentalLocksHTML . "`n"
+        html .= "            " . symbolHTML . "`n"
+        html .= "            " . evaluationHTML . "`n"
+        html .= "        </div>`n"
+        html .= "    </body>`n"
+        html .= "</html>"
+        
+        tempFile := "E:\wwwwww\dosyâlar\dreams\dream\№_" . dreamNum . ".html"
+        try {
+            FileDelete(tempFile)
+        } catch {
+        }
+        
+        FileAppend(html, tempFile, "UTF-8")
+        
+        Run(tempFile)
+    }
+    h8d2y(timeStr) {
+    timeStr := StrReplace(timeStr, "午前", "AM")
+    timeStr := StrReplace(timeStr, "午後", "PM")
+    
+    if (InStr(timeStr, "AM")) {
+        timeStr := RegExReplace(timeStr, "^12", "00")
+    }
+    if (InStr(timeStr, "PM")) {
+        timeStr := RegExReplace(timeStr, "^12", "00")
+    }
+    
+    return timeStr
+    }
+    CreateNewRecord() {
+        if (this.hasUnsavedChanges) {
+            result := MsgBox("Un‐sꜹed data.", "", "YesNo")
+            if (result == "No") {
+                return
+            }
+        }
+        
+        this.dreamsList.Modify(0, "-Select")
+        
+        nextDreamNumber := this.GetNextDreamNumber()
+        
+        this.ClearFields()
+        
+        this.dreamNumberField.Text := String(nextDreamNumber)
+        this.dreamId := String(nextDreamNumber)
+        
+        currentTime := FormatTime(, "hhmmsstt")
+        formattedTime := this.h8d2y(currentTime)
+        this.wakeTimeField.Text := formattedTime
+        
+        this.saveBtn.Enabled := true
+        this.updateBtn.Enabled := false
+        this.newBtn.Enabled := true
+        this.originalData := {}
+        this.hasUnsavedChanges := false
+    }
+    
+    GetNextDreamNumber() {
+        maxNumber := 0
+        
+        try {
+            if (FileExist(this.dataFile)) {
+                content := FileRead(this.dataFile, "UTF-8")
+                lines := StrSplit(content, "`n")
+                
+                for line in lines {
+                    line := Trim(line)
+                    if (line == "" || line == "{}") {
+                        continue
+                    }
+                    
+                    try {
+                        data := this.ParseJSON(line)
+                        if (data.HasOwnProp("dreamNumber")) {
+                            currentNumber := Integer(data.dreamNumber)
+                            if (currentNumber > maxNumber) {
+                                maxNumber := currentNumber
+                            }
+                        }
+                    } catch {
+                        continue
+                    }
+                }
+            }
+        } catch {
+        }
+        
+        return maxNumber + 1
+    }
+    
+    LoadDataToLeftPanel() {
+        this.dreamsList.Delete()
+        
+        try {
+            if (!FileExist(this.dataFile)) {
+                return
+            }
+            
+            content := FileRead(this.dataFile, "UTF-8")
+            lines := StrSplit(content, "`n")
+            
+            records := []
+            
+            for line in lines {
+                line := Trim(line)
+                if (line == "") {
+                    continue
+                }
+                
+                try {
+                    data := this.ParseJSON(line)
+                    if (data.HasOwnProp("dreamNumber")) {
+                        records.Push({
+                            dreamNumber: data.dreamNumber,
+                            date: data.HasOwnProp("date") ? data.date : "",
+                            wakeTime: data.HasOwnProp("wakeTime") ? data.wakeTime : ""
+                        })
+                    }
+                } catch {
+                    continue
+                }
+            }
+            
+            this.SortRecords(records)
+            
+            for record in records {
+                this.dreamsList.Add("", record.dreamNumber, record.date, record.wakeTime)
+            }
+            
+        } catch Error as err {
+            MsgBox("Error loading data: " . err.Message)
+        }
+    }
+    
+    SortRecords(records) {
+        n := records.Length
+        
+        loop n - 1 {
+            swapped := false
+            loop n - A_Index {
+                if (Integer(records[A_Index].dreamNumber) < Integer(records[A_Index + 1].dreamNumber)) {
+                    temp := records[A_Index]
+                    records[A_Index] := records[A_Index + 1]
+                    records[A_Index + 1] := temp
+                    swapped := true
+                }
+            }
+            if (!swapped) {
+                break
+            }
+        }
+    }
+    
+
+
+    LoadRecord() {
+        selectedRow := this.dreamsList.GetNext()
+        if (!selectedRow) {
+            return
+        }
+        
+        
+        this.ClearFields()
+        this.saveBtn.Enabled := false
+        this.updateBtn.Enabled := true
+        this.newBtn.Enabled := false
+        this.hasUnsavedChanges := false
+        
+        dreamNumber := this.dreamsList.GetText(selectedRow, 1)
+        this.dreamId := dreamNumber
+        
+        try {
+            if (!FileExist(this.dataFile)) {
+                MsgBox("File doesn't exist.")
+                return
+            }
+            
+            content := FileRead(this.dataFile, "UTF-8")
+            lines := StrSplit(content, "`n")
+            
+            for line in lines {
+                line := Trim(line)
+                if (line == "") {
+                    continue
+                }
+                
+                try {
+                    data := this.ParseJSON(line)
+                    if (data.HasOwnProp("dreamNumber") && String(data.dreamNumber) == dreamNumber) {
+                        this.PopulateFields(data)
+                        this.originalData := data.Clone()
+                        return
+                    }
+                } catch {
+                    continue
+                }
+            }
+            
+        } catch Error as err {
+            MsgBox("Error: " . err.Message)
+        }
+        
+    }
+
+    PopulateFields(data) {
+        this.dreamNumberField.Text := data.HasOwnProp("dreamNumber") ? String(data.dreamNumber) : ""
+        this.wakeTimeField.Text := data.HasOwnProp("wakeTime") ? data.wakeTime : ""
+        this.onsetTimeField.Text := data.HasOwnProp("onsetTime") ? data.onsetTime : ""
+        
+        if (data.HasOwnProp("ocrText")) {
+            this.ocrTextArea.Text := this.HTMLToPlainText(data.ocrText)
+        } else {
+            this.ocrTextArea.Text := ""
+        }
+        
+        if (data.HasOwnProp("dreamText")) {
+            this.dreamTextArea.Text := this.HTMLToPlainText(data.dreamText)
+        } else {
+            this.dreamTextArea.Text := ""
+        }
+        
+        if (data.HasOwnProp("mentalState")) {
+            switch data.mentalState {
+                case "Sober":
+                    this.soberRadio.Value := 1
+                case "Ethanol Intoxication":
+                    this.ethanolRadio.Value := 1
+                case "Other":
+                    this.otherRadio.Value := 1
+                    this.otherField.Enabled := true
+                    this.otherField.Text := data.HasOwnProp("otherIntoxication") ? data.otherIntoxication : ""
+            }
+        }
+        
+        symbolData := ["symbol1", "symbol2", "symbol3", "symbol4", "symbol5", "symbol6"]
+        for i, field in this.symbolFields {
+            if (data.HasOwnProp(symbolData[i])) {
+                field.Text := data.%symbolData[i]%
+            }
+        }
+        
+        this.mentalLockList.Delete()
+        this.mentalLockCounter := 1
+        if (data.HasOwnProp("mentalLocks") && data.mentalLocks != "") {
+            locks := this.StringToArray(data.mentalLocks)
+            for lockText in locks {
+                if (lockText != "") {
+                    this.mentalLockList.Add("", this.mentalLockCounter, lockText)
+                    this.mentalLockCounter++
+                }
+            }
+        }
+        
+        if (data.HasOwnProp("hasEvaluation") && data.hasEvaluation == "true") {
+            this.evaluationCheck.Value := 1
+            this.evaluationField.Enabled := true
+            this.evaluationField.Text := data.HasOwnProp("evaluation") ? data.evaluation : ""
+        }
+    }
+    HTMLToPlainText(html) {
+        if (html == "") {
+            return ""
+        }
+        
+        if (InStr(html, "<div") || InStr(html, "<table") || InStr(html, "<center")) {
+            return html
+        }
+        
+        text := html
+        
+        text := RegExReplace(text, "<p>", "")
+        text := RegExReplace(text, "</p>", "`n")
+        text := RegExReplace(text, "<br>", "`n")
+        text := RegExReplace(text, "<br/>", "`n")
+        text := RegExReplace(text, "<br />", "`n")
+        
+        text := StrReplace(text, '\"', '"')
+        text := StrReplace(text, "\'", "'")
+        text := StrReplace(text, '\n', "`n")
+        text := StrReplace(text, '\r', "`r")
+        text := StrReplace(text, '\t', "`t")
+        
+        
+        return text
+    }
+
+
+    PlainTextToHTML(text) {
+        if (text == "") {
+            return ""
+        }
+        
+        lines := StrSplit(text, "`n")
+        cleanLines := []
+        
+        for line in lines {
+            trimmed := Trim(line)
+            if (trimmed != "") {
+                cleanLines.Push(trimmed)
+            }
+        }
+        
+        if (cleanLines.Length > 3) {
+            MsgBox(">3 rows.", "", "OK")
+            return ""
+        }
+        
+        while (cleanLines.Length < 3) {
+            cleanLines.Push("")
+        }
+        
+        html := ""
+        for i, line in cleanLines {
+            html .= "<p>" . line . "</p>"
+            if (i < cleanLines.Length) {
+                html .= "`n"
+            }
+        }
+        
+        return html
+    }   
+    
+    FormatDreamText(text) {
+            if (text == "") {
+                return ""
+            }
+            
+            if (InStr(text, "<div") || InStr(text, "<p>") || InStr(text, "<table") || InStr(text, "<center")) {
+                return text
+            }
+            
+            text := StrReplace(text, "`r`n", "`n")
+            text := StrReplace(text, "`r", "`n")
+            text := Trim(text)
+            
+            lines := StrSplit(text, "`n")
+            formattedText := ""
+            
+            for i, line in lines {
+                line := Trim(line)
+                if (line != "") {
+                    if (formattedText != "") {
+                        formattedText .= "`n"
+                    }
+                    formattedText .= "<p>" . line . "</p>"
+                }
+            }
+            
+            return formattedText
+        }
+
+    SaveRecord() {
+        ocrHTML := this.PlainTextToHTML(this.ocrTextArea.Text)
+        if (ocrHTML == "" && this.ocrTextArea.Text != "") {
+            return
+        }
+        
+        data := this.CollectFormData()
+        data.ocrText := ocrHTML
+        data.dreamText := this.FormatDreamText(data.dreamText)
+        
+        if (!data.dreamNumber) {
+            MsgBox("Dream number is required.")
+            return
+        }
+        
+        if (this.DreamExistsInFile(data.dreamNumber)) {
+            MsgBox("Dream number already exists in file.")
+            return
+        }
+        
+        try {
+            jsonLine := this.ObjectToJSON(data)
+            
+            dir := RegExReplace(this.dataFile, "[^\\]*$", "")
+            if (!DirExist(dir)) {
+                DirCreate(dir)
+            }
+            
+            FileAppend(jsonLine . "`n", this.dataFile, "UTF-8")
+            
+            this.originalData := data.Clone()
+            this.saveBtn.Enabled := false
+            this.updateBtn.Enabled := true
+            this.hasUnsavedChanges := false
+            
+            this.LoadDataToLeftPanel()
+            
+        } catch Error as err {
+            MsgBox("Error saving record: " . err.Message)
+        }
+    }
+    
+    UpdateRecord() {
+        if (!this.dreamId || this.dreamId == "") {
+            MsgBox("No dream selected for update.")
+            return
+        }
+        
+        ocrHTML := this.PlainTextToHTML(this.ocrTextArea.Text)
+        if (ocrHTML == "" && this.ocrTextArea.Text != "") {
+            return
+        }
+        
+        data := this.CollectFormData()
+        data.dreamNumber := this.dreamId
+        data.ocrText := ocrHTML
+        data.dreamText := this.FormatDreamText(data.dreamText)
+        
+        try {
+            if (!FileExist(this.dataFile)) {
+                MsgBox("Data file not found.")
+                return
+            }
+            
+            content := FileRead(this.dataFile, "UTF-8")
+            lines := StrSplit(content, "`n")
+            updatedLines := []
+            found := false
+            
+            for line in lines {
+                line := Trim(line)
+                if (line == "" || line == "{}") {
+                    continue
+                }
+                
+                try {
+                    existingData := this.ParseJSON(line)
+                    
+                    if (existingData.HasOwnProp("dreamNumber") && String(existingData.dreamNumber) == String(this.dreamId)) {
+                        updatedLines.Push(this.ObjectToJSON(data))
+                        found := true
+                    } else {
+                        updatedLines.Push(line)
+                    }
+                } catch {
+                    updatedLines.Push(line)
+                }
+            }
+            
+            if (!found) {
+                MsgBox("Dream record not found for update.")
+                return
+            }
+            
+            newContent := ""
+            for line in updatedLines {
+                newContent .= line . "`n"
+            }
+            
+            FileDelete(this.dataFile)
+            FileAppend(newContent, this.dataFile, "UTF-8")
+            
+            this.originalData := data.Clone()
+            this.hasUnsavedChanges := false
+            this.LoadDataToLeftPanel()
+            
+        } catch Error as err {
+            MsgBox("Error updating record: " . err.Message)
+        }
+    }
+    
+    DreamExistsInFile(dreamNumber) {
+        try {
+            if (!FileExist(this.dataFile)) {
+                return false
+            }
+            
+            content := FileRead(this.dataFile, "UTF-8")
+            lines := StrSplit(content, "`n")
+            
+            for line in lines {
+                line := Trim(line)
+                if (line == "" || line == "{}") {
+                    continue
+                }
+                
+                try {
+                    data := this.ParseJSON(line)
+                    if (data.HasOwnProp("dreamNumber") && String(data.dreamNumber) == String(dreamNumber)) {
+                        return true
+                    }
+                } catch {
+                    continue
+                }
+            }
+            
+            return false
+        } catch {
+            return false
+        }
+    }
+    
+    CollectFormData() {
+        data := {}
+        
+        data.dreamNumber := this.dreamNumberField.Text
+        data.wakeTime := this.wakeTimeField.Text
+        data.onsetTime := this.onsetTimeField.Text
+        data.dreamText := this.dreamTextArea.Text
+        data.date := FormatTime(, "yyyyMMdd")
+        
+        if (this.soberRadio.Value) {
+            data.mentalState := "Sober"
+        } else if (this.ethanolRadio.Value) {
+            data.mentalState := "Ethanol Intoxication"
+        } else if (this.otherRadio.Value) {
+            data.mentalState := "Other"
+            data.otherIntoxication := this.otherField.Text
+        }
+        
+        symbolData := ["symbol1", "symbol2", "symbol3", "symbol4", "symbol5", "symbol6"]
+        for i, field in this.symbolFields {
+            data.%symbolData[i]% := field.Text
+        }
+        
+        mentalLocks := []
+        loop this.mentalLockList.GetCount() {
+            lockText := this.mentalLockList.GetText(A_Index, 2)
+            if (lockText != "") {
+                mentalLocks.Push(lockText)
+            }
+        }
+        data.mentalLocks := this.ArrayToString(mentalLocks)
+        
+        data.hasEvaluation := this.evaluationCheck.Value ? "true" : "false"
+        if (this.evaluationCheck.Value) {
+            data.evaluation := this.evaluationField.Text
+        }
+        
+        return data
+    }
+    
+    ClearFields() {
+        this.dreamNumberField.Text := ""
+        this.wakeTimeField.Text := ""
+        this.onsetTimeField.Text := ""
+        this.ocrTextArea.Text := ""
+        this.dreamTextArea.Text := ""
+        
+        this.soberRadio.Value := 1
+        this.ethanolRadio.Value := 0
+        this.otherRadio.Value := 0
+        this.otherField.Text := ""
+        this.otherField.Enabled := false
+        
+        for field in this.symbolFields {
+            field.Text := ""
+        }
+        
+        this.mentalLockList.Delete()
+        this.mentalLockInput.Text := ""
+        this.mentalLockCounter := 1
+        this.removeBtn.Enabled := false
+        
+        this.evaluationCheck.Value := 0
+        this.evaluationField.Text := ""
+        this.evaluationField.Enabled := false
+        
+        this.dreamId := ""
+        this.originalData := {}
+    }
+    
+    ParseJSON(jsonStr) {
+        obj := {}
+        
+        try {
+            jsonStr := Trim(jsonStr)
+            if (SubStr(jsonStr, 1, 1) == "{") {
+                jsonStr := SubStr(jsonStr, 2)
+            }
+            if (SubStr(jsonStr, -1) == "}") {
+                jsonStr := SubStr(jsonStr, 1, -1)
+            }
+            
+            if (Trim(jsonStr) == "") {
+                return obj
+            }
+            
+            pairs := []
+            current := ""
+            inQuotes := false
+            escapeNext := false
+            braceLevel := 0
+            
+            loop parse, jsonStr {
+                char := A_LoopField
+                
+                if (escapeNext) {
+                    current .= char
+                    escapeNext := false
+                    continue
+                }
+                
+                if (char == '\') {
+                    escapeNext := true
+                    current .= char
+                    continue
+                }
+                
+                if (char == '"' && !escapeNext) {
+                    inQuotes := !inQuotes
+                    current .= char
+                    continue
+                }
+                
+                if (!inQuotes) {
+                    if (char == '{') {
+                        braceLevel++
+                    } else if (char == '}') {
+                        braceLevel--
+                    }
+                }
+                
+                if (char == ',' && !inQuotes && braceLevel == 0) {
+                    if (Trim(current) != "") {
+                        pairs.Push(Trim(current))
+                    }
+                    current := ""
+                } else {
+                    current .= char
+                }
+            }
+            
+            if (Trim(current) != "") {
+                pairs.Push(Trim(current))
+            }
+            
+            for pair in pairs {
+                pair := Trim(pair)
+                if (pair == "") {
+                    continue
+                }
+                
+                colonPos := 0
+                inQuotes := false
+                escapeNext := false
+                braceLevel := 0
+                
+                loop parse, pair {
+                    char := A_LoopField
+                    
+                    if (escapeNext) {
+                        escapeNext := false
+                        continue
+                    }
+                    
+                    if (char == '\') {
+                        escapeNext := true
+                        continue
+                    }
+                    
+                    if (char == '"' && !escapeNext) {
+                        inQuotes := !inQuotes
+                        continue
+                    }
+                    
+                    if (!inQuotes) {
+                        if (char == '{') {
+                            braceLevel++
+                        } else if (char == '}') {
+                            braceLevel--
+                        }
+                    }
+                    
+                    if (char == ':' && !inQuotes && braceLevel == 0) {
+                        colonPos := A_Index
+                        break
+                    }
+                }
+                
+                if (colonPos == 0) {
+                    continue
+                }
+                
+                key := Trim(SubStr(pair, 1, colonPos - 1))
+                value := Trim(SubStr(pair, colonPos + 1))
+                
+                if (SubStr(key, 1, 1) == '"' && SubStr(key, -1) == '"') {
+                    key := SubStr(key, 2, -1)
+                }
+                
+                if (SubStr(value, 1, 1) == '"' && SubStr(value, -1) == '"') {
+                    value := SubStr(value, 2, -1)
+                }
+                
+                value := StrReplace(value, '\"', '"')
+                value := StrReplace(value, '\\', '\')
+                value := StrReplace(value, '\n', "`n")
+                value := StrReplace(value, '\r', "`r")
+                value := StrReplace(value, '\t', "`t")
+                
+                if (key != "") {
+                    obj.%key% := value
+                }
+            }
+        } catch Error as parseErr {
+        }
+        
+        return obj
+    }
+    
+    ObjectToJSON(obj) {
+        jsonStr := "{"
+        first := true
+        
+        for key, value in obj.OwnProps() {
+            if (!first) {
+                jsonStr .= ","
+            }
+            first := false
+            
+            valueStr := String(value)
+            valueStr := StrReplace(valueStr, '\', '\\')
+            valueStr := StrReplace(valueStr, '"', '\"')
+            valueStr := StrReplace(valueStr, "`n", '\n')
+            valueStr := StrReplace(valueStr, "`r", '\r')
+            valueStr := StrReplace(valueStr, "`t", '\t')
+            
+            jsonStr .= '"' . key . '":"' . valueStr . '"'
+        }
+        
+        jsonStr .= "}"
+        return jsonStr
+    }
+    
+    ArrayToString(arr) {
+        if (arr.Length == 0) {
+            return ""
+        }
+        
+        result := ""
+        for i, item in arr {
+            if (i > 1) {
+                result .= ","
+            }
+            result .= String(item)
+        }
+        return result
+    }
+    
+    StringToArray(str) {
+        arr := []
+        if (str == "") {
+            return arr
+        }
+        
+        parts := StrSplit(str, ",")
+        for part in parts {
+            trimmed := Trim(part)
+            if (trimmed != "") {
+                arr.Push(trimmed)
+            }
+        }
+        return arr
+    }
+
+
+
+    ConfirmClose() {
+        if (HasProp(this, "keydownHandler")) {
+            OnMessage(0x0100, this.keydownHandler, 0)
+        }
+        this.mainGui.Destroy()
+        this.isDestroyed := true
+    }
+    OpenEncoder() {
+        this.ocrTextArea.Focus()
+        ControlSend("{Ctrl down}a{Ctrl up}", this.ocrTextArea)
+        UnifiedDreamEncoder.OpenGUI()
+    }
+    OpenSomniumPeople() {
+        this.dreamTextArea.Focus()
+        global SIPManager
+        SIPManager.ShowApp()
+    }
+    
+    OpenSomniumHex() {
+        this.dreamTextArea.Focus()  
+        global ColorPicker
+        if (!ColorPicker) {
+            ColorPicker := ColorPickerClass()
+        }
+        ColorPicker.Show()
+    }
+}
+
+global DreamMsasanager := DreamManager()
